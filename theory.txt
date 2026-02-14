@@ -1,0 +1,113 @@
+Turn based competitive video game with random elements - like chess + poker
+Traditional Strategy + Probability Management + Information Management
+Simultaneous move game
+Immeasurable combinations of Pokemon/Move/Stats/Abilities
+
+VGC - VIDEO GAME CHAMPIONSHIPS - NOT SINGLE BATTLES
+RULES:
+	6 pokemons (locked at beginning of tournaments), pick 4 pokemons per game. 
+	Double Battles with pokemon set to LV. 50
+	NO DUPLICATE POKEMON OR ITEMS
+	Mythicals pokemons always banned, certain others too
+	Metagame - same pokemons with same attacks...
+	
+	400 points in others tournaments -> goes to world championship | money involved in prizes and traveling the world
+	
+TYPE CHART
+	18 total types - each with unique relationships
+	
+correlation of effects -> No effect (0%), Not very Effective (50%), Normal (100%), Super Effective (200%)
+	Each pokemon has 1-2 types
+		- Need to multiply both types to know the final damage 
+		------------------------------------------------
+aqui tenim en compte el tipus de latac contra el del pokemon no?
+---------------------------------------------------------
+		- Attack with the same type as the user (150%) STAB (Same Type Attack Bonus)
+		- Each move has 1 Type
+		
+STATS
+	Each pokemon 6 stats - HP, ATTACK, DEFENSE, SPECIAL ATTCK, SPECIAL DEF, SPEED 
+	Each pokemon has a BASE STAT (same for all species) and a actual stat value depending on level, EV, IV and Nature.
+	Theres a calculation of all variables to predict it.
+	
+HIT POINTS (HP)
+	Archeops and Darmanitan-Zen mode with less health has more strength. ONLY THIS TWO.
+	
+ATK/SP ATK/DF/SP DEF
+	- Both are identical
+	- Damage is calculate -> Attack stat vs Defense stat
+	- It changes the vs from normal to special in some ways:
+	----------------------------???------------------------
+	- Single doesnt need to think about both, doubles yes.
+	- DAMAGE IS TRUNCATED: 9.999 -> 9
+	
+MOVE CATEGORIES (PHYSICAL VS SPECIAL VS STATUS)
+	- Physical: atk vs df
+	- Special: sp atk vs sp df
+	- Status: none (dont do damage directly)
+	
+SPEED
+	- So unique and IMPORTANT
+	- + HP -> + survival / + atk -> + damage...
+	- SPEED determines the order in which pokemon move (fastest to slowest, ignoring priority)
+	- +1 is the same as +100
+	- important moves/items/abilities to upgrade speed
+	
+SPEED (GEN 8)
+	- Before the speed was calculated on the start only.
+	- Now it updates among the turn
+		- Speed moves more powerful
+	
+PRIORITY
+	- Some moves has higher or negative priority. Rest none.
+	- A pkm using a move +1 will always move before a pkm using a move +0, regardless of speed stats
+	- Ability prankster gives +1 priority to status moves.
+	- When same in all (priority & speed) - 50% chance of each.
+	
+
+STATUS CONDITIONS - 1 at a time only
+	- BURN, SLEEP, PARALYSIS, POISION (+ badly), FREEZE
+	- BURN: 50% damage to physical attacks + 1/16 damage at the eot.
+	- POISON: 1/8 damage/turn.
+		- BADLY POISON: accumulative damage. 1/16 + 1/16 x turn. (Can reset ---------------------??--------------
+	- PARALYSIS: 1/2 speed stat + 1/4 unable to move.
+	- SLEEP: Unable to attack for 1-3 turns (1/3% each) - rest: sleep always 2 turns.
+	- FREEZE: 1/5 per atk, unable to attack until thawed.
+		Cannot freeze in sun, fire attack or scald thaws immediately.
+		Can use certain attacks while frozen.
+	- CONFUSION: 1/3 to fail atk and take damage based on your physical atk and def stats.
+
+SPREAD DAMAGE REDUCTION (all about targeting)
+	- SPREAD moves (hit both rivals pokemons). Are 75% effective. In singles normal.
+	- Protect or being immune does not remove this reduction
+	- In any case on atk just one pkm it doesnt remove the reduction neither.
+		- Except if the other pkm is knocked out------???????
+
+ABILITIES
+	- Each pkm has 1 at a time, has to choose up to 3.
+	- Can affect stats, def boost, offensive buffs, activate field conditions....
+	
+ITEMS
+	- Each pkm can hold 1 item
+	- Some dont work if held (potions, revives...)
+	- Only used 30 at most in competitive.
+	- Choice items- raise 1 stat 1.5x but only allow the first move until you switch.
+	- Health restoring Berries, type reducing berries, offensive items...
+	
+NATURES
+	- Multiplies one stat by 1.1x and another by 0.9x.
+	- Sometimes is better to lower one stat...
+
+EVs and IVS.
+Effort Values and Individual Values
+	- Both determine the actual stats of a pokemon in combination with Base Stats
+	- IVs are set at birth, can be changed with hyper training. (lvl. 100 all IVs can be 31).
+	- EVs at birth are 0. Are based on the training.
+
+FIELD EFFECTS
+	- Effects of whole or half of the board.
+	- TRICK ROOM/TAILWIND/TERRAINS (1.3x/1.5x)/REFLECT,LIGHT SCREEN, AURORA VEIL/ 
+	- Less common - MAGIC ROOM/WONDER ROOM/GRAVITY
+	
+ 
+
