@@ -18,5 +18,3 @@ IVs
 	- Lvl 50, every 2 -> +1 point
 	- In the game theres one person who checks your IVs
 
-DAMAGE CALCULATOR
-26:40
