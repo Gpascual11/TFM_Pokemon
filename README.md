@@ -80,7 +80,7 @@ Run the research scripts using `uv`.
 
 ```bash
 # To run a 10,000 game simulation with CSV export
-uv run src/testing/test_heuristic_v3.py
+uv run src/testing_1_vs_1/test_heuristic_v3.py
 
 ```
 

@@ -97,12 +97,9 @@ async def main():
         for _ in range(batches):
             await player.battle_against(opponent, n_battles=BATCH_SIZE)
 
-            # DATA EXTRACTION (Ultra-Safe Version)
             extracted_data = []
             for bid, b in player.battles.items():
-                # We check if the battle is actually over
                 if b.finished:
-                    # Determine winner name
                     if b.won:
                         winner_name = player.username
                     elif b.lost:
