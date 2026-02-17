@@ -32,7 +32,6 @@ def create_tfm_boxplot(df_combined):
     plt.figure(figsize=(10, 6))
 
     # 2. Create the Box Plot
-    # A Box Plot is better for your thesis to show outliers (the long tail)
     sns.boxplot(data=df_combined, x='run_type', y='turns', palette="Set2")
 
     plt.title('Statistical Distribution of Battle Turns', fontsize=14)
