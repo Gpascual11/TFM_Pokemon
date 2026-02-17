@@ -1,0 +1,16 @@
+*.~lock.*
+# Python & PyCharm
+__pycache__/
+*.pyc
+.idea/
+.venv/
+.env
+models/
+logs/
+replays/
+*.pt
+*.pth
+*.pkl
+
+pokemon-showdown/
+node_modules/
