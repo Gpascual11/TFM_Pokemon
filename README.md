@@ -5,7 +5,7 @@ This project focuses on developing and benchmarking Heuristic and Reinforcement 
 ## Prerequisites
 
 * **Node.js** (v18+ recommended)
-* **Python** (3.10+ recommended)
+* **Python 3.12** (required for CUDA compatibility)
 * **uv** (High-performance Python package manager)
 
 ---
@@ -41,11 +41,41 @@ To utilize more thread (like mine -> 22 threads of the **Intel Core Ultra 7 155H
 
 We use `uv` for lightning-fast dependency management and environment isolation.
 
-```bash
-cd .. # Back to your TFM root
-uv init
-uv add poke-env pandas tqdm tabulate
+**On a new computer:**
 
+1. **Install uv** (if not already installed):
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   # Or: pip install uv
+   ```
+
+2. **Install Python 3.12** (if not available):
+   ```bash
+   # Using uv to install Python 3.12
+   uv python install 3.12
+   ```
+
+3. **Setup the project**:
+   ```bash
+   cd TFM  # Your project root
+   uv sync  # Installs dependencies using Python 3.12
+   ```
+
+The project is configured to use Python 3.12 (see `pyproject.toml` and `.python-version`).
+
+**For CUDA support (optional, for RL training):**
+
+When you're ready to use CUDA for PyTorch/RL training, install CUDA-enabled packages:
+
+```bash
+# After uv sync, install PyTorch with CUDA support
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# Or for CUDA 11.8: --index-url https://download.pytorch.org/whl/cu118
+```
+
+Then add RL dependencies:
+```bash
+uv add stable-baselines3 gymnasium
 ```
 
 ---

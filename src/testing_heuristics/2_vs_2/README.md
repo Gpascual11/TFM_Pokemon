@@ -85,6 +85,50 @@ It produces a CSV of head-to-head outcomes:
 This tells us **which heuristic is stronger in cross-play**, not just
 when playing against itself.
 
+### `collect_rl_data_doubles.py` — RL-ready data from both heuristics
+
+This script runs **v1 vs v2** and logs **per-turn state, actions, and damage info**
+so an RL agent can learn from expert play (e.g. “this damage is useful against
+this type”, type multipliers, HP state, battle outcome).
+
+- **Output CSVs** (in `data/`):
+  - **`rl_turns_<runid>.csv`**: one row per turn per slot:
+    - **State**: `turn`, `remaining_us`, `remaining_opp`, `weather`, `terrain`,
+      `our_species_0/1`, `our_types_0/1`, `our_hp_frac_0/1`,
+      `opp_species_0/1`, `opp_types_0/1`, `opp_hp_frac_0/1`.
+    - **Action**: `heuristic` (v1|v2), `slot`, `action_type` (move|switch),
+      `move_id`, `move_target`, `switch_species`.
+    - **Damage/type**: `estimated_damage`, `type_multiplier` (e.g. 2.0 = super
+      effective) — so the machine can learn type effectiveness from data.
+    - **Outcome**: `battle_winner` (us|opp|draw), `total_turns`.
+  - **`rl_battles_<runid>.csv`**: one row per battle: `battle_id`, `winner`,
+    `turns`, `team_us`, `team_opp`.
+
+- **How to use for RL**:
+  - Use state columns as **observation features** (or to align with
+    `TFMDoublesEnv.embed_battle`).
+  - Use `move_id` / `move_target` / `action_type` as **action labels** for
+    imitation or behavior cloning.
+  - Use `estimated_damage` and `type_multiplier` as **auxiliary targets** or
+    reward shaping (e.g. prefer moves with higher expected damage vs current
+    target).
+  - Use `battle_winner` and `total_turns` for **outcome-based rewards** or
+    filtering (e.g. only learn from won battles).
+
+Run (with server up):
+
+```bash
+uv run python src/testing_heuristics/2_vs_2/collect_rl_data_doubles.py
+```
+
+Tune `TOTAL_GAMES` and `BATCH_SIZE` in the script for more/faster data.
+
+**Analysis:** Use the notebook `analysis_rl_data_doubles.ipynb` to explore the
+output CSVs: battle outcomes, turn and state distributions, top moves, damage and
+type-multiplier stats, and a short heuristic comparison (v1 vs v2). Set
+`turns_csv` and `battles_csv` to your `rl_turns_*.csv` and `rl_battles_*.csv`, then
+run all cells; plots are saved under `output_dir`.
+
 ## How to run doubles experiments
 
 From the repo root, with the Showdown server running:
