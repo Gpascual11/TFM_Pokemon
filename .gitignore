@@ -13,4 +13,4 @@ replays/
 *.pkl
 
 pokemon-showdown/
-node_modules/
+node_modules/data/rl_turns_5d5439.csv
