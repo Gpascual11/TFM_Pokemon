@@ -1,0 +1,6 @@
+Next Steps (on a new computer)
+Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh
+Install Python 3.12: uv python install 3.12
+Sync dependencies: uv sync
+For CUDA later: uv pip install torch --index-url https://download.pytorch.org/whl/cu121
+The project is now configured for Python 3.12 and ready for CUDA setup when needed.
