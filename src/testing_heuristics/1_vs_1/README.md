@@ -1,6 +1,6 @@
 ## Overview
 
-This folder contains all our **singles (1 vs 1)** experiments.
+This folder contains all our **singles (1 vs 1)** experiments. For game logic (turns, switches) and how our heuristics are designed, see **[TESTING_HEURISTICS.md](../TESTING_HEURISTICS.md)** in the parent folder.
 We use `poke-env` to play the `gen9randombattle` format on a local Pokémon
 Showdown server, and we log the results to CSV so we can study turn counts,
 win rates, move usage, and team composition.

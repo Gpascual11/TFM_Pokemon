@@ -1,6 +1,6 @@
 ## Overview
 
-This folder contains all our **doubles (2 vs 2)** experiments.
+This folder contains all our **doubles (2 vs 2)** experiments. For a detailed explanation of **game logic (turns, switches, targets)** and **how our heuristics work**, see **[TESTING_HEURISTICS.md](../TESTING_HEURISTICS.md)** in the parent folder.
 We use `poke-env` to play the `gen9randomdoublesbattle` format on a local
 Pokémon Showdown server, and we log results to compare different heuristics:
 how often they win, how fast they finish games, and which moves and Pokémon
