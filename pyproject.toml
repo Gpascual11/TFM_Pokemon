@@ -13,16 +13,3 @@ dependencies = [
     "tabulate>=0.9.0",
     "tqdm>=4.67.3",
 ]
-
-[project.optional-dependencies]
-# RL training (PPO, etc.). Use: uv sync --extra rl
-# For GPU/CUDA: after sync, run:
-#   uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-# (use cu118 for CUDA 11.8). Then run RL scripts with the same uv run.
-rl = [
-    "gymnasium>=0.29.0",
-    "stable-baselines3>=2.2.0",
-    "torch>=2.0.0",
-    "torchvision>=0.15.0",
-    "torchaudio>=2.0.0",
-]

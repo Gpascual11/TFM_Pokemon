@@ -1,141 +1,126 @@
-## Overview
+# 1-vs-1 Heuristic Simulations
 
-This folder contains all our **singles (1 vs 1)** experiments. For game logic (turns, switches) and how our heuristics are designed, see **[TESTING_HEURISTICS.md](../TESTING_HEURISTICS.md)** in the parent folder.
-We use `poke-env` to play the `gen9randombattle` format on a local Pokémon
-Showdown server, and we log the results to CSV so we can study turn counts,
-win rates, move usage, and team composition.
+We built a framework for testing heuristic-based Pokémon battling agents in
+Generation 9 Random Battle (singles). The system supports multiple heuristic
+versions, configurable opponents, multi-process parallel execution, and
+structured CSV output for downstream analysis.
 
-## What battles look like
+## Features
 
-- **Format**: `gen9randombattle` (Showdown’s random singles).
-- **Teams**: Showdown randomly generates both teams each battle.
-  You do **not** hardcode Pokémon or moves; they come from the random format.
-- **Pokémon & attacks**:
-  - The heuristics query the battle state through `poke-env`:
-    - `battle.active_pokemon`, `battle.opponent_active_pokemon`
-    - `battle.available_moves`, `battle.available_switches`
-  - Damage is estimated with base power, attack/defense stats, STAB and type
-    effectiveness (and sometimes weather/status).
+- **Four heuristic versions** (`v1`, `v2`, `v4`, `v5`) with increasing
+  sophistication — from simple max-damage to expert-level strategies with
+  KO detection, defensive pivoting, and weather/terrain awareness.
+- **Flexible opponent selection** — fight against `RandomPlayer`,
+  `MaxBasePowerPlayer`, `SimpleHeuristicsPlayer` (poke-env baselines),
+  or play the heuristic against itself.
+- **Multi-process execution** — one child process per Showdown server,
+  with automatic work splitting and result merging.
+- **Rich CSV output** — battle outcomes, team composition, fainted/remaining
+  counts, HP totals, and move tracking for analysis.
 
-So when we see moves like `earthquake`, `knockoff`, `hydropump` in the
-analysis, they are **moves that the agent actually received from random teams**
-and decided to use; we do not script specific Pokémon or moves.
+## Setup
 
-## Main components
+### Prerequisites
 
-### `test_env.py`
+- Python 3.10+
+- [poke-env](https://github.com/hsahovic/poke-env) (installed via `uv` or `pip`)
+- A local [Pokémon Showdown](https://github.com/smogon/pokemon-showdown) server
 
-Small helper to “peek” inside battles:
-- prints the active Pokémon, HP, types,
-- lists available moves and switches every turn.
+### Starting Showdown Servers
 
-We used this file to understand the state that `poke-env` exposes before
-we started writing heuristics.
-
-### `test_heuristic_v1.py` … `test_heuristic_v5.py`
-
-Different generations of singles heuristics. The most important ones now:
-
-- `test_heuristic_v4.py`
-  - Uses a `GameDataManager` to access stats safely.
-  - Estimates damage for each move using:
-    - physical vs special split (Atk/Def vs SpA/SpD),
-    - burn penalty for physical attackers,
-    - STAB and type effectiveness.
-  - Switches out when:
-    - the Pokémon is badly poisoned (`TOX`) for several turns, or
-    - its best move is weak and it is slower than the opponent.
-  - For each finished battle, logs a row in a CSV with:
-    - `battle_id`, `winner`, `turns`, `won`
-    - `team_us`, `team_opp` (species on each side)
-    - `fainted_us`, `fainted_opp`
-    - `moves_used` (distinct move ids the heuristic actually used).
-
-- `test_heuristic_v5.py`
-  - A more advanced heuristic:
-    - **Immediate KO check**: if a move is predicted to KO, it takes it,
-      giving priority to higher-priority moves.
-    - **Strategic switching** when we are in danger:
-      - speed disadvantage + bad type matchup,
-      - low HP or bad poison over time,
-      - switches into a teammate with better resistances.
-    - **Move scoring**:
-      - damage × accuracy,
-      - extra weight for positive priority,
-      - field effects: weather (sun/rain) and terrain (electric, grassy, psychic).
-  - Logs the same rich per-battle information as v4 into CSV.
-
-All these scripts use the same pattern:
-
-```python
-await player.battle_against(opponent, n_battles=BATCH_SIZE)
-```
-
-where `player` and `opponent` are `Player` subclasses using our heuristics,
-connected to the local Showdown server.
-
-### `01_test/`
-
-This subfolder is where we:
-- fix specific heuristic versions (e.g. v4, v5),
-- run long experiments,
-- store the resulting CSVs and notebooks in a tidy way.
-
-## How to run experiments
-
-From the repo root, with your local Showdown server running:
+We use one server per port for parallel execution. Start them with the
+helper script from the project root:
 
 ```bash
-uv run python src/testing_heuristics/1_vs_1/01_test/test_heuristic_v4.py
-uv run python src/testing_heuristics/1_vs_1/01_test/test_heuristic_v5.py
+./src/start_sim.sh
 ```
 
-Each script:
-- plays `TOTAL_GAMES` Gen9 random battles (self-play: heuristic vs itself),
-- writes a CSV under `data/` named like:
-  - `tfm_expert_singles_v4_<runid>.csv`
-  - `tfm_expert_singles_<runid>.csv` (for v5).
+Or manually:
 
-## Analysis and outputs
+```bash
+node pokemon-showdown start --port 8000 --no-security
+node pokemon-showdown start --port 8001 --no-security
+# ... etc.
+```
 
-- `01_test/analysis_singles_heuristics.py`  
-  Python module that compares **two singles CSVs**. It:
-  - loads both files and tags them with `heuristic` labels,
-  - computes per-heuristic stats:
-    - `battles`, `mean_turns`, `sd_turns`, `ci_turns` (95% CI), `win_rate_%`,
-  - explodes `moves_used` to count how often each move id is used by each
-    heuristic,
-  - generates plots:
-    - turn distribution (histogram + KDE),
-    - boxplot of turns per heuristic,
-    - win-rate barplot,
-    - barplot of top moves.
+### Running Simulations
 
-- `01_test/analysis_singles_heuristics.ipynb`  
-  Notebook front-end for the analysis. We simply set:
+```bash
+# V5 vs RandomPlayer (single server)
+uv run python src/testing_heuristics/1_vs_1/run_heuristic.py \
+  --version v5 --total-games 1000 --ports 8000
 
-  ```python
-  csv_a = "../../../data/<v5_csv>.csv"
-  csv_b = "../../../data/<v4_csv>.csv"
-  output_dir = "../../../data/heuristics_compare_v5_vs_v4"
-  label_a = "v5"
-  label_b = "v4"
-  ```
+# V5 vs SimpleHeuristicsPlayer (4 servers in parallel)
+uv run python src/testing_heuristics/1_vs_1/run_heuristic.py \
+  --version v5 \
+  --total-games 10000 \
+  --batch-size 256 \
+  --concurrent-battles 16 \
+  --ports 8000 8001 8002 8003 \
+  --opponent simple_heuristic
+```
 
-  and run all cells. It:
-  - calls `compare_singles_heuristics(...)`,
-  - displays the summary table in the notebook,
-  - prints top moves,
-  - saves all plots into `output_dir`.
+### CLI Options
 
-## Summary
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--version` | *required* | Heuristic version (`v1`, `v2`, `v4`, `v5`) |
+| `--total-games` | `10000` | Total battles to simulate |
+| `--batch-size` | `500` | Battles per async batch |
+| `--concurrent-battles` | `16` | Max concurrent battles per process |
+| `--ports` | `8000` | Showdown server ports (multiple → multi-process) |
+| `--opponent` | `random` | `random`, `self`, `max_power`, `simple_heuristic` |
+| `--data-dir` | `data` | Output directory for CSVs |
+| `--log-level` | `INFO` | Logging verbosity |
 
-- The **1_vs_1 folder** holds all our singles heuristics and tools.
-- Heuristics operate on **random Gen9 teams** provided by Showdown, making
-  decisions based on current Pokémon, stats, types, weather and available moves.
-- The scripts generate **rich CSV logs** that summarize each battle and which
-  Pokémon and attacks were actually used.
-- The analysis code and notebooks turn those logs into **figures and tables**
-  that describe how our agents behave and how strong each heuristic is.
+## Logic Overview
 
+### Heuristic Versions
 
+We implemented four progressively more advanced heuristic strategies, all
+built on a shared Template Method base class (`BaseHeuristic1v1`):
+
+| Version | Strategy | Key Capabilities |
+|---------|----------|-------------------|
+| **V1** | Max damage | `base_power × effectiveness × STAB` |
+| **V2** | Stats-based | Physical/special split, burn penalty, toxic/speed pivoting |
+| **V4** | V2 + tracking | Same as V2, plus per-battle move-usage recording |
+| **V5** | Expert | KO detection, danger pivoting, weather/terrain modifiers, priority boost |
+
+### Decision Pipeline
+
+We designed a three-phase pipeline implemented via Template Method:
+
+1. **Pre-move hook** — V5 scans for guaranteed KO moves (priority-first).
+2. **Select action** — main heuristic logic (damage estimation, switching).
+3. **Fallback** — `choose_random_move()` when no action was selected.
+
+### Architecture
+
+```
+run_heuristic.py          CLI entry point
+├── BattleManager          Async battle loop + CSV extraction
+├── ProcessLauncher        Multi-process orchestration
+├── HeuristicFactory       Version string → Player class
+└── heuristics/
+    ├── v1.py              Simple max-damage
+    ├── v2.py              Stats + switching
+    ├── v4.py              V2 + move tracking
+    └── v5.py              Expert (KO, danger, weather, terrain)
+```
+
+### CSV Output Columns
+
+| Column | Description |
+|--------|-------------|
+| `battle_id` | Unique battle identifier |
+| `heuristic` | Heuristic version used |
+| `opponent_type` | Opponent type (e.g. `simple_heuristic`) |
+| `winner` | Username of the winner |
+| `won` | `1` if our heuristic won, `0` otherwise |
+| `turns` | Number of turns in the battle |
+| `team_us` / `team_opp` | Pipe-separated species lists |
+| `fainted_us` / `fainted_opp` | Number of fainted Pokémon |
+| `remaining_pokemon_us` / `opp` | Surviving Pokémon count |
+| `total_hp_us` / `opp` | Sum of HP fractions of survivors |
+| `moves_used` | Pipe-separated move ids (V4, V5 only) |

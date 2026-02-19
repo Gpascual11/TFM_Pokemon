@@ -97,7 +97,7 @@ async def main():
     """
     TOTAL_GAMES = 10_000
     BATCH_SIZE = 500
-    CONCURRENT_BATTLES = 20
+    CONCURRENT_BATTLES = 32
 
     run_id = str(uuid.uuid4())[:4]
     data_dir = "data"
