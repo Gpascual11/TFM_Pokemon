@@ -30,28 +30,41 @@ This project requires **Python 3.12** (specified in `pyproject.toml` and `.pytho
 - The `.python-version` file ensures `uv` and `pyenv` use the correct version
 - `uv sync` will automatically use Python 3.12 if available
 
-## CUDA Setup (Optional, for RL Training)
+## RL Training (CPU or GPU)
 
-When you're ready to train RL models with GPU acceleration:
+To run RL scripts (e.g. PPO vs heuristic in `src/rl/`), install the optional **rl** dependencies:
+
+```bash
+uv sync --extra rl
+```
+
+This installs: `gymnasium`, `stable-baselines3`, `torch`, `torchvision`, `torchaudio` (CPU builds from PyPI). You can then run:
+
+```bash
+uv run python src/rl/train_ppo_doubles_vs_heuristic.py
+```
+
+### Using the GPU (CUDA)
+
+On a machine with an NVIDIA GPU and CUDA installed:
 
 1. **Install CUDA Toolkit** (if not already installed):
    - CUDA 11.8 or 12.1 recommended
    - Follow NVIDIA's installation guide for your OS
 
-2. **Install PyTorch with CUDA**:
+2. **Sync base + RL deps**, then **replace PyTorch with CUDA builds**:
    ```bash
+   uv sync --extra rl
    uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
    ```
+   Use `cu118` instead of `cu121` for CUDA 11.8.
 
 3. **Verify CUDA**:
    ```bash
-   uv run python -c "import torch; print(torch.cuda.is_available())"
+   uv run python -c "import torch; print('cuda:', torch.cuda.is_available())"
    ```
 
-4. **Add RL dependencies**:
-   ```bash
-   uv add stable-baselines3 gymnasium
-   ```
+After that, run the same RL scripts with `uv run`; they will use the GPU automatically.
 
 ## Project Structure
 
