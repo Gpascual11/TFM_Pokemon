@@ -13,4 +13,7 @@ replays/
 *.pkl
 
 pokemon-showdown/
-node_modules/data/rl_turns_5d5439.csv
+node_modules/
+
+# Large RL data (generate locally with collect_rl_data_doubles.py)
+data/rl_turns_*.csv
