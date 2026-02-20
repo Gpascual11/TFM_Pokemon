@@ -1,21 +1,21 @@
 #!/usr/bin/env python
-"""CLI entry point for 1-vs-1 heuristic simulations.
+"""CLI entry point for 2-vs-2 heuristic simulations.
 
 Examples
 --------
 Single-server run::
 
-    python run_heuristic.py --version v5 --total-games 100 --ports 8000
+    python run_heuristic.py --version v6 --total-games 100 --ports 8000
 
 Multi-server parallel run::
 
     python run_heuristic.py \\
-        --version v5 \\
+        --version v6 \\
         --total-games 10000 \\
         --batch-size 256 \\
         --concurrent-battles 16 \\
         --ports 8000 8001 8002 8003 \\
-        --opponent simple_heuristic
+        --opponent random
 """
 
 from __future__ import annotations
@@ -26,8 +26,7 @@ import os
 import sys
 
 # ---------------------------------------------------------------------------
-# Package bootstrap — ensures relative imports work when invoked directly
-# via ``python path/to/run_heuristic.py``.
+# Package bootstrap
 # ---------------------------------------------------------------------------
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 _PARENT_DIR = os.path.dirname(_THIS_DIR)
@@ -56,7 +55,7 @@ def _build_parser() -> argparse.ArgumentParser:
     versions = HeuristicFactory.available_versions()
 
     parser = argparse.ArgumentParser(
-        description="Run batched Pokémon Showdown 1-vs-1 heuristic simulations.",
+        description="Run batched Pokémon Showdown 2-vs-2 heuristic simulations.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Server setup (run each in a separate terminal):\n"
@@ -107,7 +106,7 @@ def _print_banner(args: argparse.Namespace) -> None:
     """Print a formatted summary of simulation parameters."""
     opp_label = _OPPONENT_LABELS.get(args.opponent, args.opponent)
     print(f"╔══════════════════════════════════════════════╗")
-    print(f"║  Heuristic 1v1 Simulation — {args.version:>2s}               ║")
+    print(f"║  Heuristic 2v2 Simulation — {args.version:>2s}               ║")
     print(f"╠══════════════════════════════════════════════╣")
     print(f"║  Total Games:        {args.total_games:>10,}              ║")
     print(f"║  Batch Size:         {args.batch_size:>10,}              ║")
