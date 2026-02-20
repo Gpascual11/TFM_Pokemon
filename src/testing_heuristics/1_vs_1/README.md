@@ -7,12 +7,12 @@ structured CSV output for downstream analysis.
 
 ## Features
 
-- **Four heuristic versions** (`v1`, `v2`, `v4`, `v5`) with increasing
+- **Four heuristic versions** (`v1`, `v2`, `v3`, `v4`) with increasing
   sophistication — from simple max-damage to expert-level strategies with
   KO detection, defensive pivoting, and weather/terrain awareness.
 - **Flexible opponent selection** — fight against `RandomPlayer`,
   `MaxBasePowerPlayer`, `SimpleHeuristicsPlayer` (poke-env baselines),
-  or play the heuristic against itself.
+  or play against any existing heuristic version (e.g. `--opponent v2`).
 - **Multi-process execution** — one child process per Showdown server,
   with automatic work splitting and result merging.
 - **Rich CSV output** — battle outcomes, team composition, fainted/remaining
@@ -50,9 +50,9 @@ node pokemon-showdown start --port 8001 --no-security
 uv run python src/testing_heuristics/1_vs_1/run_heuristic.py \
   --version v5 --total-games 1000 --ports 8000
 
-# V5 vs SimpleHeuristicsPlayer (4 servers in parallel)
+# V4 vs SimpleHeuristicsPlayer (4 servers in parallel)
 uv run python src/testing_heuristics/1_vs_1/run_heuristic.py \
-  --version v5 \
+  --version v4 \
   --total-games 10000 \
   --batch-size 256 \
   --concurrent-battles 16 \
@@ -64,12 +64,12 @@ uv run python src/testing_heuristics/1_vs_1/run_heuristic.py \
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--version` | *required* | Heuristic version (`v1`, `v2`, `v4`, `v5`) |
+| `--version` | *required* | Heuristic version (`v1`, `v2`, `v3`, `v4`) |
 | `--total-games` | `10000` | Total battles to simulate |
 | `--batch-size` | `500` | Battles per async batch |
 | `--concurrent-battles` | `16` | Max concurrent battles per process |
 | `--ports` | `8000` | Showdown server ports (multiple → multi-process) |
-| `--opponent` | `random` | `random`, `self`, `max_power`, `simple_heuristic` |
+| `--opponent` | `random` | `random`, `self`, `max_power`, `simple_heuristic`, or any heuristic e.g. `v2` |
 | `--data-dir` | `data` | Output directory for CSVs |
 | `--log-level` | `INFO` | Logging verbosity |
 
@@ -82,18 +82,20 @@ built on a shared Template Method base class (`BaseHeuristic1v1`):
 
 | Version | Strategy | Key Capabilities |
 |---------|----------|-------------------|
-| **V1** | Max damage | `base_power × effectiveness × STAB` |
+| **V1** | Max damage | `base_power × effectiveness × STAB` — pure damage proxy |
 | **V2** | Stats-based | Physical/special split, burn penalty, toxic/speed pivoting |
-| **V4** | V2 + tracking | Same as V2, plus per-battle move-usage recording |
-| **V5** | Expert | KO detection, danger pivoting, weather/terrain modifiers, priority boost |
+| **V3** | V2 + tracking | Same as V2, plus per-battle move-usage recording |
+| **V4** | Expert | KO detection, danger pivoting, weather/terrain modifiers, priority boost |
+| **V5** | V4 + accuracy | Full V4 logic with explicit accuracy weighting and relaxed switch thresholds |
+| **V6** | V3 + field | V3 with weather/terrain/priority scoring (no KO detection) |
 
 ### Decision Pipeline
 
-We designed a three-phase pipeline implemented via Template Method:
+We designed a three-phase pipeline implemented via Template Method in `base.py`:
 
-1. **Pre-move hook** — V5 scans for guaranteed KO moves (priority-first).
-2. **Select action** — main heuristic logic (damage estimation, switching).
-3. **Fallback** — `choose_random_move()` when no action was selected.
+1. **Pre-move hook** (`_pre_move_hook`) — V4/V5 scan for guaranteed KO moves first.
+2. **Select action** (`_select_action`) — main heuristic: damage estimation + switch logic.
+3. **Fallback** — `choose_random_move()` when no action is selected.
 
 ### Architecture
 
@@ -105,8 +107,10 @@ run_heuristic.py          CLI entry point
 └── heuristics/
     ├── v1.py              Simple max-damage
     ├── v2.py              Stats + switching
-    ├── v4.py              V2 + move tracking
-    └── v5.py              Expert (KO, danger, weather, terrain)
+    ├── v3.py              V2 + move tracking
+    ├── v4.py              Expert (KO, danger, weather, terrain)
+    ├── v5.py              V4 + accuracy weighting, relaxed switching
+    └── v6.py              V3 + weather/terrain/priority field bonuses
 ```
 
 ### CSV Output Columns

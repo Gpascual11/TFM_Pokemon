@@ -1,7 +1,9 @@
-"""Async battle manager for batched simulation runs.
+"""Async battle manager for batched 2v2 simulation runs.
 
-Orchestrates the ``battle_against`` loop, progress tracking, per-battle
-data extraction, and CSV export — all behind a simple ``run()`` call.
+Mirrors ``1_vs_1/battle_manager.py`` adapted for doubles:
+* ``battle_format = "gen9randomdoublesbattle"``
+* CSV prefix ``2_vs_2_``
+* Data extraction handles up to 4 Pokémon per side.
 """
 
 from __future__ import annotations
@@ -26,9 +28,9 @@ OPPONENT_CHOICES = ("random", "self", "max_power", "simple_heuristic")
 
 
 class BattleManager:
-    """Orchestrate a batched singles simulation and export results to CSV.
+    """Orchestrate a batched doubles simulation and export results to CSV.
 
-    :param version: Heuristic version label, e.g. ``v1`` or ``v5``.
+    :param version: Heuristic version label, e.g. ``v1`` or ``v6``.
     :param server_url: WebSocket URL of the Pokémon Showdown server.
     :param total_games: Total battles to simulate.
     :param batch_size: Battles per ``battle_against`` call.
@@ -59,26 +61,21 @@ class BattleManager:
         self.run_id = run_id or str(uuid.uuid4())[:8]
 
     def run(self) -> Path:
-        """Execute the full simulation synchronously.
-
-        Safe to call from ``multiprocessing.Process`` targets.
-        :returns: Path to the generated CSV file.
-        """
+        """Execute the full simulation (blocking)."""
         return asyncio.run(self._run_async())
 
     async def _run_async(self) -> Path:
         """Async implementation of the batched battle loop."""
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        csv_path = self.data_dir / f"1_vs_1_{self.version}_vs_{self.opponent}_{self.run_id}.csv"
+        csv_path = self.data_dir / f"2_vs_2_{self.version}_vs_{self.opponent}_{self.run_id}.csv"
 
         config = ServerConfiguration(self.server_url, None)
         common_kwargs: dict[str, Any] = {
-            "battle_format": "gen9randombattle",
+            "battle_format": "gen9randomdoublesbattle",
             "server_configuration": config,
             "max_concurrent_battles": self.concurrent_battles,
         }
 
-        # Showdown strips underscores from usernames, causing mismatch
         tag = self.run_id.replace("_", "")
         ver = self.version.replace("_", "")
 
@@ -166,12 +163,7 @@ class BattleManager:
         heuristic_version: str,
         opponent_type: str,
     ) -> list[dict]:
-        """Extract per-battle analytics from the player's finished battles.
-
-        Returns one dict per battle with fields for the CSV output:
-        identifiers, outcome, teams, fainted/remaining counts, HP totals,
-        and (optionally) move usage.
-        """
+        """Extract per-battle analytics from the player's finished battles."""
         rows: list[dict] = []
         for bid, b in player.battles.items():
             if not b.finished:

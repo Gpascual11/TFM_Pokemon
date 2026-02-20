@@ -1,8 +1,10 @@
-"""Multi-process launcher for parallel simulation across Showdown servers.
+"""Multi-process launcher for parallel 2v2 simulation across Showdown servers.
 
 Each child process gets its own port and runs an independent
 ``BattleManager.run()`` inside a fresh asyncio event loop.  Results are
 written to per-process CSVs and then merged into a single output file.
+
+Mirrors ``1_vs_1/process_launcher.py`` adapted for the 2v2 package.
 """
 
 from __future__ import annotations
@@ -21,8 +23,6 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# 'spawn' creates a clean interpreter per child — 'fork' would copy
-# poke-env's asyncio state and cause deadlocks.
 _mp_ctx = multiprocessing.get_context("spawn")
 
 
@@ -46,22 +46,16 @@ def _worker(
     run_id: str,
     worker_index: int = 0,
 ) -> None:
-    """Entry point for each child process.
-
-    Because we use 'spawn', this runs in a brand-new interpreter and
-    must bootstrap its own imports and logging configuration.
-    """
+    """Entry point for each child process."""
     sys.stdout.reconfigure(line_buffering=True)  # type: ignore[attr-defined]
     sys.stderr.reconfigure(line_buffering=True)  # type: ignore[attr-defined]
 
-    # Suppress poke-env's verbose per-message INFO logging in children
     logging.basicConfig(
         level=logging.WARNING,
         format=f"[port:{port}] %(levelname)s %(message)s",
         force=True,
     )
 
-    # Bootstrap package path (mirrors run_heuristic.py)
     _this_dir = os.path.dirname(os.path.abspath(__file__))
     _parent_dir = os.path.dirname(_this_dir)
     if _parent_dir not in sys.path:
@@ -105,7 +99,7 @@ def _worker(
 
 
 class ProcessLauncher:
-    """Distribute a simulation across multiple Showdown servers.
+    """Distribute a 2v2 simulation across multiple Showdown servers.
 
     Parameters
     ----------
@@ -145,13 +139,7 @@ class ProcessLauncher:
         self.run_id = str(uuid.uuid4())[:8]
 
     def launch(self) -> Path:
-        """Spawn workers, wait for completion, and merge results.
-
-        Returns
-        -------
-        Path
-            Path to the merged CSV.
-        """
+        """Spawn workers, wait for completion, and merge results."""
         self._preflight_check()
         processes = self._spawn_workers()
         self._wait_for_completion(processes)
@@ -241,10 +229,10 @@ class ProcessLauncher:
 
     def _merge_results(self) -> Path:
         """Concatenate all per-process CSVs into one merged file."""
-        pattern = f"1_vs_1_{self.version}_vs_{self.opponent}_{self.run_id}_p*.csv"
+        pattern = f"2_vs_2_{self.version}_vs_{self.opponent}_{self.run_id}_p*.csv"
         part_files = sorted(self.data_dir.glob(pattern))
 
-        merged_path = self.data_dir / f"1_vs_1_{self.version}_vs_{self.opponent}.csv"
+        merged_path = self.data_dir / f"2_vs_2_{self.version}_vs_{self.opponent}.csv"
 
         if not part_files:
             logger.warning("No per-process CSVs found matching '%s'", pattern)
@@ -254,7 +242,6 @@ class ProcessLauncher:
         merged = pd.concat(frames, ignore_index=True)
         merged.to_csv(merged_path, index=False)
 
-        # Cleanup: remove partial files after successful merge
         for f in part_files:
             try:
                 f.unlink()
