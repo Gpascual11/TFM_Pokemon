@@ -1,0 +1,20 @@
+- 6 stats - HP / ATTK / DEF / SP ATTK / SP DEF / SPEED
+
+EVs
+	- 508 in total among all 6
+	- 252 MAX in one stat
+	- 4 EVs -> 1 point more then -> 
+		8 EVs -> 1 point more
+	- 252 points -> 32 points more	
+		
+Normal distribution
+	4 HP / 252 Attk / 252 Speed
+	
+Nature
+	- Can put + or - in a stat
+	
+IVs
+	- 0 to 31
+	- Lvl 50, every 2 -> +1 point
+	- In the game theres one person who checks your IVs
+
