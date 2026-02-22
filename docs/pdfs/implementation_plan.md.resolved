@@ -1,0 +1,122 @@
+# RL Agent Optimization Plan
+
+Improve win rate of the MaskablePPO agent against MaxBasePower and SimpleHeuristic opponents by improving observation quality, reward shaping, and network capacity. All changes keep the architecture simple (MaskablePPO + MLP).
+
+## Proposed Changes
+
+---
+
+### Observation Space
+
+#### [MODIFY] [vectorizer.py](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/vectorizer.py)
+
+**1. Add Side Condition encoding (new `_embed_side_conditions`)**
+- Import [SideCondition](file:///home/sirp/Documents/MUDS/TFM_Pokemon/.venv/lib/python3.12/site-packages/poke_env/battle/side_condition.py#10-92) from `poke_env.battle.side_condition`
+- Add `self.num_side_conditions = len(SideCondition)` in [__init__](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/rl_env.py#55-95)
+- Two separate multi-hot vectors: one for own side (24 dims) + one for opponent side (24 dims)
+- For stackable conditions (Spikes ×3, Toxic Spikes ×2), normalize value to [0,1] using the max stack count
+
+**2. Add Move information encoding (new `_embed_moves`)**
+- For the active Pokémon, encode each of the 4 move slots:
+  - Move type: multi-hot (18 types) — `[0]*18` if slot empty
+  - Base Power: single float normalized by 250 — 0 if slot empty
+- Total: 4 moves × (18 + 1) = **76 dims**
+
+**3. Updated observation_space_size formula in [rl_env.py](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/rl_env.py)** — must stay in sync.
+
+Before:
+```python
+2 * (1 + num_types + num_statuses + num_boosts) + 6 + 7 + num_weathers + num_fields
+```
+After (estimated, calculated at init time):
+```python
+2 * (1 + num_types + num_statuses + num_boosts) + 76 + 6 + 7 + num_weathers + num_fields + 2 * num_side_conditions
+```
+
+---
+
+### Reward Shaping
+
+#### [MODIFY] [rl_env.py](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/rl_env.py)
+
+**1. Own-side hazard penalty**
+- Add penalty proportional to the total hazard stack on own side (Spikes ×3 + Toxic Spikes ×2 + Stealth Rock + Sticky Web = danger signals)
+- Penalty formula: `-0.3 × (stacks / max_stacks)` per hazard
+
+**2. Negative boost penalty**
+- `sum(min(0, boost) for boost in active_pokemon.boosts.values())` — already negative  
+- Scale: `neg_boost_sum × 0.15` added to the delta-based buffer
+
+**3. Status infliction reward**
+- If `battle.opponent_active_pokemon.status in (BRN, PAR, TOX)`, add `+0.3` to current value
+- Encoded as a buffer delta (same `_custom_reward_buffer` pattern) — no double-reward
+
+**4. Stall penalty reduction**
+- Change `action_penalty` from `-0.05` → `-0.02` per turn
+- Rationale: `-0.05/turn × 2048 steps = -102` total discount drag vs `-0.02 → -41`. The earlier value was discouraging legitimate defensive plays and switching.
+
+---
+
+### Network Architecture
+
+#### [MODIFY] [train_parallel.py](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/train_parallel.py)
+
+- Add `policy_kwargs=dict(net_arch=[256, 256])` to the fresh model init
+- Add `ent_coef=0.01` (default is ~0.0, encouraging more exploration)
+- Keep `learning_rate=3e-4`, `gamma=0.99`
+
+#### [MODIFY] [train_phase2.py](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/train_phase2.py)
+
+- When loading Phase 1 weights: call `model.policy.set_training_mode(True)` (already handled by SB3 load)
+- Override `learning_rate` to `1.5e-4` after load via `model.learning_rate = 1.5e-4` to prevent catastrophic forgetting
+- In the fallback "fresh model" branch: also add `policy_kwargs=dict(net_arch=[256, 256])` and `ent_coef=0.01`
+
+> [!IMPORTANT]
+> The loaded Phase 1 model's network architecture is **frozen** when you call `MaskablePPO.load()`. The `policy_kwargs` from Phase 1 is baked into the saved zip file, so the `net_arch` change only takes effect for new models. The Phase 2 loaded model will keep its existing architecture. This is correct — the key Phase 2 hyper-parameter change is the **lower learning rate** to prevent forgetting.
+
+---
+
+### Logic Integrity — Action Mask Audit
+
+#### [MODIFY] [rl_env.py](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/rl_env.py)
+
+Confirmed alignment between [action_masks()](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/rl_env.py#219-265) and [action_to_order()](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/rl_env.py#96-154):
+
+| Slot | [action_masks](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/rl_env.py#219-265) sets | [action_to_order](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/rl_env.py#96-154) reads |
+|------|---------------------|------------------------|
+| 0–3  | `battle.active_pokemon.moves.keys()` (ordered dict, index by position) | `list(battle.active_pokemon.moves.values())[action]` |
+| 4–9  | `list(battle.team.keys())[i]` → checks `available_switches` by name | `list(battle.team.values())[action-4]` |
+
+**Issue found**: In [action_masks](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/rl_env.py#219-265), for Move masking: it iterates `move_ids = list(battle.active_pokemon.moves.keys())` but in [action_to_order](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/rl_env.py#96-154) it uses `list(battle.active_pokemon.moves.values())[action]`. These are consistent (same order), ✅ no fix needed.
+
+**Issue found (forced switch)**: In [action_to_order](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/rl_env.py#96-154) forced-switch block, `switch_idx = action - 4`, but it checks `pokemon in battle.available_switches` while action_masks also checks against `available_switches` by name. **Consistent** ✅.
+
+**Minor safety note**: No changes needed to action logic — the existing logic is correct.
+
+---
+
+## Verification Plan
+
+### Automated Syntax/Import Check
+```bash
+cd /home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models
+.venv/bin/python -c "import vectorizer; import rl_env; print('OK')"
+# Run from the project root with venv:
+cd /home/sirp/Documents/MUDS/TFM_Pokemon && .venv/bin/python src/testing/models/vectorizer.py
+```
+
+### Observation Vector Shape Check
+Add a quick inline test at the end of [vectorizer.py](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models/vectorizer.py) (under `if __name__ == "__main__"`) to verify the output size matches the declared size.
+
+### Training Commands (post-edit)
+```bash
+# Phase 1: fresh model with 256x256 MLP
+cd /home/sirp/Documents/MUDS/TFM_Pokemon/src/testing/models
+python train_parallel.py --timesteps 1000000 --ports 8000
+
+# Phase 2: resume from Phase 1 with lower lr
+python train_phase2.py --timesteps 1000000 --ports 8000
+
+# Evaluation
+python evaluate_all.py
+```

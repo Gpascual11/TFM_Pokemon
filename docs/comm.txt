@@ -1,0 +1,2 @@
+sirp@sirp:~/Documents/MUDS/TFM_Pokemon$ source /home/sirp/Documents/MUDS/TFM_Pokemon/.venv/bin/activate
+(tfm) sirp@sirp:~/Documents/MUDS/TFM_Pokemon$ .venv/bin/tensorboard --logdir src/testing/models/ppo_pokemon_tensorboard --port 6006 --bind_all

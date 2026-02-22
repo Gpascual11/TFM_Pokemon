@@ -1,15 +1,15 @@
 #!/bin/bash
 # ──────────────────────────────────────────────
-#  Start 4 Pokémon Showdown servers (ports 8000–8003)
+#  Start 6 Pokémon Showdown servers (ports 8000–8005)
 #  Usage:  ./src/start_sim.sh
-#  Stop:   Ctrl+C  (kills all 4 servers)
+#  Stop:   Ctrl+C  (kills all 6 servers)
 # ──────────────────────────────────────────────
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SHOWDOWN="$SCRIPT_DIR/pokemon-showdown/pokemon-showdown"
-PORTS=(8000 8001 8002 8003)
+PORTS=(8000 8001 8002 8003 8004 8005)
 
 # Kill any leftover servers
 pkill -f "pokemon-showdown.*--port" 2>/dev/null || true
