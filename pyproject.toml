@@ -1,19 +1,27 @@
 [project]
 name = "tfm"
 version = "0.1.0"
-description = "Add your description here"
+description = "Reinforcement learning and heuristic strategies for competitive Pokémon battles using poke-env"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "ipykernel>=7.2.0",
     "matplotlib>=3.10.8",
     "pandas>=3.0.0",
     "poke-env>=0.11.0",
-    "sb3-contrib>=2.7.1",
     "scipy>=1.17.0",
     "seaborn>=0.13.2",
     "setuptools>=82.0.0",
-    "stable-baselines3>=2.7.1",
     "tabulate>=0.9.0",
-    "tensorboard>=2.20.0",
     "tqdm>=4.67.3",
+]
+
+[project.optional-dependencies]
+gpu = [
+    "gymnasium>=0.29.1",
+    "sb3-contrib>=2.4.0",
+    "stable-baselines3>=2.4.0",
+    "tensorboard>=2.18.0",
+    "torch>=2.5.1",
+    "torchaudio>=2.5.1",
+    "torchvision>=0.20.1",
 ]
