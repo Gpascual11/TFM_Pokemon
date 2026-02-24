@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp
+battle-gen9randombattle-129487,v1,simple_heuristic,v1A95946a6fp8000,1,15,basculin|golem|kyurem|ninetalesalola|pikachualola|raichu,cryogonal|glimmora|jolteon|milotic|slowbro|weezinggalar,6,0,0.0,6,0,0
+battle-gen9randombattle-129487,v1,simple_heuristic,v1A95946a6fp8001,1,20,gardevoir|lunala|sylveon|vikavolt|volcanion|walkingwake,cramorant|espathra|indeedeef|orthworm|pyroar|raichu,5,1,1.0,6,0,0

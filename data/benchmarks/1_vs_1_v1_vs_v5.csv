@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp
+battle-gen9randombattle-129483,v1,v5,v1A3cab0f2fp8000,1,19,arceusrock|bastiodon|overqwil|spidops|spiritomb|swanna,ambipom|eiscue|hooh|misdreavus|spiritomb|zebstrika,5,1,1.0,6,0,0.0
+battle-gen9randombattle-129483,v1,v5,v5B3cab0f2fp8001,0,19,delphox|falinks|smeargle|spectrier|ursaluna|weavile,bruxish|floatzel|goodra|ogerponhearthflame|ribombee,6,0,0.0,4,1,0.28

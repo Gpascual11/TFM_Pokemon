@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
+battle-gen9randombattle-129514,v4,simple_heuristic,v4A013d0b62p8000,1,16,chandelure|ditto|dragalge|gastrodoneast|hydreigon|sandyshocks,arcanine|eiscue|indeedeef|pikachuunova|smeargle|talonflame,3,3,3.0,6,0,0.0,fireblast|flashcannon|shadowball|sludgewave|thunderbolt
+battle-gen9randombattle-129514,v4,simple_heuristic,Opp013d0b62p8001,0,16,ceruledge|golemalola|hawlucha|kricketune|pincurchin|rabsca,fluttermane|galvantula|necrozmadawnwings|typhlosion|zarude,6,0,0.0,4,1,0.32,bitterblade|bravebird|bugbuzz|doubleedge|knockoff|liquidation|pounce|psychic

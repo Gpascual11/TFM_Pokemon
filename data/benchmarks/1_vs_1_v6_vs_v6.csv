@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
+battle-gen9randombattle-129529,v6,v6,v6Ad99a44ccp8000,1,16,armarouge|girafarig|ninetales|phione|regigigas|ribombee,espathra|ninetalesalola|rotommow|toxapex|venusaur|wigglytuff,3,3,2.681,6,0,0.0,armorcannon|bodyslam|fireblast|hypervoice|psyshock|scorchingsands
+battle-gen9randombattle-129529,v6,v6,v6Bd99a44ccp8001,0,18,banette|gengar|hariyama|lapras|masquerain|regirock,blissey|klawf|mew|suicune|tinglu|volbeat,6,0,0.0,5,1,0.84,closecombat|hurricane|hydropump|poltergeist|shadowball|sludgewave|stoneedge

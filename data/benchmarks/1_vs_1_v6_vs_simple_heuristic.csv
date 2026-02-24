@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
+battle-gen9randombattle-129532,v6,simple_heuristic,v6A1a1a018bp8000,1,16,bisharp|greninja|kyogre|mudsdale|muk|trevenant,alcremierubyswirl|arcanine|conkeldurr|ditto|rayquaza|sandslash,4,2,1.902,6,0,0.0,earthquake|gunkshot|hydropump|poltergeist|stoneedge|waterspout
+battle-gen9randombattle-129532,v6,simple_heuristic,Opp1a1a018bp8001,0,13,annihilape|empoleon|gardevoir|glimmora|ironhands|kleavor,mienshao|scyther|vigoroth|wugtrio,6,0,0.0,3,1,1.0,closecombat|drainpunch|gunkshot|moonblast|sludgewave|surf|thunderpunch

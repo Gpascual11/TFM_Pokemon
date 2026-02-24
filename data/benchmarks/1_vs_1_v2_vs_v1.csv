@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp
+battle-gen9randombattle-129488,v2,v1,v1B6d6e6c80p8000,0,24,ampharos|azumarill|bruxish|metagross|passimian|thundurustherian,clodsire|gastrodoneast|houndstone|lanturn|latias|pincurchin,6,0,0,5,1,0.43
+battle-gen9randombattle-129488,v2,v1,v1B6d6e6c80p8001,0,17,dragapult|grumpig|hitmontop|ironthorns|rhydon|weezinggalar,barraskewda|indeedeef|kingdra|magnezone|medicham|regigigas,6,0,0,5,1,1.0

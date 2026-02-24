@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
+battle-gen9randombattle-129516,v5,v2,v2Ba959b035p8000,0,12,charizard|dodrio|fezandipiti|magmortar|tatsugiri|urshifurapidstrike,azelf|honchkrow|ironthorns|metagross|vikavolt,6,0,0,4,1,0.27,closecombat|dracometeor|fireblast|flareblitz|gunkshot|playrough|quickattack
+battle-gen9randombattle-129516,v5,v2,v2Ba959b035p8001,0,21,golurk|hitmonchan|okidogi|rabsca|umbreon|veluza,chienpao|medicham|primarina|regigigas|sandyshocks,6,0,0,4,1,0.42,aquacutter|earthquake|foulplay|knockoff|psychic|psychocut|rapidspin

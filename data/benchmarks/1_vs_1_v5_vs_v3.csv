@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
+battle-gen9randombattle-129517,v5,v3,v3Bc00b57a5p8000,0,14,brutebonnet|coalossal|delphox|feraligatr|noivern|roaringmoon,ambipom|malamar|meloetta,6,0,0,2,1,0.67,flamethrower|focusblast|hurricane|icepunch|ironhead|suckerpunch
+battle-gen9randombattle-129517,v5,v3,v3Bc00b57a5p8001,0,13,baxcalibur|gumshoos|lumineon|palkiaorigin|rotom|tyranitar,drednaw|haxorus|trevenant,6,0,0,2,1,1.0,earthquake|hydropump|knockoff|shadowball|uturn

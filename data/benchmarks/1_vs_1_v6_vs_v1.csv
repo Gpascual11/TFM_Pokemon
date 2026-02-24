@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
+battle-gen9randombattle-129524,v6,v1,v1B1c87a2c9p8000,0,19,cacturne|chandelure|gogoat|kyogre|porygonz|raichualola,camerupt|chandelure|ditto|enamorustherian|kyurem,6,0,0.0,4,1,0.38,earthquake|hornleech|icebeam|originpulse|shadowball|suckerpunch|surf|triattack
+battle-gen9randombattle-129524,v6,v1,v6A1c87a2c9p8001,1,14,arcaninehisui|greattusk|kyuremblack|morpeko|politoed|weezinggalar,cacturne|chiyu|empoleon|eternatus|fluttermane|scyther,4,2,1.635,6,0,0.0,aurawheel|closecombat|icebeam|iciclespear|stoneedge|strangesteam|terablast

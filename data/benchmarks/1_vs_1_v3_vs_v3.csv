@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
+battle-gen9randombattle-129499,v3,v3,v3Becee7fedp8000,0,23,copperajah|hoopa|ironthorns|lurantis|milotic|palafin,garganacl|golduck|hitmontop|ironcrown|tropius|vivillonsandstorm,6,0,0,5,1,1.0,closecombat|earthquake|icebeam|leafstorm|psychic|scald|superpower|wildcharge
+battle-gen9randombattle-129499,v3,v3,v3Becee7fedp8001,0,17,bronzong|dewgong|drednaw|groudon|illumise|jumpluff,arceuspsychic|minun|mismagius|ninetalesalola|urshifu,6,0,0,4,1,1.0,acrobatics|bugbuzz|earthquake|hydropump|precipiceblades|stoneedge|uturn

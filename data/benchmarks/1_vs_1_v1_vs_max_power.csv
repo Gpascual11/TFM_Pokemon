@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp
+battle-gen9randombattle-129486,v1,max_power,v1A65279825p8000,1,13,glimmora|miraidon|regice|slowking|zekrom|zoroarkhisui,altaria|emboar|gardevoir|lumineon|meganium|veluza,3,3,2.479,6,0,0
+battle-gen9randombattle-129486,v1,max_power,v1A65279825p8001,1,20,gardevoir|lanturn|medicham|probopass|regirock|zamazenta,amoonguss|azelf|cryogonal|delphox|lucario|pikachualola,4,2,1.551,6,0,0

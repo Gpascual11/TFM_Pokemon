@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
+battle-gen9randombattle-129468,v6,random,v6A4b7cc162,1,21,fluttermane|hoopaunbound|krookodile|latios|sinistcha|weezinggalar,chesnaught|cobalion|gastrodon|hippowdon|politoed|revavroom,2,4,3.461,6,0,0,matchagotcha|moonblast|psychic|shadowball|thunderbolt
+battle-gen9randombattle-129469,v6,random,v6A4b7cc162,1,28,dusknoir|gengar|hawlucha|lurantis|perrserker|wochien,feraligatr|hitmonchan|rayquaza|sinistcha|sudowoodo|urshifurapidstrike,2,4,3.871,6,0,0,bravebird|closecombat|gigadrain|knockoff|stoneedge

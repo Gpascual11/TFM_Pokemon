@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
+battle-gen9randombattle-129520,v5,v6,v5Ae03df337p8000,1,24,gothitelle|ironleaves|leavanny|magmortar|rhyperior|weezinggalar,annihilape|miraidon|rhyperior|slowkinggalar|tauros|torterra,5,1,0.944,6,0,0.0,bulletseed|earthquake|knockoff|leafblade|stoneedge|strangesteam|thunderbolt
+battle-gen9randombattle-129520,v5,v6,v6Be03df337p8001,0,19,hooh|latias|magcargo|plusle|sawsbucksummer|toucannon,chienpao|clefable|decidueye|dodrio|dusknoir|vigoroth,6,0,0.0,5,1,0.58,beakblast|boomburst|bravebird|bulletseed|dracometeor|hornleech|lavaplume|psyshock|thunderbolt

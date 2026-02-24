@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
+battle-gen9randombattle-129498,v3,v2,v3Aedd6171cp8000,1,23,greninja|lanturn|magmortar|ragingbolt|regigigas|urshifu,alcremiematchacream|ampharos|galvantula|garganacl|meowsticf|oricoriosensu,5,1,1.0,6,0,0.0,bodyslam|closecombat|dracometeor|fireblast|hydropump|knockoff|scald|thunderbolt
+battle-gen9randombattle-129498,v3,v2,v2Bedd6171cp8001,0,13,houndstone|hydreigon|sandslash|terrakion|venomoth|vigoroth,kyogre|staraptor|tinkaton,6,0,0.0,2,1,1.0,bodyslam|closecombat|dracometeor|earthquake|knockoff|playrough|sludgewave

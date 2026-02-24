@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
+battle-gen9randombattle-129515,v5,v1,v1Ba5f972bfp8000,0,32,bisharp|galvantula|kleavor|mew|porygon2|rotomfan,eelektross|goodra|pelipper|stonjourner|whiscash|wochien,6,0,0.0,5,1,0.49,airslash|psychic|suckerpunch|terablast|thunder|uturn|voltswitch|xscissor
+battle-gen9randombattle-129515,v5,v1,v5Aa5f972bfp8001,1,22,bruxish|cacturne|golduck|granbull|pecharunt|zekrom,braviary|cresselia|eelektross|groudon|mismagius|scovillain,2,4,3.903,6,0,0.0,hydropump|icebeam|outrage|suckerpunch

@@ -1,0 +1,3 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
+battle-gen9randombattle-129510,v4,v5,v5Bf28c8278p8000,0,22,cobalion|hoopa|ironthorns|sunflora|volbeat|wyrdeer,carbink|decidueyehisui|kyuremblack|lunala|perrserker,6,0,0,4,1,0.14,earthquake|ironhead|leafstorm|lunge|shadowball|sludgebomb|stoneedge
+battle-gen9randombattle-129510,v4,v5,v5Bf28c8278p8001,0,19,comfey|honchkrow|magearna|quaquaval|serperior|terrakion,dachsbun|gardevoir|kilowattrel|morpeko|revavroom,6,0,0,5,0,0.0,aquastep|flashcannon|gigadrain|leafstorm|quickattack|suckerpunch
