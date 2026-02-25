@@ -1,15 +1,7 @@
-"""
-Comprehensive Benchmark Suite for Baseline 1 (PPO + Ensemble).
+"""Benchmark Suite for PPO and Hybrid Ensemble.
 
-This script performs a rigorous evaluation of the trained Phase 3 PPO model
-and an experimental hybrid "Ensemble" agent.
-
-The Ensemble agent mathematically blends the neural network's action
-probabilities (logits) with hardcoded heuristic priority scores. This attempts
-to combine high-level RL strategy with strict tactical rules.
-
-The script runs 100 battles against 9 distinct opponents (Random, MaxBP,
-SimpleHeuristics, and 6 custom V1-V6 versions) and prints a final win-rate grid.
+Evaluates the trained PPO model and a hybrid Ensemble agent (PPO + Heuristics)
+against a gauntlet of opponents to measure relative performance.
 """
 
 import asyncio
@@ -26,7 +18,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 from sb3_contrib import MaskablePPO
 
-from ..env.pokemon_env import PokemonMaskedEnv, PokemonMaskedEnvWrapper
+from ..s01_env.pokemon_env import PokemonMaskedEnv, PokemonMaskedEnvWrapper
 
 
 class EnsemblePlayer(SimpleHeuristicsPlayer):

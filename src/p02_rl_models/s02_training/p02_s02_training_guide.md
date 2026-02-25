@@ -21,7 +21,7 @@ All scripts support `--timesteps` and `--ports`.
 
 ```bash
 # Example: Run Phase 1 for 1 Million steps across 4 parallel server ports
-python p02_rl_models/training/train_p1_base.py --timesteps 1000000 --ports 8000 8001 8002 8003
+python src/p02_rl_models/s02_training/train_p1_base.py --timesteps 1000000 --ports 8000 8001 8002 8003
 ```
 
 ### Resuming

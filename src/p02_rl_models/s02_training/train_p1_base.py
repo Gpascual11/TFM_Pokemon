@@ -1,13 +1,7 @@
-"""
-Phase 1: Parallel Reinforcement Learning against Random Opponents.
+"""Phase 1: Training against Random Opponents.
 
-This script acts as the entry point for the RL curriculum. It trains a
-MaskablePPO model using multiple parallel environments (SubprocVecEnv) to
-achieve higher throughput and faster convergence.
-
-The primary goal of this phase is for the agent to learn the absolute
-fundamentals of Pokémon battles (e.g., using damaging moves, type matchups)
-by playing against a strictly random baseline (RandomPlayer).
+Trains a MaskablePPO model using parallel environments to learn the
+absolute fundamentals of Pokémon battles.
 """
 
 import argparse
@@ -19,7 +13,7 @@ from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 
-from ..env.pokemon_env import PokemonMaskedEnv, PokemonMaskedEnvWrapper
+from ..s01_env.pokemon_env import PokemonMaskedEnv, PokemonMaskedEnvWrapper
 
 
 def make_env(rank: int, port: int):
@@ -126,9 +120,9 @@ def main():
             verbose=1,
             learning_rate=3e-4,
             gamma=0.99,
-            ent_coef=0.01,  # Encourages broader action exploration
+            ent_coef=0.01,
             n_steps=2048,
-            policy_kwargs=dict(net_arch=[256, 256]),  # 256x256 > default 64x64
+            policy_kwargs=dict(net_arch=[256, 256]),
             tensorboard_log="./ppo_pokemon_tensorboard/",
         )
 
