@@ -1,4 +1,4 @@
-"""Factory for instantiating 2v2 heuristic players by version string."""
+"""Factory module for instantiating Doubles heuristic players by version string."""
 
 from __future__ import annotations
 

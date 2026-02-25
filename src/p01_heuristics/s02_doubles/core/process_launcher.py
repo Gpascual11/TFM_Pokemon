@@ -1,10 +1,7 @@
-"""Multi-process launcher for parallel 2v2 simulation across Showdown servers.
+"""Multi-process launcher for parallelizing 2v2 simulations.
 
-Each child process gets its own port and runs an independent
-``BattleManager.run()`` inside a fresh asyncio event loop.  Results are
-written to per-process CSVs and then merged into a single output file.
-
-Mirrors ``1_vs_1/process_launcher.py`` adapted for the 2v2 package.
+Distributes battles across multiple Showdown server ports, using independent
+process workers to maximize throughput on multi-core systems.
 """
 
 from __future__ import annotations

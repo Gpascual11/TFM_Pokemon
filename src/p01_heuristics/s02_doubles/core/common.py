@@ -1,7 +1,7 @@
-"""Shared utilities for 2-vs-2 heuristic strategies.
+"""Common utility functions for doubles heuristic players.
 
-We centralise stat lookups and the base damage estimator so every heuristic
-uses the same canonical formula.
+Centralizes stat calculation, status identification, and damage estimation
+formulas for the 2v2 environment.
 """
 
 from __future__ import annotations
@@ -27,11 +27,7 @@ class GameDataManager:
 
 def get_stat(pokemon, stat_name: str) -> int:
     """Return the best available stat value: battle stat → base stat → 100."""
-    return (
-        pokemon.stats.get(stat_name)
-        or pokemon.base_stats.get(stat_name)
-        or 100
-    )
+    return pokemon.stats.get(stat_name) or pokemon.base_stats.get(stat_name) or 100
 
 
 def get_speed(pokemon, status: str | None = None) -> float:
@@ -48,8 +44,14 @@ def get_status_name(pokemon) -> str:
 def calculate_base_damage(move, attacker, defender, attacker_status: str) -> float:
     """Estimate move damage using the physical/special stat split.
 
-    Accounts for: atk/def stats, burn penalty on physical moves, STAB, and
-    type effectiveness. Does **not** apply spread reduction or random factor.
+    Calculates damage based on:
+    - Attacker's relevant offensive stat (Atk/SpA).
+    - Defender's relevant defensive stat (Def/SpD).
+    - Burn penalty (50% physical damage reduction).
+    - Same-Type Attack Bonus (STAB) (1.5x modifier).
+    - Type effectiveness multipliers.
+
+    Note: Does not account for spread reduction in doubles or random variance.
 
     :returns: Estimated damage as a float; 0 for non-damaging moves.
     """

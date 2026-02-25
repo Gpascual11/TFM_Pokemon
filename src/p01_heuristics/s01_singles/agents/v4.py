@@ -1,14 +1,12 @@
-"""Heuristic V4 — expert-level singles heuristic.
+"""Heuristic V4: Expert-Level Singles Strategy.
 
-The most advanced version.  Decision pipeline:
+This heuristic represents the most advanced version, employing a sophisticated decision pipeline:
 
-1. **Immediate KO check** — scan priority-sorted moves for guaranteed KOs.
-2. **Defensive pivoting** — switch when in danger or badly poisoned.
-3. **Scored offensive** — pick the best move by ``damage × accuracy``,
-   with a boost for priority moves.
+- **Immediate KO Check**: Prioritizes moves that guarantee a knockout, scanning available moves sorted by priority.
+- **Defensive Pivoting**: Initiates a switch if the active Pokémon is in immediate danger or severely poisoned.
+- **Scored Offensive**: Selects the optimal offensive move based on a `damage × accuracy` score, with an additional boost for priority moves.
 
-The damage estimator extends the base physical/special formula with
-weather (sun/rain) and terrain (electric/grassy/psychic) modifiers.
+The damage estimation incorporates environmental factors such as weather (sun/rain) and terrain (electric/grassy/psychic) modifiers, extending the standard physical/special damage formula.
 """
 
 from __future__ import annotations
@@ -20,7 +18,7 @@ from ..core.common import get_status_name
 
 
 class HeuristicV4(BaseHeuristic1v1):
-    """Expert singles heuristic with KO detection, danger pivoting, and field effects."""
+    """Expert-level singles heuristic incorporating KO detection, defensive pivoting, and field effects."""
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -28,12 +26,18 @@ class HeuristicV4(BaseHeuristic1v1):
 
     @property
     def tracks_moves(self) -> bool:
+        """Indicates that this heuristic tracks move usage."""
         return True
 
     # -- Template hooks ---------------------------------------------------
 
     def _pre_move_hook(self, battle):
-        """Short-circuit with a guaranteed KO move (priority-first)."""
+        """
+        Executes a pre-move check to identify and use guaranteed KO moves.
+
+        Moves are sorted by priority, and the first move found that guarantees a KO
+        against the opponent is selected.
+        """
         me = battle.active_pokemon
         opp = battle.opponent_active_pokemon
 
@@ -53,6 +57,12 @@ class HeuristicV4(BaseHeuristic1v1):
         return None
 
     def _select_action(self, battle):
+        """
+        Selects the optimal action (move or switch) based on the heuristic's decision pipeline.
+
+        Prioritizes defensive pivoting if the active Pokémon is in danger or badly poisoned.
+        Otherwise, selects the move with the highest calculated score.
+        """
         me = battle.active_pokemon
         opp = battle.opponent_active_pokemon
 

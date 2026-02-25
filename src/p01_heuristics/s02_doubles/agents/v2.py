@@ -1,7 +1,8 @@
-"""Heuristic V2 Doubles — stat-based damage with defensive switching.
+"""Heuristic V2 Doubles: Stat-Aware Damage and Defensive Switching.
 
-Extends V1 by using actual attack/defence stats (with burn penalty) and
-scoring switch orders positively when the current matchup is bad.
+Enhances the damage model by utilizing actual attack and defense stats
+(including status penalties like burn). Implements a defensive switching
+heuristic that evaluates swap benefits based on speed tiers and type matchups.
 """
 
 from __future__ import annotations
