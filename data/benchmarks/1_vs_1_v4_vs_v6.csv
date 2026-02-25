@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
-battle-gen9randombattle-129511,v4,v6,v6B66cd239cp8000,0,22,alcremierainbowswirl|camerupt|donphan|electrodehisui|espathra|venusaur,basculinbluestriped|excadrill|lilligant|probopass|qwilfishhisui|venusaur,6,0,0.0,5,1,0.01,earthquake|energyball|iceshard|sludgebomb|terablast|uturn|voltswitch
-battle-gen9randombattle-129511,v4,v6,v4A66cd239cp8001,1,19,indeedee|meowscarada|pelipper|pikachuhoenn|screamtail|wigglytuff,brutebonnet|cryogonal|golurk|latios|mimikyu|wugtrio,5,1,1.0,6,0,0.0,alluringvoice|dazzlinggleam|fireblast|hurricane|hypervoice|knockoff|surf|volttackle

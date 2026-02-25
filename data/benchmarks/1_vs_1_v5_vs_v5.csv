@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
-battle-gen9randombattle-129519,v5,v5,v5Bc9985311p8000,0,32,basculegion|cloyster|mienshao|miniorgreen|scrafty|spidops,barraskewda|cacturne|meloetta|qwilfishhisui|regidrago|rhydon,6,0,0.0,4,2,1.91,aquajet|drainpunch|drillrun|earthquake|knockoff|rockblast
-battle-gen9randombattle-129519,v5,v5,v5Ac9985311p8001,1,25,coalossal|corviknight|dragalge|hoopa|swanna|volcarona,gougingfire|greedent|hoopa|inteleon|kilowattrel|registeel,5,1,0.007,6,0,0.0,bravebird|dracometeor|fireblast|focusblast|psyshock|shadowball|stoneedge

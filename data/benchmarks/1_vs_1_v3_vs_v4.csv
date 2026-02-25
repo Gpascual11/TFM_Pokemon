@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
-battle-gen9randombattle-129500,v3,v4,v3A36b30c37p8000,1,16,drifblim|flamigo|gallade|greninja|metagross|shaymin,arceuspsychic|mienshao|porygonz|raichu|reuniclus|typhlosionhisui,5,1,0.092,6,0,0,airslash|closecombat|earthpower|earthquake|hydropump|knockoff|nightslash|psychocut|seedflare
-battle-gen9randombattle-129500,v3,v4,v3A36b30c37p8001,1,17,armarouge|azelf|pyroar|sceptile|terapagosterastal|tinkaton,abomasnow|blastoise|chandelure|golurk|gumshoos|mandibuzz,4,2,2.0,6,0,0,armorcannon|darkpulse|energyball|fireblast|focusblast|playrough|terastarstorm

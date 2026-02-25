@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
-battle-gen9randombattle-129502,v3,v6,v6Bc1f328d7p8000,0,23,deoxysdefense|glastrier|infernape|medicham|skuntank|thundurustherian,dugtrioalola|gholdengo|kilowattrel|necrozma|spectrier,6,0,0.0,4,1,0.91,closecombat|fireblast|focusblast|highhorsepower|overheat|psychicnoise|struggle
-battle-gen9randombattle-129502,v3,v6,v3Ac1f328d7p8001,1,22,amoonguss|entei|houndoom|kyogre|rillaboom|sableye,archaludon|darkrai|heracross|lapras|pincurchin|yanmega,4,2,1.36,6,0,0.0,fireblast|flareblitz|highhorsepower|knockoff|thunder

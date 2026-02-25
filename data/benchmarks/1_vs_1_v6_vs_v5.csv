@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
-battle-gen9randombattle-129528,v6,v5,v6A6c1db467p8000,1,20,bastiodon|eternatus|leavanny|primarina|vikavolt|zekrom,amoonguss|arceuswater|dusknoir|ironmoth|kilowattrel|perrserker,4,2,1.828,6,0,0,bodypress|bugbuzz|dynamaxcannon|foulplay|knockoff|moonblast|psychicnoise
-battle-gen9randombattle-129528,v6,v5,v6A6c1db467p8001,1,16,amoonguss|hoopa|kricketune|luxray|spectrier|venusaur,basculegionf|cramorant|mightyena|slitherwing|tauros|uxie,4,2,1.833,6,0,0,focusblast|pounce|shadowball|sludgebomb|throatchop|wildcharge

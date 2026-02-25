@@ -5,7 +5,13 @@ from ..core.common import calculate_base_damage, get_speed, get_status_name
 
 
 class HeuristicV6(HeuristicV3):
-    """V6: Builds purely on top of V3's stable foundation, adding field awareness."""
+    """Heuristic V6: Advanced Singles Strategy with Field Awareness.
+
+    V6 extends the stable V3 core with specific expert enhancements:
+    1. Dynamic Damage Calculation: Adjusts move power based on active Weather and Terrain.
+    2. Priority Valuation: Applies a strategic weighting to priority moves.
+    3. Stable Pivoting: Retains the proven defensive switch logic from V3.
+    """
 
     def _select_action(self, battle):
         me = battle.active_pokemon
@@ -21,11 +27,11 @@ class HeuristicV6(HeuristicV3):
 
         best_move = None
         max_score = -1.0
-        max_raw_damage = -1.0  # Tracked purely for the V3 switch logic
+        max_raw_damage = -1.0  # Tracked for V3 switch logic threshold
 
         if battle.available_moves:
             for move in battle.available_moves:
-                # 1. Use your proven common helper for the baseline damage
+                # 1. Calculate baseline damage using the common helper
                 dmg = calculate_base_damage(move, me, opp, my_status)
 
                 # Update raw damage for switching threshold

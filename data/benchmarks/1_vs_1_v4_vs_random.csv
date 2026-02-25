@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
-battle-gen9randombattle-129512,v4,random,v4A2671cd5ep8000,1,30,arceusfairy|hawlucha|magearnaoriginal|regice|skarmory|ursaring,grimmsnarl|leafeon|lugia|rotommow|tyranitar|walkingwake,2,4,3.807,6,0,0,facade|icebeam|judgment|thunderbolt
-battle-gen9randombattle-129512,v4,random,v4A2671cd5ep8001,1,67,blastoise|ditto|dragalge|greedent|mesprit|mienshao,dachsbun|infernape|mightyena|swanna|sylveon|venusaur,5,1,0.76,6,0,0,bodyslam|closecombat|earthquake|fakeout|hydropump|icebeam|playrough|psychicnoise|sludgewave|struggle|uturn

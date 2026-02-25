@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
-battle-gen9randombattle-129523,v5,simple_heuristic,v5A0129704cp8000,1,26,cresselia|excadrill|houndoom|mabosstiff|pincurchin|rillaboom,chiyu|excadrill|galvantula|grumpig|munkidori|volcarona,5,1,1.0,6,0,0.0,darkpulse|earthquake|grassyglide|liquidation|psychicfangs|psyshock
-battle-gen9randombattle-129523,v5,simple_heuristic,Opp0129704cp8001,0,27,furret|gastrodoneast|girafarig|granbull|lurantis|spidops,cobalion|gougingfire|ironvaliant|registeel|trevenant,6,0,0.0,4,1,0.61,doubleedge|earthquake|knockoff|leafstorm|playrough|thunderbolt

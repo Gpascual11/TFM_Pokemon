@@ -1,8 +1,8 @@
-"""Heuristic V1 Doubles — simple max-damage selector for each slot.
+"""Heuristic V1 Doubles: Basic Damage-First Strategy.
 
-Scores each valid order by ``base_power × effectiveness × STAB``,
-using the **actual target** in the order (not a maximum across all opponents).
-Ally-targeting orders are penalised so we never attack our own side.
+Evaluates valid orders using a simple maximum damage heuristic per Pokémon slot.
+Calculates damage as 'base_power * type_effectiveness * STAB' against the
+specific target defined in the order. Penalizes self-targeting actions.
 """
 
 from __future__ import annotations

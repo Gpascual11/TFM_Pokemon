@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
-battle-gen9randombattle-129518,v5,v4,v5Ab5a74251p8000,1,22,chandelure|cinderace|ironboulder|primarina|regice|serperior,alcremie|brambleghast|cloyster|dondozo|flamigo|palossand,2,4,3.123,6,0,0.0,shadowball|sparklingaria|thunderbolt
-battle-gen9randombattle-129518,v5,v4,v4Bb5a74251p8001,0,21,azelf|coalossal|espeon|gastrodoneast|lanturn|zebstrika,ceruledge|dunsparce|greedent|mesprit|weezinggalar,6,0,0.0,4,1,0.57,flamethrower|psychic|scald|sludgebomb|voltswitch

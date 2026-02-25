@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
-battle-gen9randombattle-129497,v3,v1,v3Adf68e658p8000,1,14,gardevoir|hippowdon|okidogi|pachirisu|sinistcha|tyranitar,ironcrown|mabosstiff|munkidori|ribombee|snorlax|tentacruel,3,3,2.239,6,0,0,drainpunch|earthquake|knockoff|psychic|stoneedge
-battle-gen9randombattle-129497,v3,v1,v3Adf68e658p8001,1,18,furret|gengar|gougingfire|medicham|toedscruel|weezinggalar,gastrodoneast|leavanny|muk|noctowl|screamtail|ursaring,5,1,0.653,6,0,0,doubleedge|earthpower|gunkshot|outrage|poisonjab|sludgewave

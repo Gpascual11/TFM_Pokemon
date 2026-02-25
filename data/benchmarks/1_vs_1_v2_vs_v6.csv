@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp
-battle-gen9randombattle-129493,v2,v6,v2A79ea6956p8000,1,15,illumise|meloetta|meowstic|porygonz|qwilfishhisui|ragingbolt,alomomola|kleavor|ogerpon|regidrago|reuniclus|roaringmoon,4,2,1.342,6,0,0.0
-battle-gen9randombattle-129493,v2,v6,v6B79ea6956p8001,0,15,blastoise|charizard|flapple|honchkrow|lurantis|mienshao,groudon|reshiram|sinistcha|tinkaton,6,0,0.0,3,1,0.11

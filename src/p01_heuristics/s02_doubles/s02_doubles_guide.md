@@ -1,45 +1,56 @@
 # s02_doubles: 2-vs-2 Heuristic Agents
 
-This directory contains the development and testing suite for Doubles heuristics (2v2).
+This directory contains the testing suite for Doubles (2v2) heuristics.
 
 ## Content Overview
 
 ### `agents/`
-Strategy implementations for doubles:
-- `v1.py`: Per-slot greedy selection (treats each slot independently).
-- `v2.py`: Joint-action selection (scores pairs of actions to allow coordination).
-- `v6.py`: Advanced joint-action with Field/Weather awareness.
+Registered doubles heuristic versions.
 
 ### `core/`
-The infrastructure for 2v2:
-- `base.py`: Abstract `BaseHeuristic2v2` player class.
-- `battle_manager.py`: Specialized manager for managing 2-wide battle objects.
+The internal engine for double battles:
+- `battle_manager.py`: Handles the doubles battle loop.
+- `process_launcher.py`: Spawns parallel processes.
+
+### Tools
+- `run.py`: Single simulation entry point.
+- `benchmark.py`: Fully automated benchmarking suite.
+- `generate_report.py`: Visual analysis script (output to `results/`).
 
 ---
 
 ## How it Works
 
-Doubles are significantly more complex than singles due to **Joint Decision Making**. 
-- Instead of picking 1 action, the v6 agent evaluates the **Best Pair** of actions (Slot 0 and Slot 1).
-- **Coordination**: It penalizes "overkill" (both attacking a target that would die from one hit) and rewards "focus-firing" (attacking a target that needs two hits to die).
-- **Protect**: The agents recognize when they are in danger and use the move `Protect` to scout or stall while the ally attacks.
+Doubles heuristics use a **Score-then-Combine** pattern:
+1.  **Candidate Selection**: For each active slot, the engine lists all valid actions.
+2.  **Scoring**: Each action is scored individually (e.g., damage against most vulnerable opponent).
+3.  **Combination**: `DoubleBattleOrder.join_orders` produces valid pairings, filtering illegal moves (like switching to the same Pokémon twice).
+4.  **Policy**: The pair with the highest combined score is picked.
 
 ---
 
 ## How to Run
 
-To execute a doubles benchmark:
-
+### Automated Doubles Benchmark
+No manual server setup is required. The script manages the server lifecycle automatically.
 ```bash
-# Run a benchmark of Doubles-v6 vs Doubles-v2 (Fast Positional Arguments)
-uv run python src/p01_heuristics/s02_doubles/run.py v6 v2 50
+# Full tournament against all heuristics and baselines. Output saved to results/benchmark_summary.csv
+uv run python src/p01_heuristics/s02_doubles/benchmark.py 1000 --ports 8000 8001 8002 8003 --resume
 ```
 
-### Main script arguments:
-1. `version`: Heuristic version to test (v1-v6).
-2. `opponent`: (Optional) Opponent version or type (default: random).
-3. `total_games`: (Optional) Number of total battles (default: 1000).
+### Visual Report
+```bash
+uv run python src/p01_heuristics/s02_doubles/generate_report.py
+```
 
-### Optional Flags:
-- `-p`, `--ports`: Server port(s) (default: 8000).
-- `-c`, `--concurrent-battles`: parallel battle instances (default: 16).
+---
+
+## Technical Features
+
+### Memory Management
+- **Python-level**: Forced garbage collection between matchups.
+- **Server-level**: Automatic restarts every 5 matchups to prevent `pokemon-showdown` memory bloat.
+- **Safe Batching**: Batch size is set to 250 to stay within 16GB RAM limits.
+
+### Checkpoints
+Uses `data/benchmarks_doubles_v2/checkpoint_v2.json` to resume from failures.

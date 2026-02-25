@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
-battle-gen9randombattle-129526,v6,v3,v6A15d174cbp8000,1,16,alomomola|altaria|florgesblue|incineroar|ironvaliant|sunflora,ironhands|kommoo|lokix|overqwil|sandslash|volcarona,5,1,0.354,6,0,0.0,bravebird|closecombat|flareblitz|flipturn|leafstorm|moonblast|scald
-battle-gen9randombattle-129526,v6,v3,v3B15d174cbp8001,0,15,arceusdark|dragapult|hariyama|infernape|porygonz|ursalunabloodmoon,arceuspoison|empoleon|flamigo|ironmoth|ogerponwellspring,6,0,0.0,4,1,0.44,bloodmoon|closecombat|hex|judgment|overheat|stoneedge|thunderbolt|triattack|vacuumwave

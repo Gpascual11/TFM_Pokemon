@@ -25,6 +25,11 @@ class BaseHeuristic1v1(Player, abc.ABC):
         super().__init__(*args, **kwargs)
         self._used_moves_by_battle: Dict[str, Set[str]] = {}
 
+    def reset_battles(self) -> None:
+        """Clear both the poke-env battle history and our custom move tracking."""
+        super().reset_battles()
+        self._used_moves_by_battle.clear()
+
     def choose_move(self, battle):
         """Orchestrate the three-phase decision pipeline.
 

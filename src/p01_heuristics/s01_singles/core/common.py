@@ -1,7 +1,7 @@
-"""Shared utilities for all 1-vs-1 heuristic strategies.
+"""Common utility functions for singles heuristic players.
 
-Centralises stat lookups and the base damage estimator so that every
-heuristic version uses the same canonical implementation.
+Includes status name mapping, speed calculation with modifiers, and a
+standardized base damage estimation formula.
 """
 
 from __future__ import annotations
@@ -33,11 +33,7 @@ def get_stat(pokemon, stat_name: str) -> int:
 
     Falls back through: battle stat → base stat → 100 (neutral default).
     """
-    return (
-        pokemon.stats.get(stat_name)
-        or pokemon.base_stats.get(stat_name)
-        or 100
-    )
+    return pokemon.stats.get(stat_name) or pokemon.base_stats.get(stat_name) or 100
 
 
 def get_speed(pokemon, status: str | None = None) -> float:

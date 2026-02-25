@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp
-battle-gen9randombattle-129492,v2,v5,v5B2465b979p8000,0,17,enamorus|furret|jirachi|jumpluff|mewtwo|weezinggalar,araquanid|electrode|gardevoir|tinglu|venusaur,6,0,0.0,4,1,0.24
-battle-gen9randombattle-129492,v2,v5,v2A2465b979p8001,1,16,banette|emboar|enamorustherian|magnezone|scyther|sunflora,clodsire|electrode|flapple|gogoat|sylveon|toxicroak,4,2,1.677,6,0,0.0

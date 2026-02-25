@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp
-battle-gen9randombattle-129489,v2,v2,v2A01868659p8000,1,20,dragalge|indeedee|inteleon|medicham|orthworm|registeel,eelektross|hitmonlee|lucario|mesprit|orthworm|torterra,5,1,0.231,6,0,0.0
-battle-gen9randombattle-129489,v2,v2,v2B01868659p8001,0,25,corviknight|dragapult|girafarig|ironjugulis|magmortar|skuntank,cinderace|cryogonal|garganacl|misdreavus|talonflame,6,0,0.0,4,1,0.1

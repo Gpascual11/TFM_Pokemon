@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
-battle-gen9randombattle-129507,v4,v2,v4A1eea81adp8000,1,21,ambipom|dedenne|hawlucha|snorlax|toxicroak|volcanion,alomomola|darkrai|gastrodon|medicham|pyroar|tinkaton,4,2,1.487,6,0,0.0,bodyslam|dazzlinggleam|doubleedge|earthquake|flamethrower|gunkshot
-battle-gen9randombattle-129507,v4,v2,v2B1eea81adp8001,0,24,avalugg|irontreads|miniorgreen|noctowl|sandaconda|terapagosterastal,dusknoir|ironhands|klefki|pawmot|reuniclus|umbreon,6,0,0.0,5,1,0.27,avalanche|bodypress|earthpower|earthquake|hurricane|powergem

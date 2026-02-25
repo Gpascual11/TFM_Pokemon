@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
-battle-gen9randombattle-129530,v6,random,v6Ae9b279b7p8000,1,30,barraskewda|bombirdier|cloyster|rabsca|rhydon|venusaur,ditto|gardevoir|incineroar|kommoo|lapras|oricoriosensu,3,3,2.289,6,0,0,closecombat|drillrun|psychic|stoneedge|struggle
-battle-gen9randombattle-129530,v6,random,v6Ae9b279b7p8001,1,30,excadrill|farigiraf|forretress|hydreigon|mamoswine|thundurus,crawdaunt|ditto|sceptile|skuntank|swampert|typhlosionhisui,3,3,2.822,6,0,0,bodypress|bodyslam|dracometeor|earthquake|ironhead|psychicnoise

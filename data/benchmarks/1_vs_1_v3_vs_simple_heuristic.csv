@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
-battle-gen9randombattle-129505,v3,simple_heuristic,v3A9324f141p8000,1,14,clodsire|electivire|glalie|mimikyubusted|noctowl|oranguru,armarouge|chiyu|flamigo|greninja|porygonz|toucannon,5,1,1.0,6,0,0.0,freezedry|gunkshot|hurricane|hypervoice|playrough|supercellslam
-battle-gen9randombattle-129505,v3,simple_heuristic,Opp9324f141p8001,0,17,dipplin|jolteon|mudsdale|quaquaval|sylveon|thundurus,flygon|magcargo|regigigas|vileplume,6,0,0.0,3,1,0.46,closecombat|dragonpulse|earthquake|focusblast|hypervoice|terablast

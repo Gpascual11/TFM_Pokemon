@@ -1,4 +1,9 @@
-"""Heuristic V6 Doubles — V2 with weather, terrain, and priority modifiers."""
+"""Heuristic V6 Doubles: Environmental Awareness and Priority Scoring.
+
+Advanced version of the stat-based heuristic that incorporates weather
+effects (Sun/Rain), terrain boosts (Electric/Grassy/Psychic), and move
+priority modifiers into the final score calculation.
+"""
 
 from __future__ import annotations
 

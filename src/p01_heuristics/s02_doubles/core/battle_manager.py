@@ -1,9 +1,7 @@
-"""Async battle manager for batched 2v2 simulation runs.
+"""Async Battle Manager for batched 2v2 heuristic simulations.
 
-Mirrors ``1_vs_1/battle_manager.py`` adapted for doubles:
-* ``battle_format = "gen9randomdoublesbattle"``
-* CSV prefix ``2_vs_2_``
-* Data extraction handles up to 4 Pokémon per side.
+Handles the execution of multiple doubles battles, collecting performance
+metrics for up to 4 Pokémon per side and exporting results to CSV format.
 """
 
 from __future__ import annotations
@@ -11,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
+import gc
 from pathlib import Path
 from typing import Any
 
@@ -45,7 +44,7 @@ class BattleManager:
         version: str,
         server_url: str,
         total_games: int = 10_000,
-        batch_size: int = 500,
+        batch_size: int = 250,  # Reduced default for memory safety
         concurrent_battles: int = 16,
         data_dir: str | Path = "data",
         opponent: str = "random",
@@ -67,7 +66,10 @@ class BattleManager:
     async def _run_async(self) -> Path:
         """Async implementation of the batched battle loop."""
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        csv_path = self.data_dir / f"2_vs_2_{self.version}_vs_{self.opponent}_{self.run_id}.csv"
+        csv_path = (
+            self.data_dir
+            / f"2_vs_2_{self.version}_vs_{self.opponent}_{self.run_id}.csv"
+        )
 
         config = ServerConfiguration(self.server_url, None)
         common_kwargs: dict[str, Any] = {
@@ -88,8 +90,12 @@ class BattleManager:
 
         logger.info(
             "Starting %d games (%s vs %s) on %s | batch=%d concurrent=%d",
-            self.total_games, self.version, self.opponent,
-            self.server_url, self.batch_size, self.concurrent_battles,
+            self.total_games,
+            self.version,
+            self.opponent,
+            self.server_url,
+            self.batch_size,
+            self.concurrent_battles,
         )
 
         batches = self.total_games // self.batch_size
@@ -101,7 +107,10 @@ class BattleManager:
 
         for i in range(total_batches):
             n = self.batch_size if i < batches else remainder
-            print(f"{label} Batch {i + 1}/{total_batches} — starting {n} battles…", flush=True)
+            print(
+                f"{label} Batch {i + 1}/{total_batches} — starting {n} battles…",
+                flush=True,
+            )
 
             await player.battle_against(opponent, n_battles=n)
 
@@ -116,12 +125,23 @@ class BattleManager:
 
             pct = (games_done / self.total_games) * 100
             wr = (total_wins / games_done) * 100 if games_done else 0
-            print(f"{label} ✅ {games_done}/{self.total_games} ({pct:.0f}%) | win rate: {wr:.1f}%", flush=True)
+            print(
+                f"{label} ✅ {games_done}/{self.total_games} ({pct:.0f}%) | win rate: {wr:.1f}%",
+                flush=True,
+            )
 
             player.reset_battles()
             opponent.reset_battles()
 
         logger.info("Simulation complete → %s (%d games)", csv_path, self.total_games)
+
+        # Explicit cleanup to help the GC
+        player.reset_battles()
+        opponent.reset_battles()
+        del player
+        del opponent
+        gc.collect()
+
         return csv_path
 
     def _create_opponent(self, tag: str, ver: str, common_kwargs: dict[str, Any]):
@@ -148,7 +168,9 @@ class BattleManager:
         if self.opponent in HeuristicFactory.available_versions():
             return HeuristicFactory.create(
                 self.opponent,
-                account_configuration=AccountConfiguration(f"{self.opponent.replace('_', '')}B{tag}", None),
+                account_configuration=AccountConfiguration(
+                    f"{self.opponent.replace('_', '')}B{tag}", None
+                ),
                 **common_kwargs,
             )
         return RandomPlayer(
@@ -186,23 +208,35 @@ class BattleManager:
             }
 
             if b.team:
-                row["team_us"] = "|".join(sorted({str(m.species) for m in b.team.values()}))
+                row["team_us"] = "|".join(
+                    sorted({str(m.species) for m in b.team.values()})
+                )
             if b.opponent_team:
-                row["team_opp"] = "|".join(sorted({str(m.species) for m in b.opponent_team.values()}))
+                row["team_opp"] = "|".join(
+                    sorted({str(m.species) for m in b.opponent_team.values()})
+                )
 
             if b.team:
                 fainted_us = sum(m.fainted for m in b.team.values())
                 row["fainted_us"] = fainted_us
                 row["remaining_pokemon_us"] = len(b.team) - fainted_us
                 row["total_hp_us"] = round(
-                    sum(m.current_hp_fraction for m in b.team.values() if not m.fainted), 3,
+                    sum(
+                        m.current_hp_fraction for m in b.team.values() if not m.fainted
+                    ),
+                    3,
                 )
             if b.opponent_team:
                 fainted_opp = sum(m.fainted for m in b.opponent_team.values())
                 row["fainted_opp"] = fainted_opp
                 row["remaining_pokemon_opp"] = len(b.opponent_team) - fainted_opp
                 row["total_hp_opp"] = round(
-                    sum(m.current_hp_fraction for m in b.opponent_team.values() if not m.fainted), 3,
+                    sum(
+                        m.current_hp_fraction
+                        for m in b.opponent_team.values()
+                        if not m.fainted
+                    ),
+                    3,
                 )
 
             if player.tracks_moves:

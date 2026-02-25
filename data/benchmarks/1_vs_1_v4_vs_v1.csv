@@ -1,3 +1,0 @@
-battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
-battle-gen9randombattle-129506,v4,v1,v1B7fdae665p8000,0,14,crawdaunt|dodrio|dusknoir|greattusk|mamoswine|ogerponhearthflame,drifblim|probopass|swanna,6,0,0.0,2,1,0.75,aquajet|closecombat|hornleech|iceshard|poltergeist|quickattack|rapidspin|shadowsneak
-battle-gen9randombattle-129506,v4,v1,v4A7fdae665p8001,1,27,diancie|forretress|klefki|mightyena|rampardos|tropius,dusknoir|heracross|kyuremblack|miniorindigo|toxtricity|umbreon,5,1,0.324,6,0,0.0,airslash|dazzlinggleam|drainingkiss|earthpower|firepunch|foulplay|ironhead|rockslide|suckerpunch
