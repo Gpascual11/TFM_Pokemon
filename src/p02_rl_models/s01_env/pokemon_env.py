@@ -1,8 +1,7 @@
-"""
-Reinforcement Learning Environment for Pokemon Showdown.
+"""Reinforcement Learning Environment for Pokemon Showdown.
 
-This module provides the custom environment, wrappers, and action masking
-logic required to train MaskablePPO agents on Pokemon Showdown battles.
+Provides the custom Gymnasium environment, wrappers, and action masking
+logic for training MaskablePPO agents.
 """
 
 import numpy as np
@@ -16,36 +15,15 @@ from poke_env.player.battle_order import DefaultBattleOrder, SingleBattleOrder
 from poke_env.battle.status import Status
 from .vectorizer import StateVectorizer
 
-# --- Monkey-patch Player._handle_battle_message ---
-# This patch intercepts low-level Showdown messages to prevent common
-# poke-env failure modes like infinite log spam from 'bigerror' or
-# deadlocks from unhandled invalid choice errors.
-
 original_handle_battle_message = Player._handle_battle_message
 
 
 async def patched_handle_battle_message(self, split_messages):
-    """
-    Patched message handler to filter noisy server messages.
-
-    Args:
-        split_messages: List of message parts from the server.
-    """
-    # Filter out 'bigerror' messages which flood the logs in long battles
+    """Filters bulky error messages to prevent log spam and desync."""
     filtered_messages = [
         m for m in split_messages if not (len(m) > 1 and m[1] == "bigerror")
     ]
-
-    # Execute original poke-env logic
     await original_handle_battle_message(self, filtered_messages)
-
-    # Catch specific edge case errors that can cause client/server desync
-    for split_message in filtered_messages[1:]:
-        if len(split_message) > 2 and split_message[1] == "error":
-            if "[Invalid choice]" in split_message[2]:
-                logging.getLogger("poke_env").warning(
-                    f"Showdown Error: {split_message[2]}"
-                )
 
 
 Player._handle_battle_message = patched_handle_battle_message
@@ -197,14 +175,7 @@ class PokemonMaskedEnv(SinglesEnv):
         """
         Calculates a dense reward signal for the current battle state.
 
-        Combines sparse victory rewards with dense turn-by-turn signals
-        reflecting HP damage, stat boosts, hazards, and status conditions.
-
-        Args:
-            battle: Current Battle state.
-
-        Returns:
-            Float representing the reward for this transition.
+        Includes victory/defeat (+30/-30), HP delta, stat boosts, status, and hazards.
         """
         # 1. Base Sparse Reward (HP changes and Victory/Defeat)
         base_reward = self.reward_computing_helper(
@@ -220,7 +191,7 @@ class PokemonMaskedEnv(SinglesEnv):
             battle.active_pokemon is not None
             and battle.opponent_active_pokemon is not None
         ):
-            # 2. Offensive Boost Reward (Swords Dance, Nasty Plot, etc.)
+            # Offensive boosts
             boost_sum = sum(
                 battle.active_pokemon.boosts.get(stat, 0)
                 for stat in ["atk", "spa", "spe"]
@@ -228,43 +199,36 @@ class PokemonMaskedEnv(SinglesEnv):
             if boost_sum > 0:
                 custom_current_value += boost_sum * 0.3
 
-            # 3. Negative Boost Penalty (Intimidate, sticky web speed drop, etc.)
+            # Defensive/Stat penalties
             neg_boost_sum = sum(
                 min(0, battle.active_pokemon.boosts.get(stat, 0))
                 for stat in ["atk", "def", "spa", "spd", "spe"]
             )
-            # neg_boost_sum is <= 0; scale so -6 per stat → -0.6 max penalty
             custom_current_value += neg_boost_sum * 0.1
 
-            # 4. Status Infliction Reward (Burn, Paralysis, Toxic on opponent)
+            # Status conditions on opponent
             opp = battle.opponent_active_pokemon
             if opp is not None and opp.status in _DEBUFF_STATUSES:
                 custom_current_value += 0.3
 
-        # 5. Opponent Hazard Reward (Stealth Rock / Spikes on their side)
+        # Hazards
         if battle.opponent_side_conditions:
             custom_current_value += len(battle.opponent_side_conditions) * 0.5
 
-        # 6. Own Hazard Penalty (hazards on our side hurt us)
         if battle.side_conditions:
             hazard_score = _own_hazard_weight(battle.side_conditions)
             custom_current_value -= hazard_score * 1.0
 
-        # Initialize reward buffer if needed
         if not hasattr(self, "_custom_reward_buffer"):
             self._custom_reward_buffer = weakref.WeakKeyDictionary()
 
         if battle not in self._custom_reward_buffer:
             self._custom_reward_buffer[battle] = 0.0
 
-        # Delta-based update prevents double-rewarding static boards
         custom_reward_delta = custom_current_value - self._custom_reward_buffer[battle]
         self._custom_reward_buffer[battle] = custom_current_value
 
-        # 7. Stall Penalty — reduced from -0.05 to -0.02 to allow tactical switching
-        action_penalty = -0.02
-
-        return base_reward + custom_reward_delta + action_penalty
+        return base_reward + custom_reward_delta - 0.02
 
 
 class PokemonMaskedEnvWrapper(SingleAgentWrapper):

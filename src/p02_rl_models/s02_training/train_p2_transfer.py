@@ -1,21 +1,17 @@
-"""
-Phase 1.5: Reinforcement Learning against MaxBasePower Opponents.
+"""Phase 2: Training against Heuristic Opponents.
 
-This script acts as a curriculum bridge. It resumes training from the Random
-baseline weights (Phase 1) and pits the agent against a MaxBasePowerPlayer.
-
-The purpose of this intermediate phase is to force the model to learn
-basic defensive switching and prioritization of type advantages. If it stayed
-against Random bots, it wouldn't learn to survive strong attacks; if it jumped
-straight to Heuristics, it would be overwhelmed. MaxBasePower serves as that
-perfect stepping stone.
+Resumes from Phase 1.5 to develop tactical countermeasures and
+advanced switching against SimpleHeuristicsPlayer.
 """
 
 import argparse
 import random
 import string
 import logging
-from poke_env.player import MaxBasePowerPlayer
+from poke_env.player import SimpleHeuristicsPlayer
+
+# Suppress annoying poke_env warnings about invalid orders
+logging.getLogger("poke_env").setLevel(logging.ERROR)
 from poke_env.ps_client.server_configuration import LocalhostServerConfiguration
 from poke_env.ps_client.account_configuration import AccountConfiguration
 from sb3_contrib import MaskablePPO
@@ -23,19 +19,19 @@ from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 
-from ..env.pokemon_env import PokemonMaskedEnv, PokemonMaskedEnvWrapper
+from ..s01_env.pokemon_env import PokemonMaskedEnv, PokemonMaskedEnvWrapper
 
 
 def make_env(rank: int, port: int):
     """
-    Factory function for Phase 1.5 environments.
+    Factory function for Phase 2 environments.
 
-    Generates unique bot names for each subprocess to prevent Showdown
-    account name collisions when running multiple instances in parallel.
+    Creates instances of the `SimpleHeuristicsPlayer` and links them to
+    unique parallel PPO agent environments to enable fast vectorized training.
 
     Args:
-        rank (int): The index of the parallel environment.
-        port (int): The localhost port of the testing Server.
+        rank (int): The index of the parallel training environment.
+        port (int): The localhost port for the specific Showdown server instance.
 
     Returns:
         Callable: A function that initializes and returns the configured Monitor environment.
@@ -46,17 +42,22 @@ def make_env(rank: int, port: int):
             random.choices(string.ascii_lowercase + string.digits, k=5)
         )
 
+        # Silence ALL loggers in child processes except for CRITICAL errors
+        logging.root.setLevel(logging.ERROR)
+        for name in logging.root.manager.loggerDict:
+            logging.getLogger(name).setLevel(logging.ERROR)
+
         server_config = LocalhostServerConfiguration
         server_config = server_config._replace(
             websocket_url=f"ws://127.0.0.1:{port}/showdown/websocket"
         )
 
-        # Initialize the MaxBasePower opponent
-        opponent = MaxBasePowerPlayer(
+        # Initialize the smart heuristic opponent
+        opponent = SimpleHeuristicsPlayer(
             battle_format="gen9randombattle",
             server_configuration=server_config,
             account_configuration=AccountConfiguration(
-                f"MBP{rank}{unique_suffix}", None
+                f"SHeur{rank}{unique_suffix}", None
             ),
         )
 
@@ -78,17 +79,18 @@ def make_env(rank: int, port: int):
 
 def main():
     """
-    Main Phase 1.5 training entry point.
+    Main Phase 2 training entry point.
 
     Workflow:
-    1. Pareses arguments for timesteps, server ports.
-    2. Initializes parallel vector environments configured with MaxBasePowerPlayer.
-    3. Loads the previously trained Phase 1 ruleset (`ppo_pokemon_baseline`).
-    4. Slightly lowers the learning rate to fine-tune without destroying Phase 1 logic.
-    5. Evaluates and saves the specialized Phase 1.5 model.
+    1. Parses CLI arguments for ports and timesteps.
+    2. Constructs parallel Phase 2 heuristic training environments.
+    3. Loads Phase 1.5 weights (the previous curriculum step).
+    4. Drops the learning rate even further (1.5e-4) to carefully adjust
+       weights for heuristic combat without catastrophic forgetting.
+    5. Saves weights as the `ppo_pokemon_phase2` model.
     """
     parser = argparse.ArgumentParser(
-        description="Train Phase 1.5 PPO against MaxBasePowerPlayer."
+        description="Train Phase 2 PPO against SimpleHeuristicPlayer."
     )
     parser.add_argument(
         "--timesteps", type=int, default=1_000_000, help="Total timesteps to train"
@@ -101,14 +103,12 @@ def main():
         help="List of showdown server ports to use",
     )
     parser.add_argument(
-        "--resume",
-        action="store_true",
-        help="Resume from current phase weight instead of starting from Phase 1",
+        "--resume", action="store_true", help="Resume from ppo_pokemon_baseline.zip"
     )
     args = parser.parse_args()
 
     num_envs = len(args.ports)
-    print(f"--- Starting Phase 1.5 Training (Curriculum: MaxBasePower) ---")
+    print(f"--- Starting Phase 2 Training (Heuristics Curriculum) ---")
     print(f"Servers: {num_envs} | Target Steps: {args.timesteps:,}")
 
     # Initialize vectorized environment
@@ -119,30 +119,41 @@ def main():
             [make_env(i, port) for i, port in enumerate(args.ports)]
         )
 
-    # We load from Phase 1 (baseline) to start, but save as phase1_5
-    load_path = "ppo_pokemon_phase1_5" if args.resume else "ppo_pokemon_baseline"
-    save_path = "ppo_pokemon_phase1_5"
+    # Phase 2 always starts from the Phase 1.5 checkpoint (or resumes Phase 2)
+    model_path = "ppo_pokemon_phase2" if args.resume else "ppo_pokemon_phase1_5"
+    save_path = "ppo_pokemon_phase2"
 
     try:
-        print(f"Loading weights from {load_path}.zip...")
+        print(f"Loading weights from {model_path}.zip...")
         model = MaskablePPO.load(
-            load_path, env=vec_env, tensorboard_log="./ppo_pokemon_tensorboard/"
+            model_path, env=vec_env, tensorboard_log="./ppo_pokemon_tensorboard/"
         )
-        # Lower LR slightly from 3e-4 to 2e-4 for this intermediate phase
-        model.learning_rate = 2e-4
+        # Lower LR prevents catastrophic forgetting of Phase 1 fundamentals
+        model.learning_rate = 1.5e-4
         print(
-            f"Weights loaded successfully. Learning rate set to {model.learning_rate}."
+            f"Phase 1 weights loaded. Learning rate overridden to {model.learning_rate}."
         )
     except FileNotFoundError:
-        print(f"Starting model {load_path}.zip not found. Please run Phase 1 first.")
-        return
+        print(
+            f"Baseline {model_path}.zip not found. Starting from scratch (not recommended for Phase 2)."
+        )
+        model = MaskablePPO(
+            MaskableActorCriticPolicy,
+            vec_env,
+            verbose=1,
+            learning_rate=1.5e-4,
+            ent_coef=0.01,
+            n_steps=2048,
+            policy_kwargs=dict(net_arch=[256, 256]),
+            tensorboard_log="./ppo_pokemon_tensorboard/",
+        )
 
     # Training loop
     try:
         # We use reset_num_timesteps=False to keep the total count continuous in Tensorboard
         model.learn(total_timesteps=args.timesteps, reset_num_timesteps=not args.resume)
         model.save(save_path)
-        print(f"Phase 1.5 complete. Model saved to {save_path}.zip")
+        print(f"Phase 2 complete. Model saved to {save_path}.zip")
     except KeyboardInterrupt:
         print("Training interrupted. Saving current progress...")
         model.save(save_path)

@@ -1,8 +1,6 @@
-"""
-State vectorization for Pokemon Showdown.
+"""State vectorization for Pokemon Showdown.
 
-Converts complex Battle objects from poke-env into flattened 1D numpy arrays
-suitable for consumption by neural network policies.
+Converts complex Battle objects into flattened 1D numpy arrays for neural networks.
 """
 
 import numpy as np
@@ -51,15 +49,13 @@ class StateVectorizer:
     NUM_MOVE_SLOTS = 4
 
     def __init__(self):
-        """Initializes the vectorizer with fixed sizes for all categorical game elements."""
+        """Initializes categorical mappings and pre-computes observation size."""
         self.num_types = len(PokemonType)
         self.num_statuses = len(Status)
         self.num_weathers = len(Weather)
         self.num_fields = len(Field)
         self.num_side_conditions = len(SideCondition)
-
-        # 7 stats: atk, def, spa, spd, spe, accuracy, evasion
-        self.num_boosts = 7
+        self.num_boosts = 7  # atk, def, spa, spd, spe, accuracy, evasion
 
         # 4 move slots × (num_types + 1 BP) = e.g. 4 × 19 = 76
         self.move_dims = self.NUM_MOVE_SLOTS * (self.num_types + 1)
@@ -92,23 +88,33 @@ class StateVectorizer:
         me_moves = self._embed_moves(battle.active_pokemon)
 
         me_bench = self._embed_team(battle.team)
-        opp_bench = self._embed_opponent_team(battle.opponent_team, battle.team_size)
+
+        # Fallback for team_size if server hasn't sent it yet (prevents KeyError: 'p1')
+        try:
+            ts = battle.team_size
+        except KeyError:
+            ts = 6
+
+        opp_bench = self._embed_opponent_team(battle.opponent_team, ts)
 
         environment = self._embed_environment(battle)
 
         me_side = self._embed_side_conditions(battle.side_conditions)
         opp_side = self._embed_side_conditions(battle.opponent_side_conditions)
 
-        state_vector = np.concatenate([
-            me_active,
-            opp_active,
-            me_moves,
-            me_bench,
-            opp_bench,
-            environment,
-            me_side,
-            opp_side,
-        ], dtype=np.float32)
+        state_vector = np.concatenate(
+            [
+                me_active,
+                opp_active,
+                me_moves,
+                me_bench,
+                opp_bench,
+                environment,
+                me_side,
+                opp_side,
+            ],
+            dtype=np.float32,
+        )
 
         return state_vector
 
@@ -142,7 +148,7 @@ class StateVectorizer:
 
         # Stat Boosts: Normalized [-6, 6] → [0, 1]
         boost_vector = np.zeros(self.num_boosts, dtype=np.float32)
-        boost_keys = ['atk', 'def', 'spa', 'spd', 'spe', 'accuracy', 'evasion']
+        boost_keys = ["atk", "def", "spa", "spd", "spe", "accuracy", "evasion"]
         for i, stat in enumerate(boost_keys):
             raw_boost = pokemon.boosts.get(stat, 0)
             boost_vector[i] = (raw_boost + 6.0) / 12.0

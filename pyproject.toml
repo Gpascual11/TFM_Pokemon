@@ -16,6 +16,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+rl = [
+    "gymnasium>=0.29.1",
+    "sb3-contrib>=2.4.0",
+    "stable-baselines3>=2.4.0",
+    "torch>=2.5.1",
+]
 gpu = [
     "gymnasium>=0.29.1",
     "sb3-contrib>=2.4.0",
@@ -25,3 +31,11 @@ gpu = [
     "torchaudio>=2.5.1",
     "torchvision>=0.20.1",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }

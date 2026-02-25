@@ -12,7 +12,7 @@ from poke_env.ps_client.server_configuration import LocalhostServerConfiguration
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 
-from ..env.pokemon_env import PokemonMaskedEnv, PokemonMaskedEnvWrapper
+from ..s01_env.pokemon_env import PokemonMaskedEnv, PokemonMaskedEnvWrapper
 
 
 def main():

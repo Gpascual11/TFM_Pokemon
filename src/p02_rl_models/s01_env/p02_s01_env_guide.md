@@ -1,4 +1,4 @@
-# env: RL Environment and Vectorization
+# s01_env: RL Environment and Vectorization
 
 This module defines how the Pokémon battle is "seen" and "acted upon" by the Reinforcement Learning agent.
 

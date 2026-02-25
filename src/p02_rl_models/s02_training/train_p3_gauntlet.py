@@ -1,13 +1,7 @@
-"""
-Phase 3: The Gauntlet (Multi-Opponent Training)
+"""Phase 3: The Gauntlet (Multi-Opponent Training)
 
-This script trains the agent against a mixed pool of opponents:
-- RandomPlayer (reinforcing strict basics)
-- MaxBasePowerPlayer (reinforcing survival/defense)
-- SimpleHeuristicsPlayer (reinforcing tactical adaptation)
-
-It uses the GauntletEnvWrapper which penalizes stalling and
-massively rewards actual victories.
+Trains the agent against a mixed pool of all previous opponents
+to generalize strategy and prevent forgetting.
 """
 
 import argparse
@@ -27,7 +21,7 @@ from stable_baselines3.common.callbacks import (
     StopTrainingOnNoModelImprovement,
 )
 
-from ..env.pokemon_env import PokemonMaskedEnv, GauntletEnvWrapper
+from ..s01_env.pokemon_env import PokemonMaskedEnv, GauntletEnvWrapper
 
 
 def make_env(rank: int, port: int, is_eval: bool = False):
