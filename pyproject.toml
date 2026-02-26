@@ -39,3 +39,23 @@ explicit = true
 
 [tool.uv.sources]
 torch = { index = "pytorch-cpu" }
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.2",
+    "ty>=0.0.19",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+# Select rules:
+# E: pycodestyle errors
+# F: Pyflakes
+# I: isort (import sorting)
+# UP: pyupgrade
+# B: flake8-bugbear
+select = ["E", "F", "I", "UP", "B"]
+ignore = []
