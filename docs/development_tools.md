@@ -90,3 +90,22 @@ You can view the compiled report directly inside VS Code!
 SyncTeX provides a bridge between the source LaTeX code and the compiled PDF:
 *   **Jump from PDF to Code:** Hold `Ctrl` (or `Cmd`) and `Left-Click` on any text inside the PDF viewer. VS Code will instantly jump to the line of `.tex` code that generated that text.
 *   **Jump from Code to PDF:** While editing your `.tex` file, press `Ctrl+Alt+J`. The PDF viewer will highlight and scroll directly to the section you are currently editing.
+
+---
+
+## Project Data Storage Setup
+
+### External Disk Symlinking
+The datasets and project files for this project can be large, so the `data/` directory has been offloaded to a separate NVMe drive mounted at `/mnt/data/`.
+
+*   **What we did:** We moved the `/home/gerardpf/TFM/data/` directory to `/mnt/data/TFM_data/` and created a symbolic link (shortcut) back to the original location.
+*   **Why we did it:** This saves storage space on the primary Ubuntu root partition. By using a symbolic link, no code or scripts need to be updated. The Python scripts and the OS still see and access the files at `/home/gerardpf/TFM/data/` as if they were physically there.
+
+**How it was set up:**
+```bash
+# Move the data to the external NVMe drive
+mv /home/gerardpf/TFM/data /mnt/data/TFM_data
+
+# Create a symbolic link pointing to the new location
+ln -s /mnt/data/TFM_data /home/gerardpf/TFM/data
+```
