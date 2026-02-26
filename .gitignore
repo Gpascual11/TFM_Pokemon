@@ -12,3 +12,24 @@ replays/
 
 pokemon-showdown/
 node_modules/
+
+# LaTeX temporary files
+# Core latex/pdflatex aux files
+report/**/*.aux
+report/**/*.log
+report/**/*.toc
+report/**/*.out
+
+# Bibliography auxiliary files
+report/**/*.bbl
+report/**/*.blg
+report/**/*.bcf
+report/**/*.run.xml
+report/**/*.blx.bib
+
+# latexmk / syncTex files
+report/**/*.fls
+report/**/*.fdb_latexmk
+report/**/*.synctex.gz
+report/**/*.synctex(busy)
+report/**/*.xdv

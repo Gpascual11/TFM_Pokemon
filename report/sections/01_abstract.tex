@@ -1,0 +1,12 @@
+\begin{abstract}
+Els videojocs d'estratègia complexos constitueixen un banc de proves valuós per a la recerca en Intel·ligència Artificial. En contrast amb jocs d'informació perfecta (com els escacs o el Go), els entorns amb informació parcial i dinàmiques estocàstiques presenten reptes addicionals significatius en predicció i planificació. Aquest Treball de Final de Màster proposa el disseny, implementació i avaluació d'un agent basat en Deep Reinforcement Learning (DRL) per al format competitiu VGC de Pokémon, utilitzant el simulador de codi obert Pokémon Showdown~\cite{pokemon_showdown} i la llibreria poke-env~\cite{poke_env} com a entorn d'entrenament.
+
+El problema s'aborda com un Procés de Decisió de Markov Parcialment Observable (POMDP)~\cite{pomdp}, caracteritzat per un espai d'estats i d'accions d'alta dimensionalitat i múltiples fonts d'incertesa (informació oculta sobre l'equip rival i resultats estocàstics dels moviments). L'objectiu no és la resolució perfecta del joc, sinó l'aproximació d'una política d'actuació que maximitzi l'esperança de victòria sota incertesa. 
+
+La proposta integra: (1) una representació vectorial de l'estat que inclou estadístiques, tipus, condicions de camp i historial d'accions; (2) una arquitectura neuronal (p. ex., xarxa recurrent o encoder + policy network) per captar dependències temporals i la parcialitat de la informació; i (3) estratègies d'entrenament basades en self-play i algorismes actor-crític (com PPO~\cite{ppo}), complementats potencialment amb components d'aprenentatge supervisat per a la predicció de moviments rivals.
+
+L'avaluació es durà a terme en un entorn de simulació local controlat. S'analitzarà el rendiment quantitatiu de l'agent (taxa de victòries i recompensa mitjana acumulada) enfront d'una bateria d'agents basats en regles (scripted baselines) que implementen heurístiques competitives estàndard. Addicionalment, es realitzaran estudis d'ablació (ablation studies) per determinar la contribució de cada mòdul de l'arquitectura. Qualitativament, s'examinarà l'emergència de comportaments avançats com la predicció de canvis de Pokémon (switch prediction) i la gestió del risc, discutint finalment la viabilitat computacional i les limitacions del model proposat.
+
+\vspace{0.5cm}
+\noindent\textbf{Paraules clau:} Deep Reinforcement Learning (DRL), POMDP, Teoria de Jocs, Sistemes Estocàstics, Pokémon VGC, Xarxes Neuronals.
+\end{abstract}

@@ -16,15 +16,15 @@ supports automatic server lifecycle management and matchup checkpointing.
 """
 
 import argparse
-import logging
-import os
-import sys
-import json
 import gc
+import json
+import logging
 import subprocess
+import sys
 import time
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
 from tabulate import tabulate
 
 # --- Package Bootstrap ---
@@ -35,14 +35,12 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 __package__ = "p01_heuristics.s01_singles"
-from .core.factory import HeuristicFactory
 from .core.battle_manager import BattleManager
+from .core.factory import HeuristicFactory
 from .core.process_launcher import ProcessLauncher
 
 
-def run_matchup(
-    v_a: str, v_b: str, games: int, ports: list[int], data_dir: Path
-) -> dict:
+def run_matchup(v_a: str, v_b: str, games: int, ports: list[int], data_dir: Path) -> dict:
     """Run a single matchup and return detailed metrics."""
     print(f"\n⚔️  MATCHUP: {v_a} vs {v_b} ({games} games)...")
 
@@ -73,12 +71,8 @@ def run_matchup(
     metrics = {
         "win_rate": (df["won"].sum() / len(df)) * 100,
         "avg_turns": df["turns"].mean(),
-        "avg_fainted_opp": df["fainted_opp"].mean()
-        if "fainted_opp" in df.columns
-        else 0.0,
-        "avg_hp_remaining": df["total_hp_us"].mean()
-        if "total_hp_us" in df.columns
-        else 0.0,
+        "avg_fainted_opp": df["fainted_opp"].mean() if "fainted_opp" in df.columns else 0.0,
+        "avg_hp_remaining": df["total_hp_us"].mean() if "total_hp_us" in df.columns else 0.0,
         "total_games": int(len(df)),
     }
     return metrics
@@ -86,7 +80,7 @@ def run_matchup(
 
 def restart_servers(n_ports: int):
     """Kills existing servers and starts fresh ones."""
-    print(f"\n♻️  RESTARTING SHOWDOWN SERVERS (Clearing Node.js RAM)...")
+    print("\n♻️  RESTARTING SHOWDOWN SERVERS (Clearing Node.js RAM)...")
     try:
         # Kill any node processes running showdown
         subprocess.run(["pkill", "-f", "pokemon-showdown"], check=False)
@@ -105,12 +99,8 @@ def restart_servers(n_ports: int):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Extended Benchmark Matrix V2 with detailed metrics."
-    )
-    parser.add_argument(
-        "total_games", type=int, help="Number of games per matchup pair."
-    )
+    parser = argparse.ArgumentParser(description="Extended Benchmark Matrix V2 with detailed metrics.")
+    parser.add_argument("total_games", type=int, help="Number of games per matchup pair.")
     parser.add_argument(
         "-p",
         "--ports",
@@ -119,9 +109,7 @@ def main():
         default=[8000],
         help="Server ports to use.",
     )
-    parser.add_argument(
-        "--resume", action="store_true", help="Resume from previous checkpoint."
-    )
+    parser.add_argument("--resume", action="store_true", help="Resume from previous checkpoint.")
     parser.add_argument(
         "--data-dir",
         type=str,
@@ -158,10 +146,10 @@ def main():
 
     if args.resume and checkpoint_file.exists():
         print(f"🔄 Resuming from checkpoint: {checkpoint_file}")
-        with open(checkpoint_file, "r") as f:
+        with open(checkpoint_file) as f:
             checkpoint_data = json.load(f)
 
-    print(f"🚀 Starting Benchmark Matrix V2")
+    print("🚀 Starting Benchmark Matrix V2")
     print(f"🔹 Folder: {data_dir}")
     print(f"📈 Total Matchups: {len(rows_v) * len(cols_v)}")
 
@@ -191,8 +179,7 @@ def main():
                         df_check = pd.read_csv(csv_path)
                         if len(df_check) >= args.total_games:
                             metrics = {
-                                "win_rate": (df_check["won"].sum() / len(df_check))
-                                * 100,
+                                "win_rate": (df_check["won"].sum() / len(df_check)) * 100,
                                 "avg_turns": df_check["turns"].mean(),
                                 "avg_fainted_opp": df_check["fainted_opp"].mean()
                                 if "fainted_opp" in df_check.columns

@@ -1,0 +1,28 @@
+\documentclass[11pt,a4paper]{report}
+
+% --- Essential Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{graphicx}
+\usepackage{amsmath, amssymb} % For TFM math/formulas
+\usepackage{hyperref}
+\usepackage{biblatex}
+
+% --- Path to your images ---
+\graphicspath{{../data/}} 
+\addbibresource{bibliography.bib}
+
+\begin{document}
+
+\title{Desenvolupament d'un agent de Deep Reinforcement Learning per a la presa de decisions estratègiques en entorns estocàstics d'informació imperfecta: El cas de Pokémon VGC}
+\author{Gerard Pascual Fontanilles}
+\maketitle
+
+\tableofcontents
+
+% --- Importing Sections ---
+\include{sections/01_abstract}
+
+\printbibliography
+
+\end{document}
