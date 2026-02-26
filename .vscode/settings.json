@@ -13,5 +13,6 @@
   "ty.path": [
     "${workspaceFolder}/.venv/bin/ty"
   ],
-  "python.languageServer": "None"
+  "python.languageServer": "None",
+  "latex-workshop.latex.autoBuild.run": "onFileChange"
 }
