@@ -95,17 +95,33 @@ SyncTeX provides a bridge between the source LaTeX code and the compiled PDF:
 
 ## Project Data Storage Setup
 
-### External Disk Symlinking
-The datasets and project files for this project can be large, so the `data/` directory has been offloaded to a separate NVMe drive mounted at `/mnt/data/`.
+### External Disk Offloading (Bind Mounts)
+To save storage space on the primary Ubuntu root partition, the `data/` directory (which contains large datasets, benchmarks, and model checkpoints) is physically stored on a separate NVMe drive mounted at `/mnt/data/TFM_data/`.
 
-*   **What we did:** We moved the `/home/gerardpf/TFM/data/` directory to `/mnt/data/TFM_data/` and created a symbolic link (shortcut) back to the original location.
-*   **Why we did it:** This saves storage space on the primary Ubuntu root partition. By using a symbolic link, no code or scripts need to be updated. The Python scripts and the OS still see and access the files at `/home/gerardpf/TFM/data/` as if they were physically there.
+#### Initial Approach: Symbolic Links
+Initially, we used a **symbolic link** (`ln -s`) to redirect the `data/` directory. While this worked for the OS and Python scripts, it caused issues with Git:
+*   Git treats a symbolic link as a single file, not a directory.
+*   It cannot "look through" the link to track individual files inside the folder.
+*   This led to all files being seen as "deleted" or "untracked" by Git.
+
+#### Final Solution: Bind Mounts
+To allow Git to track small files (like benchmark summaries) while keeping the bulk of the data on the NVMe drive, we replaced the symbolic link with a **bind mount**. A bind mount "mirrors" the external directory so that it appears to the OS and Git as a perfectly normal, local folder.
 
 **How it was set up:**
 ```bash
-# Move the data to the external NVMe drive
-mv /home/gerardpf/TFM/data /mnt/data/TFM_data
+# 1. Remove the old symbolic link (shortcut)
+rm /home/gerardpf/TFM/data
 
-# Create a symbolic link pointing to the new location
-ln -s /mnt/data/TFM_data /home/gerardpf/TFM/data
+# 2. Create a real empty directory
+mkdir /home/gerardpf/TFM/data
+
+# 3. Mirror the external folder into the project local folder
+sudo mount --bind /mnt/data/TFM_data /home/gerardpf/TFM/data
 ```
+
+### Git Management of Data
+To prevent Git from being overwhelmed by massive binaries (like `.zip` models) while still tracking important structural files, specific patterns were added to `.gitignore`:
+*   Massive `.csv`, `.zip`, and TensorBoard event files are ignored.
+*   Directory structures and small configuration files remain tracked.
+*   This ensures the repository remains lightweight while maintaining data integrity.
+
