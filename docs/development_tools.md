@@ -119,6 +119,15 @@ mkdir /home/gerardpf/TFM/data
 sudo mount --bind /mnt/data/TFM_data /home/gerardpf/TFM/data
 ```
 
+**Making it Permanent (Survival after Reboots):**
+To ensure the folder remains connected after a system restart, a line was added to `/etc/fstab`:
+```bash
+# Add this line to /etc/fstab
+/mnt/data/TFM_data  /home/gerardpf/TFM/data  none  bind  0  0
+```
+This ensures Ubuntu automatically remounts the data folder every time the system starts up.
+
+
 ### Git Management of Data
 To prevent Git from being overwhelmed by massive binaries (like `.zip` models) while still tracking important structural files, specific patterns were added to `.gitignore`:
 *   Massive `.csv`, `.zip`, and TensorBoard event files are ignored.
