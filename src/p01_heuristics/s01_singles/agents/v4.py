@@ -71,9 +71,7 @@ class HeuristicV4(BaseHeuristic1v1):
 
         my_status = get_status_name(me)
 
-        if self._is_in_danger(me, opp) or (
-            my_status == "TOX" and me.status_counter > 2
-        ):
+        if self._is_in_danger(me, opp) or (my_status == "TOX" and me.status_counter > 2):
             switch = self._get_best_switch(battle)
             if switch:
                 return self.create_order(switch)
@@ -175,7 +173,7 @@ class HeuristicV4(BaseHeuristic1v1):
 
         if my_speed <= opp_speed:
             for opp_type in opp.types:
-                if me.damage_multiplier(opp_type) >= 2.0:
+                if opp_type is not None and me.damage_multiplier(opp_type) >= 2.0:
                     return True
 
         return me.current_hp_fraction < 0.30
@@ -195,7 +193,7 @@ class HeuristicV4(BaseHeuristic1v1):
         min_multiplier = 4.0
 
         for pokemon in battle.available_switches:
-            worst = max(pokemon.damage_multiplier(t) for t in opp.types)
+            worst = max(pokemon.damage_multiplier(t) for t in opp.types if t is not None)
             if worst < min_multiplier:
                 min_multiplier = worst
                 best_teammate = pokemon

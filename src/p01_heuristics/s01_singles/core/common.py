@@ -33,7 +33,11 @@ def get_stat(pokemon, stat_name: str) -> int:
 
     Falls back through: battle stat → base stat → 100 (neutral default).
     """
-    return pokemon.stats.get(stat_name) or pokemon.base_stats.get(stat_name) or 100
+    if pokemon.stats and pokemon.stats.get(stat_name):
+        return pokemon.stats[stat_name]
+    if pokemon.base_stats and pokemon.base_stats.get(stat_name):
+        return pokemon.base_stats[stat_name]
+    return 100
 
 
 def get_speed(pokemon, status: str | None = None) -> float:
