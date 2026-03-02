@@ -85,9 +85,7 @@ class HeuristicV5(BaseHeuristic1v1):
 
     def _get_boosted_stat(self, pokemon, stat_name: str) -> float:
         """Calculate a stat with in-battle stage boosts applied."""
-        raw_stat = pokemon.stats.get(stat_name) or pokemon.base_stats.get(
-            stat_name, 100
-        )
+        raw_stat = pokemon.stats.get(stat_name) or pokemon.base_stats.get(stat_name, 100)
         boost = pokemon.boosts.get(stat_name, 0)
 
         if boost > 0:
@@ -228,7 +226,7 @@ class HeuristicV5(BaseHeuristic1v1):
         min_multiplier = 4.0
 
         for pokemon in battle.available_switches:
-            worst = max(pokemon.damage_multiplier(t) for t in opp.types)
+            worst = max(pokemon.damage_multiplier(t) for t in opp.types if t is not None)
             if worst < min_multiplier:
                 min_multiplier = worst
                 best_teammate = pokemon

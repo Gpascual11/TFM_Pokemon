@@ -14,8 +14,8 @@ import signal
 import socket
 import sys
 import uuid
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 import pandas as pd
 
@@ -108,9 +108,7 @@ def _worker(
         csv_path = mgr.run()
         print(f"\n✅ [Process {worker_index}] Finished → {csv_path}", flush=True)
     except Exception as exc:
-        print(
-            f"\n❌ [Process {worker_index}] CRASHED on port {port}: {exc}", flush=True
-        )
+        print(f"\n❌ [Process {worker_index}] CRASHED on port {port}: {exc}", flush=True)
         logger.exception("Process on port %d crashed", port)
         raise
 
@@ -141,8 +139,8 @@ class ProcessLauncher:
         version: str,
         ports: Sequence[int],
         total_games: int = 10_000,
-        batch_size: int = 500,
-        concurrent_battles: int = 16,
+        batch_size: int = 250,
+        concurrent_battles: int = 10,
         data_dir: str | Path = "data",
         opponent: str = "random",
     ) -> None:
@@ -186,10 +184,7 @@ class ProcessLauncher:
                 "\n⚠️  Some servers are not reachable! Start them with:\n"
                 "   node pokemon-showdown start --port <PORT> --no-security\n"
             )
-            raise RuntimeError(
-                f"Cannot launch: not all Showdown servers are reachable. "
-                f"Checked ports: {self.ports}"
-            )
+            raise RuntimeError(f"Cannot launch: not all Showdown servers are reachable. Checked ports: {self.ports}")
         print()
 
     def _spawn_workers(self) -> list:
@@ -249,12 +244,8 @@ class ProcessLauncher:
 
         failed = [p for p in processes if p.exitcode != 0]
         if failed:
-            logger.error(
-                "%d/%d processes exited with errors", len(failed), len(processes)
-            )
-            print(
-                f"\n⚠️  {len(failed)}/{len(processes)} processes failed! Check logs above."
-            )
+            logger.error("%d/%d processes exited with errors", len(failed), len(processes))
+            print(f"\n⚠️  {len(failed)}/{len(processes)} processes failed! Check logs above.")
 
     def _merge_results(self) -> Path:
         """Concatenate all per-process CSVs into one merged file."""

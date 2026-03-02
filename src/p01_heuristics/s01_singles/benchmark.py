@@ -3,16 +3,10 @@
 Benchmark Matrix V2 for Singles Heuristics.
 
 This script executes a round-robin tournament between all registered Singles heuristics
-and several baseline opponents (Random, MaxPower, SimpleHeuristic).
-
-Measured Metrics:
-- Win Rate (%): Ratio of battles won.
-- Avg Turns: Measure of battle duration and efficiency.
-- Avg Fainted Opponents: Measure of offensive pressure.
-- Avg HP Remaining: Measure of defensive stability.
-
-The script outputs a comprehensive CSV summary (`benchmark_matrix_summary.csv`) and
-supports automatic server lifecycle management and matchup checkpointing.
+and baseline opponents. It is designed for high-reliability long-running runs:
+- Memory Regulation: Restarts servers every matchup and uses explicit GC.
+- Resilience: Supports full checkpointing and physical CSV scanning to resume.
+- Scalability: Distributes battles across multiple local ports in parallel.
 """
 
 import argparse
@@ -54,6 +48,8 @@ def run_matchup(v_a: str, v_b: str, games: int, ports: list[int], data_dir: Path
             batch_size=min(games, 500),
         )
         csv_path = mgr.run()
+        del mgr
+        gc.collect()
     else:
         launcher = ProcessLauncher(
             version=v_a,
@@ -61,9 +57,11 @@ def run_matchup(v_a: str, v_b: str, games: int, ports: list[int], data_dir: Path
             total_games=games,
             ports=ports,
             data_dir=str(data_dir),
-            batch_size=250,  # Smaller batches to prevent server lag
+            batch_size=250,  # Batch size matched to server capacity
         )
         csv_path = launcher.launch()
+        del launcher
+        gc.collect()
 
     # Extract detailed metrics from the CSV
     df = pd.read_csv(csv_path)
@@ -75,6 +73,11 @@ def run_matchup(v_a: str, v_b: str, games: int, ports: list[int], data_dir: Path
         "avg_hp_remaining": df["total_hp_us"].mean() if "total_hp_us" in df.columns else 0.0,
         "total_games": int(len(df)),
     }
+
+    # Explicit cleanup to keep main process lean
+    del df
+    gc.collect()
+
     return metrics
 
 
@@ -107,7 +110,7 @@ def main():
         type=int,
         nargs="+",
         default=[8000],
-        help="Server ports to use.",
+        help="Server ports (e.g. 8000 8001) or number of parallel ports (e.g. 4).",
     )
     parser.add_argument("--resume", action="store_true", help="Resume from previous checkpoint.")
     parser.add_argument(
@@ -126,8 +129,18 @@ def main():
 
     # Configuration
     data_dir = Path(args.data_dir)
+    if data_dir.suffix == ".csv":
+        data_dir = data_dir.parent
     data_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_file = data_dir / "checkpoint_v2.json"
+
+    # Smart port expansion: Convert "-p 4" into [8000, 8001, 8002, 8003]
+    if len(args.ports) == 1 and args.ports[0] < 100:
+        n_ports = args.ports[0]
+        args.ports = [8000 + i for i in range(n_ports)]
+
+    # Final port list for the rest of the script
+    ports_list = args.ports
 
     # Silence verbose logs
     logging.basicConfig(level=logging.WARNING)
@@ -150,20 +163,14 @@ def main():
             checkpoint_data = json.load(f)
 
     print("🚀 Starting Benchmark Matrix V2")
-    print(f"🔹 Folder: {data_dir}")
-    print(f"📈 Total Matchups: {len(rows_v) * len(cols_v)}")
-
-    # Always ensure servers are fresh at the start
-    restart_servers(len(args.ports))
+    print(f"🔹 Data Directory: {data_dir}")
+    print(f"📈 Total Matchups to evaluate: {len(rows_v) * len(cols_v)}")
+    print(f"📡 Serving on {len(ports_list)} parallel ports: {ports_list}")
 
     matchup_count = 0
     for v_a in rows_v:
         for v_b in cols_v:
             match_key = f"{v_a}_vs_{v_b}"
-
-            # Restart servers every 5 matchups to prevent Node.js slowdown
-            if matchup_count > 0 and matchup_count % 5 == 0:
-                restart_servers(len(args.ports))
 
             # Skip logic: Only if resume is active
             if args.resume:
@@ -195,8 +202,11 @@ def main():
                     except Exception:
                         pass
 
-            # Run Matchup
-            metrics = run_matchup(v_a, v_b, args.total_games, args.ports, data_dir)
+            # Launch Matchup
+            # Note: servers are restarted here (and NOT skipped) to clear Node.js memory
+            restart_servers(len(ports_list))
+
+            metrics = run_matchup(v_a, v_b, args.total_games, ports_list, data_dir)
             checkpoint_data[match_key] = metrics
             matchup_count += 1
 
@@ -204,8 +214,9 @@ def main():
             with open(checkpoint_file, "w") as f:
                 json.dump(checkpoint_data, f, indent=4)
 
-            # Explicit cleanup
+            # Explicit cleanup and sleep to prevent memory creep & socket exhaustion
             gc.collect()
+            time.sleep(2)
 
     # Convert results to a flat list for pandas
     results_list = []

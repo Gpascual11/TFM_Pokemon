@@ -6,14 +6,13 @@ Each process connects to a unique Pokémon Showdown server local port.
 from __future__ import annotations
 
 import asyncio
+import gc
 import logging
 import uuid
-import gc
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import pandas as pd
-
 from poke_env import AccountConfiguration, ServerConfiguration
 from poke_env.player import RandomPlayer
 from poke_env.player.baselines import MaxBasePowerPlayer, SimpleHeuristicsPlayer
@@ -42,9 +41,9 @@ class BattleManager:
         self,
         version: str,
         server_url: str,
-        total_games: int = 10_000,
-        batch_size: int = 500,
-        concurrent_battles: int = 16,
+        total_games: int = 1000,
+        batch_size: int = 250,
+        concurrent_battles: int = 10,
         data_dir: str | Path = "data",
         opponent: str = "random",
         run_id: str | None = None,
@@ -72,10 +71,7 @@ class BattleManager:
     async def _run_async(self) -> Path:
         """Async implementation of the batched battle loop."""
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        csv_path = (
-            self.data_dir
-            / f"1_vs_1_{self.version}_vs_{self.opponent}_{self.run_id}.csv"
-        )
+        csv_path = self.data_dir / f"1_vs_1_{self.version}_vs_{self.opponent}_{self.run_id}.csv"
 
         config = ServerConfiguration(self.server_url, None)
         common_kwargs: dict[str, Any] = {
@@ -175,9 +171,7 @@ class BattleManager:
         if self.opponent in HeuristicFactory.available_versions():
             return HeuristicFactory.create(
                 self.opponent,
-                account_configuration=AccountConfiguration(
-                    f"{self.opponent.replace('_', '')}B{tag}", None
-                ),
+                account_configuration=AccountConfiguration(f"{self.opponent.replace('_', '')}B{tag}", None),
                 **common_kwargs,
             )
         return RandomPlayer(
@@ -220,22 +214,16 @@ class BattleManager:
             }
 
             if b.team:
-                row["team_us"] = "|".join(
-                    sorted({str(m.species) for m in b.team.values()})
-                )
+                row["team_us"] = "|".join(sorted({str(m.species) for m in b.team.values()}))
             if b.opponent_team:
-                row["team_opp"] = "|".join(
-                    sorted({str(m.species) for m in b.opponent_team.values()})
-                )
+                row["team_opp"] = "|".join(sorted({str(m.species) for m in b.opponent_team.values()}))
 
             if b.team:
                 fainted_us = sum(m.fainted for m in b.team.values())
                 row["fainted_us"] = fainted_us
                 row["remaining_pokemon_us"] = len(b.team) - fainted_us
                 row["total_hp_us"] = round(
-                    sum(
-                        m.current_hp_fraction for m in b.team.values() if not m.fainted
-                    ),
+                    sum(m.current_hp_fraction for m in b.team.values() if not m.fainted),
                     3,
                 )
             if b.opponent_team:
@@ -243,11 +231,7 @@ class BattleManager:
                 row["fainted_opp"] = fainted_opp
                 row["remaining_pokemon_opp"] = len(b.opponent_team) - fainted_opp
                 row["total_hp_opp"] = round(
-                    sum(
-                        m.current_hp_fraction
-                        for m in b.opponent_team.values()
-                        if not m.fainted
-                    ),
+                    sum(m.current_hp_fraction for m in b.opponent_team.values() if not m.fainted),
                     3,
                 )
 

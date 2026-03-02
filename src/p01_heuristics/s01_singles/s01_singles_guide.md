@@ -41,10 +41,10 @@ uv run python src/p01_heuristics/s01_singles/run.py v6 v1 100
 ```
 
 ### Full Benchmark Matrix
-The script is fully automated and manages its own servers.
+The script is fully automated and manages its own servers. It generates a round-robin tournament between all versions and baselines.
 ```bash
-# Run 1000 games of every combination. Output saved to results/benchmark_summary.csv
-uv run python src/p01_heuristics/s01_singles/benchmark.py 1000 --ports 8000 8001 8002 8003 --resume
+# Run 1000 games of every combination using 4 parallel ports.
+uv run python src/p01_heuristics/s01_singles/benchmark.py 1000 -p 4 --resume
 ```
 
 ### Generate Visual Analysis
@@ -66,7 +66,7 @@ Both benchmark scripts are **crash-proof**.
 ### 2. Automatic Server Management
 The `benchmark.py` script manages its own servers:
 - **Auto-Start**: It starts the necessary servers at the beginning.
-- **Auto-Refresh**: It kills and restarts all servers every **5 matchups** to clear Node.js memory leaks and prevent `slow battle` lag.
+- **Auto-Refresh**: It kills and restarts all servers **every single matchup** to clear Node.js memory leaks and prevent `slow battle` lag.
 - **Auto-Cleanup**: It stops all servers gracefully when the script exits or is stopped with `Ctrl+C`.
 
 ### 3. RAM Management (Python)
