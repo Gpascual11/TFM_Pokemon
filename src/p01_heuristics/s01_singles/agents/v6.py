@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from .v3 import HeuristicV3
 from ..core.common import calculate_base_damage, get_speed, get_status_name
+from .v3 import HeuristicV3
 
 
 class HeuristicV6(HeuristicV3):

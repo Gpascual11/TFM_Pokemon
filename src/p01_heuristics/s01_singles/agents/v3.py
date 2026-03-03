@@ -6,8 +6,8 @@ moves the agent uses in each battle for downstream analysis.
 
 from __future__ import annotations
 
-from .v2 import HeuristicV2
 from ..core.common import calculate_base_damage, get_speed, get_status_name
+from .v2 import HeuristicV2
 
 
 class HeuristicV3(HeuristicV2):

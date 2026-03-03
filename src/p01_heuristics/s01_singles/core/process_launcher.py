@@ -194,7 +194,7 @@ class ProcessLauncher:
         games_per_port = [base + (1 if i < extra else 0) for i in range(n)]
 
         processes = []
-        for idx, (port, games) in enumerate(zip(self.ports, games_per_port)):
+        for idx, (port, games) in enumerate(zip(self.ports, games_per_port, strict=False)):
             if games == 0:
                 continue
             p = _mp_ctx.Process(

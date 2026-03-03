@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Subprocess worker for :mod:`pokechamp_benchmark`.
+"""Subprocess worker for :mod:`benchmark`.
 
 Runs a single mini-batch of *N* battles between a Pokechamp agent and an
 opponent, writes per-battle results to a CSV, and **exits**.  The process
@@ -7,7 +7,7 @@ exit guarantees that the OS reclaims all memory held by pokechamp's
 ``POKE_LOOP`` background thread.
 
 This script is never called directly — it is spawned by
-``pokechamp_benchmark.run_matchup`` via :func:`subprocess.run`.
+``benchmark.run_matchup`` via :func:`subprocess.run`.
 """
 
 import argparse
@@ -21,24 +21,25 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 # ---------------------------------------------------------------------------
-# Package bootstrap — must mirror pokechamp_benchmark.py exactly.
+# Package bootstrap — must mirror benchmark.py exactly.
+# File lives at: src/p01_heuristics/s01_singles/pokechamp/_worker.py
 # ---------------------------------------------------------------------------
 _DIR = Path(__file__).parent.resolve()
-_SRC = _DIR.parent.parent
+_SRC = _DIR.parent.parent.parent
 _POKECHAMP_ROOT = _SRC.parent / "pokechamp"
 if str(_POKECHAMP_ROOT) not in sys.path:
     sys.path.insert(0, str(_POKECHAMP_ROOT))
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-__package__ = "p01_heuristics.s01_singles"
+__package__ = "p01_heuristics.s01_singles.pokechamp"
 
 from poke_env import AccountConfiguration, ServerConfiguration  # noqa: E402
 from poke_env.player import RandomPlayer  # noqa: E402
 from poke_env.player.baselines import AbyssalPlayer, MaxBasePowerPlayer, OneStepPlayer  # noqa: E402
 from poke_env.player.team_util import get_llm_player  # noqa: E402
 
-from .core.factory import HeuristicFactory  # noqa: E402
+from ..core.factory import HeuristicFactory  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Username abbreviations (Showdown enforces an 18-char limit)
@@ -95,21 +96,23 @@ def _create_player(
     concurrent : int
         Maximum simultaneous battles.
     """
-    kw: dict[str, Any] = {
+    # Full kwargs for LLMPlayer subclasses that support concurrency control.
+    # pokechamp's bundled baselines (Random/MaxPower/Abyssal/OneStep) do NOT accept
+    # max_concurrent_battles — use base_kw (without it) for those.
+    base_kw: dict[str, Any] = {
         "battle_format": battle_format,
         "server_configuration": server_config,
-        "max_concurrent_battles": concurrent,
     }
     acct = AccountConfiguration(f"PC{_short(agent_name)}{tag}", None)
 
     if agent_name == "random":
-        return RandomPlayer(account_configuration=acct, **kw)
+        return RandomPlayer(account_configuration=acct, **base_kw)
     if agent_name == "max_power":
-        return MaxBasePowerPlayer(account_configuration=acct, **kw)
+        return MaxBasePowerPlayer(account_configuration=acct, **base_kw)
     if agent_name == "abyssal":
-        return AbyssalPlayer(account_configuration=acct, **kw)
+        return AbyssalPlayer(account_configuration=acct, **base_kw)
     if agent_name == "one_step":
-        return OneStepPlayer(account_configuration=acct, **kw)
+        return OneStepPlayer(account_configuration=acct, **base_kw)
 
     ns = argparse.Namespace(temperature=temperature, log_dir=log_dir)
     return get_llm_player(
@@ -151,9 +154,12 @@ def _create_opponent(
     ValueError
         If *opponent_name* is not recognised.
     """
-    kw: dict[str, Any] = {
+    base_kw: dict[str, Any] = {
         "battle_format": battle_format,
         "server_configuration": server_config,
+    }
+    kw: dict[str, Any] = {
+        **base_kw,
         "max_concurrent_battles": concurrent,
     }
     acct = AccountConfiguration(f"Op{_short(opponent_name)}{tag}", None)
@@ -161,11 +167,12 @@ def _create_opponent(
     if opponent_name in HeuristicFactory.available_versions():
         return HeuristicFactory.create(opponent_name, account_configuration=acct, **kw)
     if opponent_name == "max_power":
-        return MaxBasePowerPlayer(account_configuration=acct, **kw)
+        return MaxBasePowerPlayer(account_configuration=acct, **base_kw)
     if opponent_name == "simple_heuristic":
-        return AbyssalPlayer(account_configuration=acct, **kw)
+        return AbyssalPlayer(account_configuration=acct, **base_kw)
     if opponent_name == "random":
-        return RandomPlayer(account_configuration=acct, **kw)
+        # RandomPlayer from poke_env might accept it, but for consistency with _create_player, we use base_kw
+        return RandomPlayer(account_configuration=acct, **base_kw)
 
     raise ValueError(f"Unknown opponent: {opponent_name}")
 

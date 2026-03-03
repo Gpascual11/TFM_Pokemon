@@ -14,7 +14,7 @@ Run once the full benchmark has completed (all agents, all opponents).
 
 Usage::
 
-    uv run python src/p01_heuristics/s01_singles/generate_pokechamp_full_report.py
+    uv run python src/p01_heuristics/s01_singles/pokechamp/generate_full_report.py
 """
 
 from __future__ import annotations
@@ -270,7 +270,7 @@ def main() -> None:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="src/p01_heuristics/s01_singles/results",
+        default="src/p01_heuristics/s01_singles/pokechamp/results",
         help="Directory to save the PNG report.",
     )
     args = parser.parse_args()

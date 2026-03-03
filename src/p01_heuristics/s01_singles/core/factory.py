@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from .base import BaseHeuristic1v1
 from ..agents import HEURISTIC_REGISTRY
+from .base import BaseHeuristic1v1
 
 
 class HeuristicFactory:
