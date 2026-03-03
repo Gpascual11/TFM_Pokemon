@@ -2,16 +2,19 @@
 
 This heuristic represents the most advanced version, employing a sophisticated decision pipeline:
 
-- **Immediate KO Check**: Prioritizes moves that guarantee a knockout, scanning available moves sorted by priority.
-- **Defensive Pivoting**: Initiates a switch if the active Pokémon is in immediate danger or severely poisoned.
-- **Scored Offensive**: Selects the optimal offensive move based on a `damage × accuracy` score, with an additional boost for priority moves.
+- **Immediate KO Check**: Prioritizes moves that guarantee a knockout,
+  scanning available moves sorted by priority.
+- **Defensive Pivoting**: Initiates a switch if the active Pokémon is in
+  immediate danger or severely poisoned.
+- **Scored Offensive**: Selects the optimal offensive move based on a
+  ``damage × accuracy`` score, with an additional boost for priority moves.
 
-The damage estimation incorporates environmental factors such as weather (sun/rain) and terrain (electric/grassy/psychic) modifiers, extending the standard physical/special damage formula.
+The damage estimation incorporates environmental factors such as weather
+(sun/rain) and terrain (electric/grassy/psychic) modifiers, extending the
+standard physical/special damage formula.
 """
 
 from __future__ import annotations
-
-from poke_env.data import GenData
 
 from ..core.base import BaseHeuristic1v1
 from ..core.common import get_status_name
@@ -19,10 +22,6 @@ from ..core.common import get_status_name
 
 class HeuristicV4(BaseHeuristic1v1):
     """Expert-level singles heuristic incorporating KO detection, defensive pivoting, and field effects."""
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.dm = GenData.from_gen(9)
 
     @property
     def tracks_moves(self) -> bool:

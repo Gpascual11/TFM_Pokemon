@@ -1,0 +1,86 @@
+{
+    "max_power_vs_v1": {
+        "win_rate": 24.0,
+        "avg_turns": 18.47,
+        "avg_fainted_opp": 4.13,
+        "avg_hp_remaining": 0.28751,
+        "total_games": 100
+    },
+    "max_power_vs_v2": {
+        "win_rate": 26.0,
+        "avg_turns": 18.69,
+        "avg_fainted_opp": 4.05,
+        "avg_hp_remaining": 0.28354999999999997,
+        "total_games": 100
+    },
+    "max_power_vs_v3": {
+        "win_rate": 22.0,
+        "avg_turns": 18.71,
+        "avg_fainted_opp": 4.04,
+        "avg_hp_remaining": 0.19558999999999999,
+        "total_games": 100
+    },
+    "random_vs_v1": {
+        "win_rate": 2.0,
+        "avg_turns": 23.49,
+        "avg_fainted_opp": 2.52,
+        "avg_hp_remaining": 0.0162,
+        "total_games": 100
+    },
+    "random_vs_v2": {
+        "win_rate": 1.0,
+        "avg_turns": 24.51,
+        "avg_fainted_opp": 2.26,
+        "avg_hp_remaining": 0.00415,
+        "total_games": 100
+    },
+    "random_vs_v3": {
+        "win_rate": 3.0,
+        "avg_turns": 22.85,
+        "avg_fainted_opp": 2.39,
+        "avg_hp_remaining": 0.01282,
+        "total_games": 100
+    },
+    "random_vs_v4": {
+        "win_rate": 8.0,
+        "avg_turns": 29.39,
+        "avg_fainted_opp": 2.83,
+        "avg_hp_remaining": 0.0486,
+        "total_games": 100
+    },
+    "random_vs_v5": {
+        "win_rate": 7.000000000000001,
+        "avg_turns": 31.13,
+        "avg_fainted_opp": 2.94,
+        "avg_hp_remaining": 0.038810000000000004,
+        "total_games": 100
+    },
+    "random_vs_v6": {
+        "win_rate": 2.0,
+        "avg_turns": 25.72,
+        "avg_fainted_opp": 2.61,
+        "avg_hp_remaining": 0.03234,
+        "total_games": 100
+    },
+    "random_vs_random": {
+        "win_rate": 44.0,
+        "avg_turns": 58.71,
+        "avg_fainted_opp": 4.87,
+        "avg_hp_remaining": 0.52645,
+        "total_games": 100
+    },
+    "random_vs_max_power": {
+        "win_rate": 12.0,
+        "avg_turns": 28.86,
+        "avg_fainted_opp": 3.38,
+        "avg_hp_remaining": 0.07518000000000001,
+        "total_games": 100
+    },
+    "random_vs_simple_heuristic": {
+        "win_rate": 3.0,
+        "avg_turns": 23.89,
+        "avg_fainted_opp": 1.99,
+        "avg_hp_remaining": 0.01985,
+        "total_games": 100
+    }
+}
