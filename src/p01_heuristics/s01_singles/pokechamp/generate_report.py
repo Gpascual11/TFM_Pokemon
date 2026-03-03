@@ -1,4 +1,4 @@
-"""Visual Report Generator for Pokechamp Benchmark Results.
+"""Per-agent visual report generator for the Pokechamp benchmark.
 
 Loads all per-matchup CSVs for a given Pokechamp agent from
 ``data/benchmarks_pokechamp/`` and produces a multi-panel PNG report with:
@@ -11,13 +11,13 @@ Loads all per-matchup CSVs for a given Pokechamp agent from
 Usage::
 
     # Analyse the 'random' agent (default)
-    uv run python src/p01_heuristics/s01_singles/generate_pokechamp_report.py
+    uv run python src/p01_heuristics/s01_singles/pokechamp/generate_report.py
 
     # Analyse a specific agent
-    uv run python src/p01_heuristics/s01_singles/generate_pokechamp_report.py --agent max_power
+    uv run python src/p01_heuristics/s01_singles/pokechamp/generate_report.py --agent max_power
 
     # Use a custom data directory
-    uv run python src/p01_heuristics/s01_singles/generate_pokechamp_report.py \\
+    uv run python src/p01_heuristics/s01_singles/pokechamp/generate_report.py \\
         --agent abyssal --data-dir data/benchmarks_pokechamp
 """
 
@@ -251,7 +251,7 @@ def main() -> None:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="src/p01_heuristics/s01_singles/results",
+        default="src/p01_heuristics/s01_singles/pokechamp/results",
         help="Directory to save the PNG report.",
     )
     args = parser.parse_args()

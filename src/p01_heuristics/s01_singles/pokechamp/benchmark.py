@@ -4,7 +4,7 @@
 Orchestrates a full tournament between selected Pokechamp agents and all
 internal opponents (heuristics v1–v6 plus poke_env baselines).  Each
 mini-batch of battles is delegated to a **subprocess worker**
-(``_pokechamp_worker.py``) so that, upon exit, the OS reclaims all memory
+(``_worker.py``) so that, upon exit, the OS reclaims all memory
 used by pokechamp's ``POKE_LOOP`` background thread.
 
 Outputs
@@ -13,10 +13,15 @@ Outputs
 - Aggregated summary CSV.
 - Win-rate matrix printed to the terminal.
 
+Usage::
+
+    uv run python src/p01_heuristics/s01_singles/pokechamp/pokechamp_benchmark.py 100 \\
+        -p 8000 --pokechamp-agents random max_power abyssal one_step
+
 See Also
 --------
-_pokechamp_worker : The subprocess that actually executes battles.
-POKECHAMP_BENCHMARK.md : Full development notes and usage guide.
+_worker : The subprocess that actually executes battles.
+README.md : Full development notes and usage guide.
 """
 
 import argparse
@@ -34,23 +39,21 @@ from tabulate import tabulate
 # ---------------------------------------------------------------------------
 # Package bootstrap
 # ---------------------------------------------------------------------------
-# Pokechamp's bundled ``poke_env`` fork must be importable *first* so that
-# both Pokechamp agents and internal heuristics share the same
-# ``poke_env.player.Player`` base class (required by ``battle_against``).
+# File lives at: src/p01_heuristics/s01_singles/pokechamp/pokechamp_benchmark.py
+# Walk 3 levels up (pokechamp → s01_singles → p01_heuristics → src).
 _DIR = Path(__file__).parent.resolve()
-_SRC = _DIR.parent.parent
+_SRC = _DIR.parent.parent.parent
 _POKECHAMP_ROOT = _SRC.parent / "pokechamp"
 if str(_POKECHAMP_ROOT) not in sys.path:
     sys.path.insert(0, str(_POKECHAMP_ROOT))
-
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-__package__ = "p01_heuristics.s01_singles"
+__package__ = "p01_heuristics.s01_singles.pokechamp"
 
 from common import prompt_algos  # noqa: E402, F821  # type: ignore[import-untyped]
 
-from .core.factory import HeuristicFactory  # noqa: E402
+from ..core.factory import HeuristicFactory  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -68,7 +71,7 @@ POKECHAMP_AGENTS: list[str] = [
 LLM_AGENTS: set[str] = {"pokechamp", "pokellmon"}
 """Agents that require an LLM backend; all others are rule-based."""
 
-_WORKER_SCRIPT: str = str(_DIR / "_pokechamp_worker.py")
+_WORKER_SCRIPT: str = str(_DIR / "_worker.py")
 """Absolute path to the subprocess worker invoked for each mini-batch."""
 
 logger = logging.getLogger(__name__)
@@ -81,6 +84,8 @@ def restart_servers(n_ports: int) -> None:
     """Kill running Showdown servers and launch *n_ports* fresh instances.
 
     Calls ``p03_launch_custom_servers.sh`` and waits 15 s for startup.
+    Each Showdown battle spawns a ``room-battle.js`` Node.js worker that is
+    never freed; restarting every few matchups prevents RAM exhaustion.
     """
     print("\n♻️  RESTARTING SHOWDOWN SERVERS (Clearing Node.js RAM)...")
     try:
@@ -128,7 +133,7 @@ def run_matchup(
 
     The total number of games is split into mini-batches of *batch_size*.
     Each batch is run in a **separate Python process** via
-    ``_pokechamp_worker.py``, which writes its results to a temporary CSV
+    ``_worker.py``, which writes its results to a temporary CSV
     and then exits — guaranteeing OS-level memory reclamation.
 
     After all batches complete, the temporary CSVs are merged into a
@@ -217,8 +222,7 @@ def run_matchup(
 
         if result.returncode != 0:
             print(f"    ❌ Worker failed (exit {result.returncode})")
-            err_lines = (result.stderr or "").strip().splitlines()
-            for line in err_lines[-5:]:
+            for line in (result.stderr or "").strip().splitlines()[-5:]:
                 print(f"       {line}")
             continue
 
@@ -247,23 +251,15 @@ def run_matchup(
 
         n_total = len(merged)
         wins = int(merged["won"].sum())
-        metrics = {
+        return {
             "win_rate": (wins / n_total * 100) if n_total else 0.0,
             "avg_turns": float(merged["turns"].mean()) if n_total else 0.0,
             "avg_fainted_opp": float(merged["fainted_opp"].mean()) if "fainted_opp" in merged.columns else 0.0,
             "avg_hp_remaining": float(merged["total_hp_us"].mean()) if "total_hp_us" in merged.columns else 0.0,
             "total_games": n_total,
         }
-    else:
-        metrics = {
-            "win_rate": 0.0,
-            "avg_turns": 0.0,
-            "avg_fainted_opp": 0.0,
-            "avg_hp_remaining": 0.0,
-            "total_games": 0,
-        }
 
-    return metrics
+    return {"win_rate": 0.0, "avg_turns": 0.0, "avg_fainted_opp": 0.0, "avg_hp_remaining": 0.0, "total_games": 0}
 
 
 # ---------------------------------------------------------------------------
@@ -281,7 +277,7 @@ def main() -> None:
         type=int,
         nargs="+",
         default=[8000],
-        help="Server ports (e.g. 8000 8001) or a single number < 100 for auto-expansion.",
+        help="Server ports or a single number <100 for auto-expansion.",
     )
     parser.add_argument(
         "--pokechamp-agents",
@@ -289,7 +285,7 @@ def main() -> None:
         nargs="+",
         default=POKECHAMP_AGENTS,
         choices=POKECHAMP_AGENTS,
-        help="Which Pokechamp agents to benchmark (default: all 6).",
+        help="Pokechamp agents to benchmark (default: all 6).",
     )
     parser.add_argument(
         "--player_backend",
@@ -317,58 +313,42 @@ def main() -> None:
         "--restart-every",
         type=int,
         default=1,
-        help=(
-            "Restart the Showdown server every N matchups to flush Node.js memory "
-            "(default: 1). Set to 0 to never restart."
-        ),
+        help="Restart Showdown server every N matchups to flush Node.js memory (default: 1). Set to 0 to disable.",
     )
     parser.add_argument(
-        "--data-dir",
-        type=str,
-        default="data/benchmarks_pokechamp",
-        help="Directory for per-matchup battle CSVs.",
+        "--data-dir", type=str, default="data/benchmarks_pokechamp", help="Directory for per-matchup battle CSVs."
     )
     parser.add_argument(
         "--output-csv",
         type=str,
-        default="src/p01_heuristics/s01_singles/results/pokechamp_benchmark_summary.csv",
+        default="src/p01_heuristics/s01_singles/pokechamp/results/pokechamp_benchmark_summary.csv",
         help="Path for the summary CSV.",
     )
     parser.add_argument(
-        "--log-dir",
-        type=str,
-        default="./battle_log/pokechamp_benchmark",
-        help="Directory for pokechamp battle logs.",
+        "--log-dir", type=str, default="./battle_log/pokechamp_benchmark", help="Directory for pokechamp battle logs."
     )
     parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=50,
-        help="Games per subprocess batch (lower = less RAM, more overhead).",
+        "--batch-size", type=int, default=50, help="Games per subprocess batch (lower = less RAM, more overhead)."
     )
     args = parser.parse_args()
 
-    # --- Configuration ---
     data_dir = Path(args.data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_file = data_dir / "checkpoint_pokechamp.json"
 
     if len(args.ports) == 1 and args.ports[0] < 100:
-        n_ports = args.ports[0]
-        args.ports = [8000 + i for i in range(n_ports)]
+        args.ports = [8000 + i for i in range(args.ports[0])]
     ports_list = args.ports
 
     logging.basicConfig(level=logging.WARNING)
     logging.getLogger("p01_heuristics").setLevel(logging.INFO)
     logging.getLogger("poke_env").setLevel(logging.ERROR)
 
-    # --- Build the matchup matrix ---
     pokechamp_agents = args.pokechamp_agents
     heuristics = sorted(HeuristicFactory.available_versions())
     baselines = ["random", "max_power", "simple_heuristic"]
     opponents = heuristics + baselines
 
-    # --- Load / initialise checkpoint ---
     checkpoint_data: dict[str, dict] = {}
     if args.resume and checkpoint_file.exists():
         print(f"🔄 Resuming from checkpoint: {checkpoint_file}")
@@ -382,12 +362,9 @@ def main() -> None:
     print(f"📈 Total Matchups: {len(pokechamp_agents) * len(opponents)}")
     print(f"📡 Serving on {len(ports_list)} port(s): {ports_list}")
 
-    # Always start with a fresh Showdown server so any state from previous runs
-    # (accumulated room-battle.js workers) is cleared before the first matchup.
     if args.restart_every > 0:
         restart_servers(len(ports_list))
 
-    # --- Execute matchups ---
     matchup_count = 0
     for pc_agent in pokechamp_agents:
         for opp in opponents:
@@ -397,7 +374,6 @@ def main() -> None:
                 if match_key in checkpoint_data:
                     print(f"⏩ Skipping {match_key} (found in checkpoint)")
                     continue
-
                 csv_path = data_dir / f"pokechamp_{pc_agent}_vs_{opp}.csv"
                 if csv_path.exists():
                     try:
@@ -419,9 +395,7 @@ def main() -> None:
                     except Exception:
                         pass
 
-            # Restart the Showdown server every N matchups to prevent Node.js memory
-            # accumulation — each battle spawns a room-battle.js worker that is never
-            # freed, so after ~150–200 games the server stalls.
+            # Restart server every N matchups to flush accumulated Node.js workers.
             should_restart = args.restart_every > 0 and matchup_count > 0 and matchup_count % args.restart_every == 0
             if should_restart:
                 restart_servers(len(ports_list))
@@ -483,8 +457,7 @@ def main() -> None:
         row = [pc_agent]
         for opp in opponents:
             m = checkpoint_data.get(f"{pc_agent}_vs_{opp}", {})
-            wr = m.get("win_rate", 0.0)
-            row.append(f"{wr:.1f}%")
+            row.append(f"{m.get('win_rate', 0.0):.1f}%")
         table_rows.append(row)
 
     headers = ["Pokechamp \\ Opponent"] + opponents

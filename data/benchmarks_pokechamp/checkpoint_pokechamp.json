@@ -82,5 +82,110 @@
         "avg_fainted_opp": 1.99,
         "avg_hp_remaining": 0.01985,
         "total_games": 100
+    },
+    "max_power_vs_v4": {
+        "win_rate": 28.999999999999996,
+        "avg_turns": 20.67,
+        "avg_fainted_opp": 4.31,
+        "avg_hp_remaining": 0.32791000000000003,
+        "total_games": 100
+    },
+    "max_power_vs_v5": {
+        "win_rate": 40.0,
+        "avg_turns": 23.11,
+        "avg_fainted_opp": 4.75,
+        "avg_hp_remaining": 0.51497,
+        "total_games": 100
+    },
+    "max_power_vs_v6": {
+        "win_rate": 20.0,
+        "avg_turns": 18.45,
+        "avg_fainted_opp": 4.03,
+        "avg_hp_remaining": 0.20094999999999996,
+        "total_games": 100
+    },
+    "max_power_vs_random": {
+        "win_rate": 95.0,
+        "avg_turns": 27.82,
+        "avg_fainted_opp": 5.95,
+        "avg_hp_remaining": 2.73074,
+        "total_games": 100
+    },
+    "max_power_vs_max_power": {
+        "win_rate": 41.0,
+        "avg_turns": 23.1,
+        "avg_fainted_opp": 4.89,
+        "avg_hp_remaining": 0.71038,
+        "total_games": 100
+    },
+    "max_power_vs_simple_heuristic": {
+        "win_rate": 7.000000000000001,
+        "avg_turns": 17.24,
+        "avg_fainted_opp": 2.99,
+        "avg_hp_remaining": 0.09412,
+        "total_games": 100
+    },
+    "abyssal_vs_v1": {
+        "win_rate": 70.0,
+        "avg_turns": 17.99,
+        "avg_fainted_opp": 5.47,
+        "avg_hp_remaining": 1.18018,
+        "total_games": 100
+    },
+    "abyssal_vs_v2": {
+        "win_rate": 73.0,
+        "avg_turns": 17.0,
+        "avg_fainted_opp": 5.52,
+        "avg_hp_remaining": 1.34138,
+        "total_games": 100
+    },
+    "abyssal_vs_v3": {
+        "win_rate": 69.0,
+        "avg_turns": 16.74,
+        "avg_fainted_opp": 5.46,
+        "avg_hp_remaining": 1.1604500000000002,
+        "total_games": 100
+    },
+    "abyssal_vs_v4": {
+        "win_rate": 81.0,
+        "avg_turns": 19.17,
+        "avg_fainted_opp": 5.7,
+        "avg_hp_remaining": 1.53972,
+        "total_games": 100
+    },
+    "abyssal_vs_v5": {
+        "win_rate": 93.0,
+        "avg_turns": 18.57,
+        "avg_fainted_opp": 5.89,
+        "avg_hp_remaining": 1.9291200000000002,
+        "total_games": 100
+    },
+    "abyssal_vs_v6": {
+        "win_rate": 75.0,
+        "avg_turns": 17.61,
+        "avg_fainted_opp": 5.51,
+        "avg_hp_remaining": 1.54678,
+        "total_games": 100
+    },
+    "abyssal_vs_random": {
+        "win_rate": 100.0,
+        "avg_turns": 21.52,
+        "avg_fainted_opp": 6.0,
+        "avg_hp_remaining": 3.5936900000000005,
+        "total_games": 100
+    },
+    "abyssal_vs_max_power": {
+        "win_rate": 91.0,
+        "avg_turns": 19.64,
+        "avg_fainted_opp": 5.85,
+        "avg_hp_remaining": 2.09251,
+        "total_games": 100
+    },
+    "abyssal_vs_simple_heuristic": {
+        "win_rate": 45.0,
+        "avg_turns": 18.5,
+        "avg_fainted_opp": 4.56,
+        "avg_hp_remaining": 0.7955500000000001,
+        "total_games": 100
     }
 }

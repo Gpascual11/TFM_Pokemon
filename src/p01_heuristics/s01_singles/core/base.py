@@ -8,7 +8,6 @@ only need to implement ``_select_action``.
 from __future__ import annotations
 
 import abc
-from typing import Dict, Set
 
 from poke_env.player import Player
 
@@ -23,7 +22,7 @@ class BaseHeuristic1v1(Player, abc.ABC):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._used_moves_by_battle: Dict[str, Set[str]] = {}
+        self._used_moves_by_battle: dict[str, set[str]] = {}
 
     def reset_battles(self) -> None:
         """Clear both the poke-env battle history and our custom move tracking."""
@@ -71,6 +70,6 @@ class BaseHeuristic1v1(Player, abc.ABC):
         """Register *move_id* as used during *battle_tag*."""
         self._used_moves_by_battle.setdefault(battle_tag, set()).add(move_id)
 
-    def get_used_moves(self, battle_tag: str) -> Set[str]:
+    def get_used_moves(self, battle_tag: str) -> set[str]:
         """Return the set of move ids used in *battle_tag*."""
         return self._used_moves_by_battle.get(battle_tag, set())

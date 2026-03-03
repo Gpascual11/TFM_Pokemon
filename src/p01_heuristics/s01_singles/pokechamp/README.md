@@ -31,8 +31,8 @@ TFM/
 ├── src/
 │   └── p01_heuristics/
 │       └── s01_singles/
-│           ├── pokechamp_benchmark.py
-│           ├── _pokechamp_worker.py
+│           ├── benchmark.py
+│           ├── _worker.py
 │           └── POKECHAMP_BENCHMARK.md
 └── pyproject.toml
 ```
@@ -41,13 +41,13 @@ TFM/
 
 ## Overview
 
-The **`pokechamp_benchmark.py`** script runs a 1-vs-1 tournament between **Pokechamp AI agents** and **internal heuristic opponents** (v1–v6 plus `poke_env` baselines). It produces per-matchup CSVs, a master summary CSV, and a human-readable win-rate matrix.
+The **`benchmark.py`** script runs a 1-vs-1 tournament between **Pokechamp AI agents** and **internal heuristic opponents** (v1–v6 plus `poke_env` baselines). It produces per-matchup CSVs, a master summary CSV, and a human-readable win-rate matrix.
 
 ### Architecture
 
 ```
-pokechamp_benchmark.py (orchestrator)
-  └── spawns → _pokechamp_worker.py (subprocess per batch)
+benchmark.py (orchestrator)
+  └── spawns → _worker.py (subprocess per batch)
                  ├── Creates players
                  ├── Runs N battles
                  ├── Writes temp CSV
@@ -136,7 +136,7 @@ server_config = ServerConfiguration(f"localhost:{port}", None)
 
 **First attempt (failed):** Recreate players every 50 games within the same process. Failed because `POKE_LOOP` never releases references.
 
-**Final solution:** **Subprocess isolation** — each mini-batch runs in a completely separate Python process (`_pokechamp_worker.py`). When the worker process exits, the OS reclaims *everything*. The orchestrator merges partial CSVs afterwards.
+**Final solution:** **Subprocess isolation** — each mini-batch runs in a completely separate Python process (`_worker.py`). When the worker process exits, the OS reclaims *everything*. The orchestrator merges partial CSVs afterwards.
 
 ```
 Batch 1: spawn worker → 50 battles → write CSV → exit (RAM freed)
@@ -151,8 +151,8 @@ Merge all CSVs → final result
 
 | File | Purpose |
 |------|---------|
-| [`pokechamp_benchmark.py`](pokechamp_benchmark.py) | Main orchestrator — spawns workers, merges CSVs, produces summary |
-| [`_pokechamp_worker.py`](_pokechamp_worker.py) | Subprocess worker — runs N battles, writes CSV, exits |
+| [`benchmark.py`](benchmark.py) | Main orchestrator — spawns workers, merges CSVs, produces summary |
+| [`_worker.py`](_worker.py) | Subprocess worker — runs N battles, writes CSV, exits |
 | [`pyproject.toml`](../../../pyproject.toml) | Added `torch`, `transformers` to `pokechamp` dep group |
 #### 8. Showdown server hangs after ~150–200 games
 
@@ -205,7 +205,7 @@ if should_restart:
 #### 100 games, all rule-based agents (recommended first run)
 
 ```sh
-uv run python src/p01_heuristics/s01_singles/pokechamp_benchmark.py 100 \
+uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 100 \
   -p 8000 \
   --pokechamp-agents random max_power abyssal one_step
 ```
@@ -213,7 +213,7 @@ uv run python src/p01_heuristics/s01_singles/pokechamp_benchmark.py 100 \
 #### 1000 games (RAM-safe with subprocess batching)
 
 ```sh
-uv run python src/p01_heuristics/s01_singles/pokechamp_benchmark.py 1000 \
+uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 1000 \
   -p 8000 \
   --pokechamp-agents random max_power abyssal one_step \
   --batch-size 50 --restart-every 3
@@ -222,7 +222,7 @@ uv run python src/p01_heuristics/s01_singles/pokechamp_benchmark.py 1000 \
 #### Resume an interrupted run
 
 ```sh
-uv run python src/p01_heuristics/s01_singles/pokechamp_benchmark.py 1000 \
+uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 1000 \
   -p 8000 --resume
 ```
 
@@ -230,7 +230,7 @@ uv run python src/p01_heuristics/s01_singles/pokechamp_benchmark.py 1000 \
 
 ```sh
 rm -rf data/benchmarks_pokechamp/
-uv run python src/p01_heuristics/s01_singles/pokechamp_benchmark.py 100 \
+uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 100 \
   -p 8000 \
   --pokechamp-agents random max_power abyssal one_step
 ```

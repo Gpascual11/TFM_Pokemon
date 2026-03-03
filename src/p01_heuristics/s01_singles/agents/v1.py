@@ -8,7 +8,6 @@ and serves as the performance baseline.
 from __future__ import annotations
 
 from ..core.base import BaseHeuristic1v1
-from ..core.common import get_status_name
 
 
 class HeuristicV1(BaseHeuristic1v1):
