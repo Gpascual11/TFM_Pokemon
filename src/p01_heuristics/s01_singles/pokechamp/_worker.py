@@ -40,6 +40,7 @@ from poke_env.player.baselines import AbyssalPlayer, MaxBasePowerPlayer, OneStep
 from poke_env.player.team_util import get_llm_player  # noqa: E402
 
 from ..core.factory import HeuristicFactory  # noqa: E402
+from .safe_one_step_player import SafeOneStepPlayer  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Username abbreviations (Showdown enforces an 18-char limit)
@@ -112,7 +113,10 @@ def _create_player(
     if agent_name == "abyssal":
         return AbyssalPlayer(account_configuration=acct, **base_kw)
     if agent_name == "one_step":
-        return OneStepPlayer(account_configuration=acct, **base_kw)
+        # Use SafeOneStepPlayer to avoid hang when gen9 pokedex/moves JSON missing.
+        # OneStepPlayer uses LocalSim + pokechamp.prompts (get_number_turns_faint) which
+        # can block or spin on empty cache; SafeOneStepPlayer uses only poke_env scoring.
+        return SafeOneStepPlayer(account_configuration=acct, **base_kw)
 
     ns = argparse.Namespace(temperature=temperature, log_dir=log_dir)
     return get_llm_player(
