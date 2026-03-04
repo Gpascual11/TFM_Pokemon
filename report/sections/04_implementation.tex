@@ -1,0 +1,38 @@
+\chapter{Implementació d'Agents: De les Fases Heurístiques a l'Aprenentatge Profund}
+\label{chap:implementacio}
+
+D'acord amb la metodologia evolutiva exposada al capítol anterior, aquest apartat detalla l'arquitectura de software construïda per donar vida als agents racionals dins del simulador \textit{Pokémon Showdown}. Es divideix tècnicament entre la infraestructura d'orquestració creada i l'evolució de les heurístiques del format bàsic (\textit{Singles}) cap a l'alta complexitat (\textit{Dobles VGC}). L'apartat final es reserva a la futura arquitectura d'aprenentatge profund.
+
+\section{Orquestració Operacional i Entorn Parallelitzat}
+
+El motor d'aquest projecte recau en un mòdul orquestrador propi, situat a \texttt{src/p03\_scripts}, encarregat de trencar la limitació original d'un sol fil de connexió pròpia de \textit{poke-env}. Fent ús intensiu de l'asincronia i sub-processos de Python (\texttt{asyncio}), els scripts desenvolupats són capaços de:
+\begin{enumerate}
+    \item \textbf{Llançament massiu de Showdown}: Aixecar múltiples ports actius sota demandar per instanciar arenes de combat separades geogràficament i lògicament.
+    \item \textbf{Gestió de Memòria (GC)}: S'han establert regles fixes d'alliberament de memòria (neteja manual al Garbage Collector de Python) a l'acabar petits "batches" de partides, evitant excepcions de consum i colls d'ampolla dels servidors node subjacents.
+    \item \textbf{Recuperació per Checkpoints}: Es disposen d'estructures JSON al directori \texttt{data/} que mapen quants combats han efectuat l'agent \textit{A} contra l'agent \textit{B}. Això fa completament robust el cicle de benchmarking a aturades elèctriques o interrupcions en màquines virtuals.
+\end{enumerate}
+
+\section{Fase 1.1: Desenvolupament d'Heurístiques per Singles (1vs1)}
+
+Abans de submergir models al pur format \textit{Dobles VGC}, el projecte exigeix garantir l'abstracció matemàtica dins d'un control màxim i un espai d'accions reduït. El format \textbf{Singles} (1vs1) es converteix en l'arena de desenvolupament ideal. Reduint l'espai i problemàtica del \textit{Spread Damage}, on l'agent només interacciona contra una diana visible prenent sobre un màxim limitant de 9 decisions asíncrones per torn dictades lliurement entre Atacar (4) o Substituir el personatge (5) del propi camp.
+
+Mitjançant sis cicles evolutius de codi, s'han consolidat directrius pures allotjades sota \texttt{src/p01\_heuristics/s01\_singles/agents/}:
+\begin{itemize}
+    \item \textbf{Heurística v1 (Naïve Aggressive)}: Un esbós de prova que prioritza purament els moviments danyosos respecte l'estat lliurement amagat, buscant un petit desmarcatge cognitiu vers els oponents totalment aleatoris del format random.
+    \item \textbf{Heurístiques v2 / v3 (Incorporació d'STAB i Taula Tipus)}: El codi fa un salt numèric i llegeix dades del \textit{wrapper}. Multiplica el càlcul pel factor genètic relatiu $x1.5$ de tipus propi i pre-calcula les immunitats i febleses sobre l'enemic abans d'ordenar impactes. Resideix com a tall quantitatiu principal per ratificar efectivitat teòrica de l'operatiu de Poke-env intern en operacions d'escala.
+    \item \textbf{Heurística v4 / v5 (Tàctica de Supressió i Mitigació)}: El model es divideix en components i evalua \textit{switches}. Ara l'arquitectura ja no ataca constantment sinó que avalua l'estat tàcit: on, si es troba en clara inferioritat matricial d'atributs d'acord amb el càlcul d'impacte previst vers el \textit{Matchup} frontal, ordena retrocedir al de camp intercanviant per rebre menys dany i col·lapsant dinàmiques de model purament avar \textit{Max Power}.
+    \item \textbf{Heurística v6 (Master Heuristic)}: Integra totes les regles i condicionals anteriors al voltant d'un eix comú. Es converteix de lluny d'arquitectura base formal a un vertader agent competent per al seu camp format: preveu debuff, preveu velocitat calculada a priori i determina exactament què i sobre quins lligams estratègics s'aferma la partida general. Aquest model serveix el repte d'una validació clara pel RL tàctic final abstracte de decisió sobre oponents experts en un entorn pur.
+\end{itemize}
+
+\section{Fase 1.2: L'Ascens al Competitiu Real (Dobles VGC)}
+
+Tot repte d'IA queda coix comparativament a la comunitat global si no salta al lligam establert final: \textbf{Dobles 2 vs 2}. La base formal dissenyada per a les versions Singles va quedar automàticament invàlida perquè la classe de *Poke-env* no llegeix atacs lineals i obliga a retornar tuples dobles i l'algoritme perd el focus absolut d'optimització unària tancada. Dins de \texttt{src/p01\_heuristics/s02\_doubles/} es reestructura radicalment al pur formal funcional \textit{Score-then-Combine} (Avaluar i Lligar).
+
+\begin{itemize}
+    \item \textbf{Escala de Candidats (V1 i V2)}: L'algoritme fragmentada el model V6 antic, on la mecànica numèrica esdevé asíncrona assignant puntuacions teòriques pures de dany a tots moviments generats lliurament i després ho uneix. És on si els nostres agents formals dictaminen decisions enganyoses impossibles el lligam ho corregeix (ex. vetar ordres enganyoses d'intentar que ambdós atacs asimètrics canviïn del *slot* generant excepcions en enviar l'ordre al JSON principal asíncron i provocant tancament del servidor per cridades al dany a unitats diferents al Showdown). 
+    \item \textbf{Lligams de Propagació Espacial (Spread i Focus V3)}: Amb el sistema tàctic previ s'imposa finalment incloure al càrrec lògic el dany d'àrea pel multiplicador oficial competitiu (\textit{x0.75}) per calcular la utilitat o inclús la mitigació tàctica defensiva preveient un bloc abstracte de *Protect* que un aliat executa al costat de si mateix mitigant absolutament i atracant moviments asimptòtics nuls als enemics per sobre control oponent sobre els danyats al centre del camp paral·lel asimètric a resoldre finalment abans de llançar intel·ligència general total asíncrona sobre RL.
+\end{itemize}
+
+\section{Fase 2: Implementació Neuronal per Aprenentatge}
+
+\textit{[Espai d'Avaluació reservat per exposar properes setmanes els codis subjacents de les xarxes DQN / PPO on la integració respectiva a xarxes neuronals sota Pytorch prendran com a límit control els algoritmes iteratius validats previement, relegant l'escenari manual establert prèviament a una deducció autònoma tàctica per decisió computacional independent formal].}

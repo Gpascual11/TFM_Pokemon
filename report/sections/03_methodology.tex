@@ -1,0 +1,57 @@
+\chapter{Metodologia: Entorn, Arquitectura i Baselines}
+\label{chap:metodologia}
+
+Per poder dissenyar, analitzar i finalment entrenar intel·ligències artificials en el Meta-game presentat en l'anterior capítol, és requerit estructurar prèviament les bases experimentals i procedimentals de l'arquitectura del projecte. Aquest capítol detalla la construcció de l'entorn de simulació propi i l'establiment dels models numèrics de referència fonamentals.
+
+\section{Entorn i Simulació: Infraestructura Escalable}
+
+Un cop presentats conceptualment \textit{Pokémon Showdown} i l'API de \textit{Poke-env} al Capítol~\ref{chap:marc_teoric}, el veritable repte metodològic recau en com orquestrar-los per suportar càrregues de validació científica. La naturalesa per defecte d'executar avaluacions amb un únic servidor central pateix greus limitacions a causa del col·lapse temporal quan es requereix un volum de batalles estadísticament rellevant.
+
+Per resoldre aquest coll d'ampolla, en aquest projecte s'ha elaborat una infraestructura pròpia centralitzada (situada a \texttt{src/p03\_scripts}). Aquest conjunt d'eines està focalitzat en permetre aixecar dinàmicament múltiples instàncies paral·leles del servidor en diferents ports consecutius (ex. 8000 endavant) tot deshabilitant protocols de seguretat log-in locals innecessaris. D'aquesta manera, el nostre codi orquestrador Python és capaç de llançar tasques asíncrones massives i distribuir els agents entre diversos ports de Showdown. 
+
+Aquest component metodològic resulta l'eix clau del treball: permet efectuar una injecció massiva de connexions i extreure altes proporcions d'estudis de casos, aconseguint executar centenars de jocs simultàniament. Garanteix una escalabilitat gairebé il·limitada per als benchmarks heurístics i agilitza dràsticament els futurs processos de recol·lecció d'experiència requerits per qualsevol algoritme de *Reinforcement Learning*.
+
+\section{Fases de Desenvolupament i Models de Referència}
+
+El desplegament d'agències asíncrones sobre \textit{Showdown} s'ha estructurat metodològicament en dues grans fases consecutives per garantir una monitorització i isolació de variables controlada. 
+
+\subsection{Fase 1: Models de Regles Expertes (Heurístiques)}
+Abans de submergir el codi en hiperparàmetres de *Machine Learning*, la prioritat metodològica ha estat dissenyar models \textbf{heurístics propis} basats en regles de decisió expertes (arbres "If-Else" avançats). Aquest acostament primari ha complert un triple propòsit fonamental:
+\begin{itemize}
+    \item \textbf{Validació de la Infraestructura}: Funcionar com a prova de concepte de l'entorn (PoC) per garantir que el nostre orquestrador de servidors asíncrons llegia i enviava decisions sense caigudes de memòria (Memory Leaks de NodeJS) processant milers d'estats per minut.
+    \item \textbf{Depuració de la Lògica Numèrica}: Comprovar físicament que l'accés a les variables d'estat de \textit{poke-env} (HP, climàtologia, efectes secundaris actius) convergia en comportaments teòrics òptims dins de la pista per part del bot de forma pre-programada.
+    \item \textbf{Desenvolupar el Límit de Control Propi (Baseline Suprem)}: Mitjançant l'evolució iterativa d'aquestes heurístiques de codi dur, el projecte ha consolidat un "Límit de Control Expert". En lloc de mesurar futurs agents neuronals contra oponents cecs, l'objectiu últim serà llançar-los contra aquesta heurística madura final, forçant la xarxa neuronal a superar raonament matemàtic tancat creat per disseny pur.
+\end{itemize}
+
+\subsection{Fase 2: Models d'Aprenentatge Profund (Cares al Futur)}
+Una vegada validada l'arquitectura i disposant del *Baseline Expert* propiament dit en el codi amfitrió, la segona gran fase de la recerca (seccions posteriors) serà la substitució d'aquesta codificació dura per arquitectures d'aprenentatge. L'eix científic del TFM assoleix el seu màxim pragmatisme avaluant si algorismes com les Xarxes Q Profundes (DQN) o l'Actor-Crític (PPO) poden descobrir per si sols, i de forma superior, les normes causals que la Fase 1 programava explícitament (Taula de Tipus, STAB, Predicció de canvis).
+
+\subsection{La línia de control nativa (\textit{Poke-env Baselines})}
+
+Amb l'entorn escalable definit i prèviament a l'escriptura de qualsevol heurística complexa o xarxa neuronal, cal fixar globalment empírica de base sobre l'enginyeria robòtica del propi proveïdor. Dins d'un entorn basat en reforç i atzar, s'invalida automàticament qualsevol algoritme personal que rebaixi el percentatge de victòria blindat als \textit{baselines} natius que acompanyen la mateixa llibreria d'inici~\cite{poke_env}:
+
+Per suplir aquesta referència en l'estudi s'han adoptat tres mòduls intrínsecs ja subministrats nativament per \textit{poke-env} que defineixen la línia de control teòrica:
+
+\begin{enumerate}
+    \item \textbf{\textit{RandomPlayer}:} Un estadi base ingenu total que efectua moviments a l'atzar un cop ha estat interrogat de la llista genèrica d'accions legals permeses pel servidor local. Actua exclusivament com una font de distribució gaussiana teòrica del 50\% si jugués exclusivament partides simètriques, assenyalant explícitament els valors màxims de variància atorgats per les probabilitats incrustades de la mateixa mecànica (\textit{Damage Rolls, Critical Hits}, etc.). És l'exponent màxim del comportament estocàstic sense intel·ligència.
+    \item \textbf{\textit{MaxBasePowerPlayer}:} Un prototip mínimament cobdiciós (\textit{Greedy}). Valora objectivament les opcions de fer el màxim dany disponible per acció al seleccionar, ignorant les variacions globals defensives com el coeficient (\textit{STAB}) o la resistència teòrica davant atacs oponents. Resulta com el límit pràctic inferior d'estratègia funcional: la mínima barrera a superar de la IA si es busca demostrar que aquesta percep una mínima visió de causalitats.
+    \item \textbf{\textit{SimpleHeuristicPlayer}:} Aquest model actua com el rival més sofisticat ofert de sèrie per la llibreria o, en termes pràctics, com a "final boss" d'aquesta línia base. Va molt més enllà dels anteriors incorporant heurístiques internes preprogramades: avalua debilitats de tipus, prioritza moviments de canvi (\textit{switch}) quan el seu Pokémon actiu es troba en gran perill davant l'oponent, i maximitza el dany utilitzant criteris raonables de matchups. Representa la línia de maduresa; superar de manera consistent aquest agent certifica que les noves funcions d'avaluació pròpies o models neuronals han assolit una intel·ligència genuïnament superior.
+\end{enumerate}
+
+El contrast sistemàtic contra aquests tres \textit{baselines} constitueix el filtre fonamental de la metodologia establerta, a través de la qual qualsevol avanç real vinculat a les nostres heurístiques serà estrictament confrontat en cada iteració.
+
+\section{Espai d'Estats (State Space) i Accions (Action Space)}
+
+Tot problema d'intel·ligència artificial ha d'estar encapsulat matricialment per poder ser processat. Pel cas dels estudis emmarcats en el combat, definim la connexió formal de Showdown prenent l'espai i el quadre d'accions:
+
+\subsection{Espai d'Estats (S)}
+El conjunt $S$ agrupa l'observació total d'informació de què disposa el bot en qualsevol torn determinat (encara descrivint un entorn parcialment observable, POMDP). Mitjançant un desglossament informatiu de \textit{poke-env}, l'agent avalua al complet la vida percentual i absoluta restant de tots els Pokémon de camp, tots els modificadors estadístics existents (per exemple, si un aliat rep $\uparrow2$ en Atac Especial), les condicions d'estat (Paràlisi, Cremada), les característiques d'avantatge climàtic sobre la pista de roba, així com l'estat històric infent de l'equip del oponent ja conegut. D'acord amb la profunditat de codificació i memòria de l'agent (en apsectes d'informació oculta sobre \textit{items} deduïts empíricament), el vector global $\mathbf{O}_t \in \mathbb{R}^d$ servirà directament com a component essencial d'entrada a les xarxes d'avaluació heurístiques.
+
+\subsection{Espai d'Accions (A)}
+L'espai d'accions $A$ conté exclusivament els moviments i substitucions (\textit{switches}) "legals" i dispostes al camp. En un combat de Singles 1vs1 ordinari, això ascendeix fins a un màxim abstracte de 9 accions viables formals (4 atacs diferents pel personatge operatiu, o la retirada forçada si escull substituir per cap de forma els 5 membres inactius restants al seu equip). No obstant això, en l'univers tractat complet de *Dobles VGC*, tenint a la superfície dos personatges propis funcionant davant dos adversaris en diagonal creuada, el nombre teòric es multiplica exponencialment, per incloure atacs a un \textit{target} específic dels 3 en pista, propiciant desenes d'opcions en una matriu $A$ creixent per iteració de paral·lelisme seqüencial directe.
+
+\section{Mètriques d'Avaluació Mètrica}
+
+Per dotar de gran suport rigorós a l'estudi algorísmic en una arquitectura tan subjecta a variabilitats matemàtiques de l'RNG aleatori o els punts decisius dels cops crítics aleatoris, qualsevol valor dictaminat basat puntual en jocs independents resulta irremeiablement de resultats analítics estèrils. L'avaluació en mètrica no confia en poques confrontacions.
+
+La mètrica nuclear primària implementada i validada des del codi d'orquestració dictamina el \textbf{Percentatge de Victòries Real (\textit{Win-Rate} global)}, que només pren pes estadístic rellevant operant sota execucions de validació amb un volum molt superior (ex. cicles tancats de $\geq 100$ batalles seguides simultànies asíncrones per a cada confrontament directe Agent vs Agent). Un model en qüestió rellisca com aleatori si la cota inferior estocàstica assenta un 50\% freqüent sobre conjunts clàssics o espill (\textit{Mirror Match}); aconseguir superar estadi d'un $+60\%$ constant en cicles de grans iteracions demostra significativament intel·lectualitat mecànica prenent avantatge, i un domini clar a prop al $>85\%$ descriu habitualment erradicació teòrica sobre la presa de lògiques de decisions completament dominades sobre un agent poc intel·ligent a confrontar.
