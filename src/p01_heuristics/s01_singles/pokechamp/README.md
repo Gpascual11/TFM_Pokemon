@@ -128,9 +128,17 @@ server_config = ServerConfiguration(f"localhost:{port}", None)
 
 ---
 
+#### 7. `OneStepPlayer` hang (no traceback, 100% CPU)
+
+**Cause:** `OneStepPlayer` uses `LocalSim` and `pokechamp.prompts.get_number_turns_faint` / `get_status_num_turns_fnt`, which rely on cached data (e.g. `gen9pokedex.json`, `gen9randombattle` moves set). When those files are missing, the cache returns empty dicts; the sim/prompt path can then block or spin (e.g. in damage/stat lookups or opponent-move enumeration) with no Python exception.
+
+**Solution:** The benchmark uses **`SafeOneStepPlayer`** instead of pokechamp's `OneStepPlayer` for the `one_step` agent. `SafeOneStepPlayer` (see `safe_one_step_player.py`) does a 1-step lookahead using only `poke_env`: it scores moves by `base_power * STAB * type effectiveness * accuracy` and picks the best damaging move, with no LocalSim or prompts. No extra ML/data dependencies.
+
+---
+
 ### Phase 2: Fixing RAM crashes at scale
 
-#### 7. RAM explosion after ~50 battles (in-process approach)
+#### 8. RAM explosion after ~50 battles (in-process approach)
 
 **Cause:** Pokechamp's `POKE_LOOP` background thread retains references to player objects even after `del` + `gc.collect()`. With 1000+ games in a single process, battle state accumulates unboundedly.
 
@@ -154,7 +162,7 @@ Merge all CSVs → final result
 | [`benchmark.py`](benchmark.py) | Main orchestrator — spawns workers, merges CSVs, produces summary |
 | [`_worker.py`](_worker.py) | Subprocess worker — runs N battles, writes CSV, exits |
 | [`pyproject.toml`](../../../pyproject.toml) | Added `torch`, `transformers` to `pokechamp` dep group |
-#### 8. Showdown server hangs after ~150–200 games
+#### 9. Showdown server hangs after ~150–200 games
 
 **Cause:** Each Pokémon Showdown battle spawns a `room-battle.js` Node.js worker process that **never gets freed**. After 3 matchups of 50 games each (~150 battles), the server's Node.js heap fills up. CPU drops to near zero, RAM keeps climbing, and all new battle requests stall.
 
@@ -174,7 +182,7 @@ if should_restart:
 
 ---
 
-#### 9. `HeuristicV4` — `GenData.from_gen(9)` dead code (bonus fix)
+#### 10. `HeuristicV4` — `GenData.from_gen(9)` dead code (bonus fix)
 
 **Cause:** `v4.__init__` called `GenData.from_gen(9)` and stored the result in `self.dm`, but **`self.dm` was never referenced anywhere** in the class — pure dead code from an earlier draft. Loading it consumed ~7 GB of RAM on every v4 player instantiation.
 
