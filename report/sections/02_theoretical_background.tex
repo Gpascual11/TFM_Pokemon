@@ -1,0 +1,189 @@
+\chapter{Marc Teòric i Contextualització}
+\label{chap:marc_teoric}
+
+Aquest capítol estableix els fonaments teòrics i algorísmics necessaris per comprendre el desenvolupament d'un agent d'intel·ligència artificial aplicat a entorns complexos. S'hi introdueixen els conceptes clau sobre teoria de jocs, s'analitza l'entorn de Pokémon VGC com a cas d'estudi i es defineixen les metodologies modernes d'aprenentatge per reforç.
+
+\section{Contextualització de la IA en jocs}
+
+\subsection{L'Evolució a través de la Informació Perfecta}
+
+Històricament, els jocs han estat utilitzats per la comunitat científica com a banc de proves idoni per avaluar les capacitats de la Intel·ligència Artificial (IA). Clàssics com els Escacs o el Go s'emmarquen dins dels anomenats jocs d'\textbf{informació perfecta}. En aquests entorns, tots els jugadors coneixen completament i en tot moment l'estat exacte del joc; no hi ha elements amagats ni incertesa fora de l'estratègia del rival. La resolució d'aquests jocs s'ha assolit mitjançant algorismes de cerca avançats, com ara \textit{Minimax} amb esporgada alfa-beta, pilar fonamental de màquines com Deep Blue (desenvolupada per IBM) en la seva cèlebre victòria als escacs~\cite{CAMPBELL200257}; o la Cerca d'Arbre de Monte Carlo (MCTS), component crucial darrere de l'èxit històric del programa AlphaGo de Google DeepMind en el joc del Go~\cite{alphago}.
+
+\subsection{Processos de Decisió de Màrkov i Entorns Estocàstics}
+
+Malgrat aquests èxits memorables, el món real (i molts entorns virtuals moderns) es caracteritza freqüentment per la \textbf{informació imperfecta} i l'\textbf{estocasticitat}. A diferència dels escacs, on tota la informació està sobre el tauler en cada torn, els jocs estocàstics d'informació imperfecta inclouen incertesa inherent i variables ocultes (com les cartes de l'oponent a jocs d'atzar o la precisió d'un atac a Pokémon).
+
+Des d'una perspectiva matemàtica, la seqüència de decisions de l'agent en aquests escenaris aleatoris es formalitza d'inici utilitzant un \textbf{Procès de Decisió de Màrkov (MDP)}. Un MDP estableix que qualsevol acció i els seus efectes només depenen de l'estat directament actual i no de tota la història prèvia. 
+Un exemple clar i intuïtiu dintre de Pokémon seria trobar-se davant el rival: si l'estat $S$ és tenir un \textit{Charizard} amb 50\% de vida enfrontant-se a un \textit{Venusaur}, l'acció escollida $A$ podria ser utilitzar l'atac \textit{Llançaflames}. L'execució d'aquest atac genera conseqüències incertes a través de la funció de transició de probabilitat. L'atac pot tenir una probabilitat d'errar, encertar críticament o causar impacte normal, i aquesta simple transició produeix en retrospectiva una recompensa immediata (dany realitzat). L'agent que decideix està completament sotmès a aquestes probabilitats modelades.
+
+Això no obstant, si augmentem la complexitat i la IA perd informació, entrem purament als Processos de Decisió de Màrkov Parcialment Observables o \textbf{POMDP} (\textit{Partially Observable Markov Decision Processes})~\cite{pomdp}. Un POMDP estén el model MDP perquè l'agent només disposa d'observacions limitades de l'estat de l'entorn. Es defineix formalment com una tupla $(S, A, T, R, \Omega, O, \gamma)$, on:
+
+\begin{itemize}
+    \item $S$: Conjunt d'estats del joc.
+    \item $A$: Conjunt d'accions possibles.
+    \item $T$: $P(s' | s, a)$, la funció de transició de probabilitat.
+    \item $R$: $R(s, a)$, la funció de recompensa esperada.
+    \item $\Omega$: Conjunt de possibles observacions que rep l'agent.
+    \item $O$: $P(o | s', a)$, la funció de probabilitat d'observació condicionada a l'estat i l'acció.
+    \item $\gamma$: El factor de descompte ($ \gamma \in [0, 1) $).
+\end{itemize}
+
+Sota el paradigma de POMDP a l'espectre de Pokémon, l'agent \textbf{ja no rep l'estat $S$ real sencer}. Tot i veure el seu \textit{Venusaur}, ell no podrà observar els valors ocults amagats a l'estat (\textit{Effort Values}, objectes equipats de l'aliat ni tan sols els quatre atacs del rival fins que ocorren). En utilitzar \textit{Llançaflames}, únicament s'obté una observació de l'entorn $\Omega$ com a resposta: veure quant ha baixat la barra de vida de l'oponent. L'agent utilitza la reducció residual d'aquesta barra o l'ordre en el qual l'oponent l'ha atacat (comprovació empírica de Velocitat) per mantenir un \textit{belief state} — una distribució de probabilitat que ell creu i actualitza on es dedueix si ha lluitat contra un \textit{Venusaur} defensiu, ofensiu, lent o veloç. Això força als sistemes d'IA a incloure algorismes de memòria inferencial profunda per resoldre l'estat $S$.
+
+\section{El Subjecte d'Estudi: Construint l'Entorn Pokémon}
+
+Abans d'endinsar-nos en el format competitiu d'alta escala (\textit{VGC}) o el comportament algorísmic, és essencial i didàctic comprendre què és Pokémon respecte la seva base matemàtica i estructural. \textit{Pokémon}, originat com a contracció del terme japonès \textit{Poketto Monsutā} (\textit{Pocket Monsters} o Monstres de Butxaca), no només és la franquícia d'entreteniment més rendible del món, sinó que recentment ha celebrat el seu 30è aniversari (Figura~\ref{fig:pokemon30}). Sota la seva aparença accessible de videojoc on els jugadors capturen i entrenen criatures per fer-les combatre entre si de forma asíncrona per torns, s'amaga un motor d'una complexitat matemàtica extraordinària.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.4\linewidth]{images/pokemon30.png}
+    \caption{Logotip commemoratiu del 30è aniversari de la creació de la franquícia Pokémon.}
+    \label{fig:pokemon30}
+\end{figure}
+
+Cada Pokémon es caracteritza fonamentalment per tres elements primordials de combinació: el seu "tipus" (Aigua, Foc, Planta, etc.) que determina les seves debilitats i resistències mecàniques; un set tancat i decisiu de quatre moviments o atacs com a màxim per criatura; i un perfil d'estadístiques intrínseques (\textit{Stats}) que quantifica el seu rendiment de combat en nombres absoluts.
+
+\subsection{Estadístiques i Fórmules (Stats)}
+
+Com s'ha introduït prèviament, les estadístiques defineixen el paper absolut de cada criatura, de la mateixa manera que les peces d'escacs tenen funcions determinades, però suportades per polinomis ocults en lloc de posicions fixes. Concretament parlem de sis valors numèrics constants: Punts de Salut (HP), Atac (Físic), Defensa (Física), Atac Especial, Defensa Especial, i Velocitat. Algunes criatures estan dissenyades exclusivament per aguantar molt dany i ser escuts frontals massius (ressaltant defenses sobre la resta), i d'altres dissenys apunten només a colpejar de forma letal i caure ràpidament.
+
+De manera gràfica, a la Figura~\ref{fig:pikachu_stats} s'observa la distribució paramètrica real abstracta d'un simple ratolí elèctric, en Pikachu. En aquest diagrama cartesià s'evidencia de ple quines són les seves rellevàncies mecàniques establertes de joc (destacada Velocitat despunta en pic junt l'Atac Especial) mentre exposa al seu centre debilitats severes generalitzades (poca salut de defensa i nul·la resistència).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.7\linewidth]{images/l8fk6a303p7c1.jpeg}
+    \caption{Distribució paramètrica visual de les estadístiques base naturals d'un Pikachu analitzat: valors absoluts respectius en Punts de Salut (HP), Atac, Defensa, Atac Especial, Defensa Especial i Velocitat.}
+    \label{fig:pikachu_stats}
+\end{figure}
+
+Per poder connectar eficaçment el substrat cognitiu predictiu d'un agent a les possibilitats de cada unitat, cal entendre purament com la base estàtica és alterable en variables. Les 6 estadístiques constants presentats a la imatge no són innates un cop el combat arranca, sinó al contrari, es consideren completament mal·leables resultants d'operacions variables que configuren completament quin perfil assumirà abans d'iniciar el combat el tàctic al crear-lo, permetent engany respecte el coneixement base o les expectatives prèvies generals del competidor respecte el diagrama d'aranya mostrat. Els tres modificadors són:
+
+\begin{enumerate}
+    \item \textbf{Individual Values (IVs):} Variables ocultes i genètiques equivalents a l'espectre de l'ADN que adquireix la criatura des de la captura a l'interior i no canviables. Sumaran una constant de valor tancat entre [0 i 31] directament plana sobre el càlcul numèric pur final sense que l'oponent tingui dades d'entendre o analitzar quin vector l'ha proveït la màquina natural en general respectant l'espècie en si (per ser perfecte generalment les competitives exigeixen constant de 31 en factors fonamentals).
+    \item \textbf{Effort Values (EVs):} Variables d'intervenció lliures tàcitament acumulatives on resideix l'origen formal de l'engany pur del \textit{VGC}. Es proveeix un límit o fons assignable constant finit basat d'escola (510 punts totals d'assignació d'EVS per unitat i 252 a invertir màxim limitats per a una única estadística). És aquí on un rival enganya, ocultant si el seu personatge ha estat creat asimètricament i invertit purament els 252 punts a ser més ofensiu i veloç (desprenent factors de risc sobre caure en atacs lleus) o bé ha sacrificat purament invertint punts a defensiva, aguantant colpejaments per contrarestades enganyant respecte l'estadística estàndard oficial original de la figura de radar base del pokemon en qüestió (ex. Pikachus aguantant atacs vitals).
+    \item \textbf{Naturaleses (Natures):} Modificacions globals multiplicatives sobre els altres que actuen de factors estàtics i atorguen una bonificació fixa absolutista del $+10\%$ a un aspecte rellevant (potenciant ofensiva abstracte general) però obliguen implícits sempre i simètricament a decréixer complet un limitant d'un $-10\%$ sobre estadístiques contraries operables pel teòric del rival (reduint general en paral·lel Velocitats).
+\end{enumerate}
+
+Un petit exemple sobre la llista de variables mostrats està a la Figura \ref{fig:evsivsnature_stats}.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.7\linewidth]{images/evsivsnat.png}
+    \caption{Exemple de construcció formal matemàtica respecte valors estipulats per Atribut o format variables lligat general sumatori als Stats constants i els seus màxim determinats com de la natura al perfil.}
+    \label{fig:evsivsnature_stats}
+\end{figure}
+
+Aplicat a la realitat formal del motor de joc \textit{Showdown}, tota variable del quadre per al format competitiu global (\textit{Level = 50}) es reajusta limitadament utilitzant sumatoris constants i operacions de Truncament algorísmic ($\lfloor x \rfloor$) a la baixa, esglaonant en números enters complets el càlcul assecat per eliminar qualsevol variable fractal existent un cop sumats els components a deduir per a l'operatiu de dades general (\textit{Stat})~\cite{bulbapedia_stats}:
+
+\begin{equation}
+    Stat = \left\lfloor \left( \frac{(2 \times Base + IV + \lfloor \frac{EV}{4} \rfloor ) \times Level}{100} + 5 \right) \times Nature \right\rfloor
+\end{equation}
+
+Les constants establint la referència esmentada al pur sumatori algorísmic es prenen globals constants fins que passem a avaluar explícitament l'única de les magnituds alienada de càstig abstracte diferent que mereixia canvis substancial per l'entorn limitant on s'ha d'evitar morts a primera fase i necessiten càlcul d'additius en HP purament extra operatiu on es descarta el factor variable purament i multiplicador decimal Nature o l'additiu sumatori planer tancat de +5 per ser amplificat sumatori base fix paral·lel:
+
+\begin{equation}
+    HP = \left\lfloor \frac{(2 \times Base + IV + \lfloor \frac{EV}{4} \rfloor ) \times Level}{100} \right\rfloor + Level + 10
+\end{equation}
+
+\subsection{Matemàtiques del Dany: La Taula de Tipus, STAB i Categories d'Atacs}
+
+A més de les estadístiques, l'eix vertebrador de la presa de decisions és la \textbf{Taula de Tipus} (Figura~\ref{fig:type_chart}). Existeixen 18 tipus elementals (Aigua, Foc, Planta, etc.) que defineixen completament matrius de dany. Un atac rebrà un multiplicador de x0.5 si és poc eficaç (\textit{Not Very Effective}), x2 si és molt eficaç (\textit{Super Effective}) o x0 si és immune. Atès que moltes criatures posseeixen \textbf{Doble Tipus}, aquests factors es multipliquen junts podent generar febleses extremes on un Pokémon rebi fins a x4 de dany per un sol impacte.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.75\linewidth]{images/Pokemon_Type_Chart.png}
+    \caption{Matriu de relacions de la Taula de Tipus oficial de Pokémon. La clau resolutiva principal on els agents han d'inferir debilitats absolutes (x2, x0.5 i immunitats).}
+    \label{fig:type_chart}
+\end{figure}
+
+D'altra banda, quan l'atac realitzat coincideix de base amb el tipus propi del Pokémon invocador, se li atorga immediatament el \textbf{STAB} (\textit{Same Type Attack Bonus}), proporcionant un impuls tàcit de x1.5 al dany base. 
+
+La selecció formal d'aquests moviments s'estructura en diverses \textbf{Categories i dimensions d'impacte}:
+\begin{itemize}
+    \item \textbf{Físic i Especial:} L'atac empra el càlcul de força respectiu de Atac Físic contra Defensa Física, o Atac Especial contra Defensa Especial.
+    \item \textbf{Objectius Únics vs. Àrea (\textit{Spread}):} Atacs dirigits a una sola unitat, o atacs d'àrea que colpegen a tots els rivals presents simultàniament. La propagació multi-objectiu rebrà penalitzacions per dany distribuït, caient a retorns reals de només un x0.75 per oponent~\cite{smogon_damage}.
+    \item \textbf{Moviments d'Estat (\textit{Status moves}):} No generen dany directe. Permeten estratègies de mitigació absoluta com \textit{Protect} (escuts d'immunitat temporal pel torn), increments de poder aliat (\textit{Buffs} interns de les \textit{Stats}), o reduccions debilitadores de defensa pures cap als enemics (\textit{Debuffs}).
+\end{itemize}
+
+\subsection{L'Ordre d'Execució: Velocitat i Prioritat (Speed Dynamics)}
+
+Tots els successos anteriorment citats necessiten una estructura lineal seqüencial d'esdeveniments. Per norma general, el moviment és atorgat en ordre decreixent depenent estrictament de quina estadística base de \textbf{Velocitat} tingui l'entitat; qui és més ràpid ataca primer. Tanmateix, existeixen els rangs de \textbf{Prioritat} (des de +5 fins a -7). Una acció amb prioritat +1 absoluta dictaminarà un avançament obligatori sobre qualsevol rang +0 en la cua de successos del motor, alterant i ignorant qualsevol càlcul teòric de l'estadística general de Velocitat entre ells en aquest torn específicament (per exemple atacs fulminants ràpids o defenses clau).
+
+\subsection{Estats Alterats (Status Conditions)}
+
+De bracet actuen els paràmetres negatius estocàstics no dissenyats completament com a impactes matemàtics purs sinó com \textbf{Condicions d'Estat Qualitatives (Status)}. Tot combat posseeix interrupcions dràstiques constants causades per elements qualitatius secundaris fruit probabilístic presentats a la Taula~\ref{tab:status}. L'agent autònom ha d'estar teòricament capaç i preparat per afrontar una pèrdua immediata i contínua o disrupció seqüencial del dany sense tenir en consideració la programació temporal prèvia assumida per planificació òptima.
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|l|l|p{8cm}|}
+    \hline
+    \textbf{Estat} & \textbf{Efecte en Stats} & \textbf{Mecànica de Funcionalitat} \\ \hline
+    Cremada (Burn) & $\downarrow 50\%$ Atac Físic & 1/16 de dany de Salut Màx resident en l'inici de cada iteració de torn. \\ \hline
+    Paràlisi (Para) & $\downarrow 50\%$ Velocitat & 25\% pur d'atzar on probabilitat de no permetre efectuar moviment seqüencial es manté eternament lligat. \\ \hline
+    Verí (Poison) & Cap & Dany autònom residual d'1/8 o creixent incrementalment a l'acabar el bucle. \\ \hline
+    Son (Sleep) & Cap & Tota acció s'inhabilita aleatòriament generalitzant limitacions de rebot constants en la selecció estratègica del competidor intel·ligent. \\ \hline
+    Congelació & Cap & Restricció total a efectuar atacs; subjecte purament al 20\% probabilístic lliure de trencament espontani. \\ \hline
+    \end{tabular}
+    \caption{Resum de les condicions d'estat i el seu impacte disruptiu rellevant modificant dràsticament operacions prèviament predictives establertes a nivell d'optimització màxima de l'IA.}
+    \label{tab:status}
+\end{table}
+
+\subsection{L'Estocasticitat i el trencament Determinista}
+
+Entenent ara l'eix matricial formal darrere la captura numèrica de cada unitat, cal esbombar com l'estocasticitat absolutitza un cert trencament del càlcul i d'informació oculta per esdevenir el col·lapse estèril teòric de cerca asíncrona no observada (\textit{Incertesa Bayesiana}). Determinades decisions queden subjectes purament a multiplicadors fixats aleatòriament (RNG, Random Number Generation):
+
+\begin{enumerate}
+    \item \textbf{Dany Aleatori del \textit{Damage Roll}:} Totes i cadascuna de les fórmules prèvies presentades llancen globalment una constant d'RNG. El multiplicador base fa oscil·lar la banda en punts fractals absoluts entre el rang $[\sim0.85, 1.00]$. Sota l'enginyeria robòtica clàssica es percep fatal, convertint decisions categoritzades on crèiem tenir KOs clars a letalitats absolutament inviables de prop del 85\%.
+    \item \textbf{Precisió dels Moviments (Accuracy):} Determinades mecàniques no obren finestres al 100\% d'impacte. Un atac danyós letal pot presentar percentatges reduïts com $\sim85\%$ de \textit{Hit}. El cervell ha d'estimar vectors d'avaluació compensant si el benefici obtingut assumit cobreix globalment l'esfondrament massiu per pèrdua estocàstica total en no rebre recompenses del dany.
+    \item \textbf{Cops Crítics (Critical Hits):} Eventualitats incalculables basades només en atzar estadístic normal del $1/24 \approx 4.16\%$. Modifiquen sobtadament l'avaluació en transicions no predites multiplicant brutalment de forma general la constant danyosa per un $+50\%$ de valor ignorants alteracions defensives imposades al camp competitiu~\cite{smogon_damage}.
+\end{enumerate}
+
+\section{Teoria de Jocs: Competitiu "VGC" (Suma Zero)}
+
+Després de detallar com des d'una "estadística del Pokémon" passem a les "condicions RNG inobservables i ocultes de \textit{POMDP}", entra de cop el format on la IA del TFM pren com a marc complet i lligat per ser la modalitat complexa final de base real i avaluativa: el \textit{Format VGC} (Video Game Championships).
+
+Des d'una òptica rigorosa en Teoria de Jocs i basant-nos en postulats generals de la combinatòria establerta, el VGC és de naturalesa i pràctica un \textbf{Joc de Suma Zero Simultani}~\cite{von_neumann}. En ser de Suma Zero, s'estipula directament que qualsevol unitat teòrica guanyadora i atorgada per superioritat mecànica recau purificativament un mal i pèrdua exacta matemàtica contra l'efectivitat a rebre pel contrincant sense que hi puguin existir cooperacions d'estratègia entre tots dos. Sovint la complexitat del Meta de l'orquestració es converteix computacionalment a aquest concepte per ordinadors de gran disseny descrivint literal: \textit{"Jugar amb l'àrdua premissa abstracte perfecta clàssica dels Escacs sobre el tauler i posicionament, limitat per condicions on hi imperen variables probabilístiques d'inobservabilitat Bayesiana purament properes a decisions limitants d'alt risc atzaroses típiques partides del Pòquer"}.
+
+\subsection{El Model de Lliure Decisió i Meta-game}
+
+Aplicant les estandarditzacions regulades en grans servidors oficials de decisió final multivariant, el VGC divergeix radicalment llançant una modalitat de \textbf{combat Dobles} simultani (Dos contra Dos presents globalment com observem emulats a la Figura~\ref{fig:vgc_battle}). 
+El \textit{targeting} objectiu es multi-dimensionalitza en paral·lel. Cap agent es preocupa singularment d'eliminar un node, ja que cadascuna unitat dels 4 Pokémon d'escenografia regeix operacions independents (fins al punt de penalitzar directament sobre camp de forma aliada si hi apliquem dany de propagació atmosfèric \textit{Spread}).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\linewidth]{images/intro3.png}
+    \caption{Aspecte visual d'un combat interactiu de gran envergadura teòrica en format de Dobles VGC sota Pokémon Showdown. Hi impera l'absolutisme de la sobre-informació on s'amunteguen i influeixen sinèrgicament les quatre variables, components globals defensius asimètrics, condicions i paràmetres com el temps atmosfèric (Sol tòrrid). Aquest quadre paramètric alt forçarà processos de deducció lligada per un model seqüencial òptim.}
+    \label{fig:vgc_battle}
+\end{figure}
+
+Superat l'enfrontament d'espai intern pur hi preveuen operacions extra-matemàtiques, basades exclusivament de decisions ocultes de \textbf{Team Preview} respectant el protocol de les seleccions constants d'un format pur \textbf{Bring 6, Pick 4}: Abans de començar els torns ambdós contendents reben exclusivament dades basades en la composició de 6 estructures diferents emmascarades i n'han d'escollir de ple quatre. Totes aquestes operacions s'avaluen en decisions simulatànies basades com dicten asimètricament de models predictius on, gràcies d'estudis analistes dels rivals i conjunts previs coneguts, l'agent pretén deduir exclusivament per endevinaments tàcit quin dels membres portarà la contraoferta tàctica basant-se estrictament asimètricament al seu equip combinat. I afegint com factor essencial dues directius globals o \textit{Clauses}:
+\begin{itemize}
+    \item L'\textit{Item Clause i Species Clause}: Obliga per regles internes que sobre les figures dissenyades com base paramètrica en la deducció lliure tancades es formen equips basats absolutament en disseny divers interrelacionats, vetant pur repeticions i clòniques repetitives de criatures i objectes equipats.
+    \item L'\textit{Auto-Level 50}: Forçament paramètric complet global que neutralitza deduccions limitants i absolutes permetent anivellar factors globals d'operació basant en avantatges només subjectes al pensament heurística lliure i de seleccions numèriques combinades estratègiques sense temps diferencial operatiu per decantats de generacions extra per aprenentatge previ extra al sistema del bot original.
+\end{itemize}
+
+I és just en l'observació o ecosistema general del disseny d'una e-Sport asimètric absolutament global i real emparat formal on assoleix o resideix aquest disseny: on la gran envergadura estocàstica dona espai a nivell complet assoleix oficial les magnituds competitius establerts mundial de la delegació com The Pokémon Company en donant els asimptòtic absolut de la complexa intel·ligència als tornejos formals de referenciar on recauen preus lucratius enormes del \textit{Pokémon World Championships} dictant valors al llindar de \$30.000 per la consecució final i reial campió complet o tàcit al format de VGC a nivell de Màster formals i de categories compensacions respectives beques en lligams directes a escalar els estatus complets d'operacions absolut \cite{world_champ_prizes}. 
+
+\section{L'Entorn Virtual i Eines de Recerca}
+
+\subsection{L'Ecosistema de Simulació: Showdown i Poke-env}
+A causa de la naturalesa estanca dels cartutxos de consola oficials, l'aplicació d'Intel·ligència Artificial en entorns VGC requereix d'eines externes obertes i manipulables per permetre la simulació de Teoria de Jocs pràctica. És per això que l'orquestració d'aquest estudi fonamenta la seva experimentació tècnica sobre dos pilars \textit{Open-Source}: \textbf{Pokémon Showdown}~\cite{pokemon_showdown} i \textbf{Poke-env}~\cite{poke_env}.
+
+\textit{Pokémon Showdown} és el simulador de batalles competitiu més cèlebre establert per tota la comunitat. Replica amb un rigor matemàtic i una precisió mil·limètrica (fent enginyeria inversa des dels codis originals) totes i cadascuna de les regles i condicionants detallades en apartats anteriors (Taula de tipus, RNG, IVs i EVs). Aquesta infraestructura, desenvolupada completament en JavaScript/TypeScript, permet aixecar servidors locals lleugers privats per emular centenars de combatents a gran velocitat sense requerir una pantalla gràfica renderitzada; condició vital per jugar escenaris de suma zero durant hores en aprenentatge iteratiu.
+
+Per altra banda, l'escriptura d'IA en entorns d'investigació massius domina avui en dia a Python. L'eina de "pont" és la llibreria \textit{Poke-env}. Aquesta actua com a capa d'abstracció (API \textit{wrapper}) traduint tot el torrent d'informació asíncrona dictat pel servidor local de \textit{Showdown}. Processa les respostes HTML/Sockets a objectes i vectors directes d'estat (MDP), netejant-los de pur soroll operatiu, i generant instàncies legibles aptes pel tractament analític, com ho fa habitualment la factoria unificada d'\textit{OpenAI Gym}~\cite{brockman2016openai}.
+
+\section{Intel·ligència Artificial i Reinforcement Learning}
+
+L'elevada complexitat computacional del format de Dobles VGC impossibilita l'ús exclusiu d'algorismes clàssics de cerca en arbres. L'aplicació de mètodes pre-avaluatius com \textit{Minimax} col·lapsa ràpidament a causa de l'explosió combinatòria, on la matriu de decisions creix exponencialment davant els conjunts estocàstics concurrents.
+
+Per abordar aquesta hiperdimensió d'estats, la literatura i la indústria s'orienten cap al \textbf{Deep Reinforcement Learning (DRL)}. El DRL substitueix la cerca exhaustiva per funcions d'aproximació (xarxes neuronals) que aprenen a estimar el valor de cada estat o estratègia gràcies a l'experiència pròpia transcorreguda a l'entorn. Dos dels algorismes més prolífics en aquest tipus d'estudis continus són:
+\begin{itemize}
+    \item \textbf{DQN (Deep Q-Network):} Aproximadors fora de política (\textit{off-policy}) introduïts per DeepMind \cite{dqn} que emulen la funció de valor acció-estat $Q(s, a)$. Utilitzen memòries de repetició d'experiència (\textit{Experience Replay}) per desvincular temporalment les mostres i aprendre el "valor a llarg termini" d'efectuar un atac específic donat l'estat observat del combat.
+    \item \textbf{PPO (Proximal Policy Optimization):} Metodologia d'optimització \textit{Actor-Critic} descrita per OpenAI \cite{ppo}. El seu tret distintiu és l'ús preventiu d'una tècnica anomenada \textit{Clipping}. Aquesta condició lliure de trencament retalla les actualitzacions de les xarxes neuronals per evitar que l'aprenentatge quedi completament destruït si el model rep una recompensa enganyosa deguda a la pura sort estadística (un factor crucial en un entorn tan altament basat en l'RNG com Pokémon).
+\end{itemize}
+
+\section{Justificació Metodològica de la Recerca}
+
+El propòsit últim d'investigar i modelar el competitiu de Pokémon no és resoldre el joc per crear un bot imbatible pel mer entreteniment. Es tracta d'utilitzar aquest ecosistema com un rigorós banc de proves (\textit{sandbox}) on testificar les limitacions i l'escalabilitat d'arquitectures d'intel·ligència artificial autònoma.
+
+Pokémon VGC sintetitza elements idèntics a representatius reptes d'enginyeria en el món real o de gestió on qualsevol agent decisiu ha d'operar sota condicions de "Soroll Estocàstic Alt" i amb informació purament parcial (POMDP). Construir agents que evolucionin des d'heurístiques d'avaluació precompilades fins a models d'aprenentatge pur valida la robustesa dels nostres sistemes de codi operatius paral·lels. Assolir un grau sòlid de win-rate estable en entorns amb tantes variables no observables obre el camí a validar mètodes estadístics capaços de fer que els agents dedueixin la seva causalitat latent aïllada del soroll, consolidant en retroespecció l'avenç computacional en mètodes MDPs.

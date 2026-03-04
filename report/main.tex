@@ -3,6 +3,8 @@
 % --- Essential Packages ---
 \usepackage[utf8]{inputenc}
 \usepackage[english]{babel}
+\usepackage[a4paper, margin=2.5cm]{geometry} % Adjusting margins
+\usepackage{microtype} % Millora enormement la justificació de text i elimina 'overfull hboxes'
 \usepackage{graphicx}
 \usepackage{amsmath, amssymb} % For TFM math/formulas
 \usepackage{hyperref}
@@ -22,6 +24,10 @@
 
 % --- Importing Sections ---
 \include{sections/01_abstract}
+\include{sections/02_theoretical_background}
+\include{sections/03_methodology}
+\include{sections/04_implementation}
+\include{sections/05_results}
 
 \printbibliography
 
