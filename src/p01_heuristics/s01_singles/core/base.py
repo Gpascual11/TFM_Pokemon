@@ -10,6 +10,9 @@ from __future__ import annotations
 import abc
 
 from poke_env.player import Player
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class BaseHeuristic1v1(Player, abc.ABC):
@@ -35,14 +38,19 @@ class BaseHeuristic1v1(Player, abc.ABC):
         1. ``_pre_move_hook`` — optional early return (e.g. KO moves).
         2. ``_select_action`` — main heuristic logic.
         3. Fallback to ``choose_random_move`` when nothing was selected.
-        """
-        early = self._pre_move_hook(battle)
-        if early is not None:
-            return early
 
-        order = self._select_action(battle)
-        if order is not None:
-            return order
+        Wrapped in a try-except to prevent deadlocks on logic errors.
+        """
+        try:
+            early = self._pre_move_hook(battle)
+            if early is not None:
+                return early
+
+            order = self._select_action(battle)
+            if order is not None:
+                return order
+        except Exception as e:
+            logger.error(f"Error in {self.__class__.__name__} logic: {e}", exc_info=True)
 
         return self.choose_random_move(battle)
 

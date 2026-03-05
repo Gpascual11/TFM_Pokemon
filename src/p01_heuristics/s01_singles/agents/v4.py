@@ -18,6 +18,9 @@ from __future__ import annotations
 
 from ..core.base import BaseHeuristic1v1
 from ..core.common import get_status_name
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class HeuristicV4(BaseHeuristic1v1):
@@ -27,33 +30,6 @@ class HeuristicV4(BaseHeuristic1v1):
     def tracks_moves(self) -> bool:
         """Indicates that this heuristic tracks move usage."""
         return True
-
-    # -- Template hooks ---------------------------------------------------
-
-    def _pre_move_hook(self, battle):
-        """
-        Executes a pre-move check to identify and use guaranteed KO moves.
-
-        Moves are sorted by priority, and the first move found that guarantees a KO
-        against the opponent is selected.
-        """
-        me = battle.active_pokemon
-        opp = battle.opponent_active_pokemon
-
-        if not battle.available_moves or me is None or opp is None:
-            return None
-
-        sorted_moves = sorted(
-            battle.available_moves,
-            key=lambda m: m.entry.get("priority", 0),
-            reverse=True,
-        )
-        for move in sorted_moves:
-            if self._estimate_damage(move, me, opp, battle) >= opp.current_hp:
-                self._record_used_move(battle.battle_tag, move.id)
-                return self.create_order(move)
-
-        return None
 
     def _select_action(self, battle):
         """
@@ -192,7 +168,13 @@ class HeuristicV4(BaseHeuristic1v1):
         min_multiplier = 4.0
 
         for pokemon in battle.available_switches:
-            worst = max(pokemon.damage_multiplier(t) for t in opp.types if t is not None)
+            # Safety check: ensure opp.types is not empty before calling max()
+            valid_types = [t for t in opp.types if t is not None]
+            if not valid_types:
+                worst = 1.0
+            else:
+                worst = max(pokemon.damage_multiplier(t) for t in valid_types)
+                
             if worst < min_multiplier:
                 min_multiplier = worst
                 best_teammate = pokemon

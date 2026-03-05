@@ -49,7 +49,7 @@ if str(_POKECHAMP_ROOT) not in sys.path:
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-__package__ = "p01_heuristics.s01_singles.pokechamp"
+__package__ = "p01_heuristics.s01_singles.s01_pokechamp"
 
 from common import prompt_algos  # noqa: E402, F821  # type: ignore[import-untyped]
 
@@ -64,6 +64,7 @@ POKECHAMP_AGENTS: list[str] = [
     "abyssal",
     "max_power",
     "one_step",
+    "safe_one_step",
     "random",
 ]
 """All available Pokechamp agent identifiers."""
@@ -346,7 +347,7 @@ def main() -> None:
 
     pokechamp_agents = args.pokechamp_agents
     heuristics = sorted(HeuristicFactory.available_versions())
-    baselines = ["random", "max_power", "simple_heuristic"]
+    baselines = ["random", "max_power", "simple_heuristic", "abyssal", "one_step", "safe_one_step"]
     opponents = heuristics + baselines
 
     checkpoint_data: dict[str, dict] = {}
