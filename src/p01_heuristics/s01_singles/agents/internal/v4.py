@@ -16,8 +16,8 @@ standard physical/special damage formula.
 
 from __future__ import annotations
 
-from ..core.base import BaseHeuristic1v1
-from ..core.common import get_status_name
+from ...core.base import BaseHeuristic1v1
+from ...core.common import get_status_name
 import logging
 
 logger = logging.getLogger(__name__)

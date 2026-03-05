@@ -1,16 +1,20 @@
 from __future__ import annotations
 
-from ..core.common import calculate_base_damage, get_speed, get_status_name
+from ...core.common import calculate_base_damage, get_speed, get_status_name
 from .v3 import HeuristicV3
 
 
 class HeuristicV6(HeuristicV3):
-    """Heuristic V6: Advanced Singles Strategy with Field Awareness.
-
-    V6 extends the stable V3 core with specific expert enhancements:
-    1. Dynamic Damage Calculation: Adjusts move power based on active Weather and Terrain.
-    2. Priority Valuation: Applies a strategic weighting to priority moves.
-    3. Stable Pivoting: Retains the proven defensive switch logic from V3.
+    """Advanced Singles Strategy with Field Awareness & Expert Modifiers.
+    
+    Heuristic V6 represents the pinnacle of the rule-based approach, 
+    combining the stable defensive foundation of V3 with expert field-state 
+    knowledge.
+    
+    Logic & Expert Enhancements:
+    - Dynamic Damage Calculation: Adjusts move power based on active Weather (Sun/Rain) and Terrain (Electric/Grassy/Psychic).
+    - Priority Valuation: Applies strategic weighting to priority moves to secure KOs or apply pressure.
+    - Stable Pivoting: Retains the proven defensive toxicity-escape and outsped-pivot logic from V3.
     """
 
     def _select_action(self, battle):

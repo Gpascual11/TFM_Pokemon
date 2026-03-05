@@ -1,70 +1,63 @@
-# s01_singles — 1-vs-1 Heuristic Agents & Pokechamp Benchmarks
+# s01_singles — Unified Heuristics & Agents Benchmark
 
-This directory contains the Singles (1v1) heuristic agents and two independent
-benchmark pipelines: one for testing the agents against each other, and one
-for comparing them against LLM-based agents from the Pokechamp repository.
+This directory provides a unified framework for implementing, executing, and analyzing Pokémon Single Battle (1v1) agents. It consolidates custom heuristics, standard baselines, and LLM-based researchers into a single workflow.
 
 ---
 
-## Directory Structure
+## 📂 Directory Structure
 
-```
+```text
 s01_singles/
-├── README.md                  ← This file
-├── agents/                    ← Heuristic implementations (v1–v6), SHARED
-├── core/                      ← BattleManager, Factory, ProcessLauncher, SHARED
-├── heuristics/                ← Internal benchmark: v1–v6 round-robin
-│   ├── README.md
-│   ├── benchmark.py
-│   ├── run.py
-│   ├── generate_report.py
-│   └── results/
-└── pokechamp/                 ← Cross-repo benchmark: Pokechamp vs heuristics
-    ├── README.md
-    ├── pokechamp_benchmark.py
-    ├── _pokechamp_worker.py
-    ├── generate_pokechamp_report.py
-    ├── generate_pokechamp_full_report.py
-    └── results/
+├── agents/              # 🧠 AGENT IMPLEMENTATIONS
+│   ├── internal/        # Your v1–v6 custom heuristics
+│   ├── baselines/       # Standard rule-based players (Abyssal, SafeOneStep, etc.)
+│   └── llm/             # Connectors for LLM-based agents (Pokechamp, Pokellmon)
+│
+├── core/                # ⚙️ SHARED INFRASTRUCTURE
+│   ├── factory.py       # Unified AgentFactory: creates any agent by string name
+│   ├── base.py          # Abstract Base Class for all heuristic players
+│   └── battle_manager.py # Showdown connection & results management
+│
+├── evaluation/          # ⚔️ TESTING LAB
+│   ├── engine/          # High-performance runners
+│   │   ├── benchmark.py # Parallel orchestrator (use this for large tests)
+│   │   └── worker.py    # Isolated subprocess worker
+│   ├── reporting/       # Data analysis & visualization
+│   │   └── heatmaps.py  # Generates cross-matchup performance matrices
+│   └── results/         # Output artifacts (PNGs/CSVs)
+│
+└── README.md            # You are here
 ```
 
 ---
 
-## `agents/` — Heuristic Implementations
+## ⚔️ Running Benchmarks
 
-| File | Description |
-|------|-------------|
-| `v1.py` | Max-damage greedy selector |
-| `v2.py` | Adds type-advantage weighting |
-| `v3.py` | Adds threat detection and switching |
-| `v4.py` | Multi-factor scoring (damage, STAB, accuracy) |
-| `v5.py` | Speed-tiering and field-state awareness |
-| `v6.py` | Most advanced, full team view |
+The benchmark engine is unified. You can run any agent against any other agent using the same command.
 
----
+### Large Parallel Batch
+To run 100 battles per matchup across 4 CPU workers:
+```bash
+uv run python evaluation/engine/benchmark.py 100 --ports 4
+```
 
-## `core/` — Shared Infrastructure
-
-| File | Description |
-|------|-------------|
-| `base.py` | Abstract base class all heuristics inherit from |
-| `factory.py` | Creates heuristic instances by name string |
-| `battle_manager.py` | Connects to Showdown, runs batches, writes CSV |
-| `process_launcher.py` | Distributes battles across multiple ports |
-| `common.py` | Shared utilities and constants |
+### Specific Matchup
+To test `v6` against `abyssal`:
+```bash
+uv run python evaluation/engine/benchmark.py 50 --agents v1 --opponents abyssal
+```
 
 ---
 
-## How It Works
-
-Each turn, the heuristics:
-1. **Estimate damage** — `Attack / Defense × Power × Type multipliers`
-2. **Check threats** — low HP or 4× weakness triggers a switch search
-3. **KO first** — priority moves that can KO are picked immediately
+## 📊 Generating Reports
+Once the data is collected in `data/benchmarks_unified/`, generate the heatmap:
+```bash
+uv run python evaluation/reporting/heatmaps.py
+```
 
 ---
 
-## See Also
-
-- [`heuristics/README.md`](heuristics/README.md) — internal round-robin benchmark
-- [`pokechamp/README.md`](pokechamp/README.md) — Pokechamp vs heuristics benchmark
+## ✨ Key Benefits
+- **Unified Factory**: Use `AgentFactory.create("v6")` or `AgentFactory.create("abyssal")` interchangeably.
+- **Memory Safety**: Subprocess workers ensure background threads and memory leaks don't accumulate.
+- **Scalability**: Add new agents to `agents/` and they are immediately available to the benchmark engine.

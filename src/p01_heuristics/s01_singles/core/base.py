@@ -16,11 +16,16 @@ logger = logging.getLogger(__name__)
 
 
 class BaseHeuristic1v1(Player, abc.ABC):
-    """Common base for every singles heuristic version.
-
-    Subclasses must override :meth:`_select_action` to provide their
-    decision logic.  Optionally, they can override :meth:`_pre_move_hook`
-    for early-return behaviour (e.g. guaranteed KO detection in V5).
+    """Abstract Foundation for Rule-Based Singles Strategies.
+    
+    This class implements the Template Method pattern for move selection. 
+    Execution Pipeline:
+    1. _pre_move_hook(): Check for early returns (e.g. priority KOs).
+    2. _select_action(): Main decision logic implementation.
+    3. choose_random_move(): Fallback if no specific order is produced.
+    
+    It also provides shared utilities for move tracking and basic error handling 
+    to prevent battle deadlocks.
     """
 
     def __init__(self, *args, **kwargs) -> None:

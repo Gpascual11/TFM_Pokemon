@@ -2,22 +2,25 @@ from __future__ import annotations
 
 from poke_env.data import GenData
 
-from ..core.base import BaseHeuristic1v1
-from ..core.common import get_status_name
+from ...core.base import BaseHeuristic1v1
+from ...core.common import get_status_name
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class HeuristicV5(BaseHeuristic1v1):
-    """V5 Heuristic: Accurate damage estimation + smart switching + KO priority.
-
-    Improvements over V3:
-    - Stat-boost awareness (attack/defence stage multipliers)
-    - Weather and terrain damage modifiers
-    - KO pre-check (priority-sorted to grab quick KOs with fast or priority moves)
-    - Danger-aware switching: considers HP fraction, toxic counter, and matchup
-    - Best-switch selection with relaxed threshold (takes neutral or better)
+    """Accurate Damage Estimation with Stat-Boost Awareness & KO Priority.
+    
+    Heuristic V5 introduces a more granular damage model that accounts for 
+    in-battle stat changes (stages) and environmental modifiers. It also 
+    features a 'KO First' policy.
+    
+    Logic & Expert Enhancements:
+    - Stat-Boost Awareness: Calculates damage using stage-multiplied attack/defense.
+    - Weather & Terrain: Incorporates field effects into every damage estimate.
+    - KO Pre-Check: Dedicated logic in `_pre_move_hook` to instantly select moves that secure a knockout.
+    - Relaxed Pivoting: Switches to neutral teammates if in danger or HP < 25%.
     """
 
     def __init__(self, *args, **kwargs) -> None:

@@ -11,7 +11,7 @@ replays/
 *.pkl
 
 pokemon-showdown/
-pokechamp/
+pokechamp
 node_modules/
 
 # LaTeX temporary files
