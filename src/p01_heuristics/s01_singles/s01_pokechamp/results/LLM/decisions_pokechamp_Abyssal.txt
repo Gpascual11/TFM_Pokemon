@@ -1,0 +1,59 @@
+=== POKECHAMP DECISIONS LOG ===
+
+--- Turn 1 ---
+{"move": "airslash"}
+
+--- Turn 1 ---
+{"switch": "ribombee"}
+
+--- Turn 2 ---
+{"switch": "tyranitar"}
+
+--- Turn 3 ---
+{"move": "icepunch"}
+
+--- Turn 3 ---
+{"switch": "ribombee"}
+
+--- Turn 4 ---
+{"move": "moonblast"}
+
+--- Turn 4 ---
+{"switch": "glaceon"}
+
+--- Turn 5 ---
+{"move": "freezedry"}
+
+--- Turn 6 ---
+{"move": "mudshot"}
+
+--- Turn 6 ---
+{"switch": "regidrago"}
+
+--- Turn 7 ---
+{"move": "earthquake"}
+
+--- Turn 8 ---
+{"switch": "conkeldurr"}
+
+--- Turn 9 ---
+{"move": "facade"}
+
+--- Turn 10 ---
+{"switch": "regidrago"}
+
+--- Turn 11 ---
+{"move": "dragonenergy"}
+
+--- Turn 12 ---
+{"move": "dragonenergy"}
+
+--- Turn 13 ---
+{"move": "closecombat"}
+
+--- Turn 14 ---
+{"move": "closecombat"}
+
+✅ MATCHUP FINISHED: LOST
+   Total Turns: 14
+   Duration: 803.7s

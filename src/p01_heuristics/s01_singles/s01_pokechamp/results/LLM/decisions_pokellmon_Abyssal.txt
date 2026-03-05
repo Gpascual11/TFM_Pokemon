@@ -1,0 +1,51 @@
+=== POKELLMON DECISIONS LOG ===
+
+--- Turn 1 ---
+{"switch": "chiyu"}
+
+--- Turn 2 ---
+{"move": "fireblast"}
+
+--- Turn 2 ---
+{"switch": "toxtricity"}
+
+--- Turn 3 ---
+{"switch": "arceusice"}
+
+--- Turn 4 ---
+{"move": "earthpower"}
+
+--- Turn 4 ---
+{"switch": "gothitelle"}
+
+--- Turn 5 ---
+{"move": "focusblast"}
+
+--- Turn 6 ---
+{"switch": "chandelure"}
+
+--- Turn 7 ---
+{"move": "fireblast"}
+
+--- Turn 8 ---
+{"switch": "toxtricity"}
+
+--- Turn 8 ---
+{"switch": "chandelure"}
+
+--- Turn 9 ---
+{"move": "fireblast"}
+
+--- Turn 10 ---
+{"move": "toxicspikes"}
+
+--- Turn 11 ---
+{"move": "suckerpunch"}
+
+--- Turn 12 ---
+{"move": "suckerpunch"}
+
+
+✅ MATCHUP FINISHED: LOST
+   Total Turns: 12
+   Duration: 1028.8s
