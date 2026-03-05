@@ -1,6 +1,8 @@
-"""Launcher for distributing Pokémon battles across multiple parallel processes.
+"""Battle Manager — Simulation Orchestrator.
 
-Each process connects to a unique Pokémon Showdown server local port.
+This module handles the execution of battle batches between two agents. It 
+manages the async loop, connects to the Showdown server, and extracts 
+detailed results (HP, fainted counts, moves used) into CSV format.
 """
 
 from __future__ import annotations
@@ -62,7 +64,6 @@ class BattleManager:
 
         This method is the standard entry point for running a simulation. It is safe
         to call from within a multiprocessing.Process.
-
         Returns:
             Path: The absolute path to the generated results CSV.
         """
@@ -168,7 +169,7 @@ class BattleManager:
         factory = factories.get(self.opponent)
         if factory:
             return factory()
-        if self.opponent in HeuristicFactory.available_versions():
+        if self.opponent in HeuristicFactory.available_internal() or self.opponent in HeuristicFactory.available_baselines():
             return HeuristicFactory.create(
                 self.opponent,
                 account_configuration=AccountConfiguration(f"{self.opponent.replace('_', '')}B{tag}", None),

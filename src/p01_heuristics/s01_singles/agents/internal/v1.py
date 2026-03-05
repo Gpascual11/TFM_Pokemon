@@ -7,11 +7,19 @@ and serves as the performance baseline.
 
 from __future__ import annotations
 
-from ..core.base import BaseHeuristic1v1
+from ...core.base import BaseHeuristic1v1
 
 
 class HeuristicV1(BaseHeuristic1v1):
-    """Always select the move with the highest raw damage estimate."""
+    """Max-Damage Greedy Heuristic.
+    
+    This is the baseline implementation for all singles heuristics.
+    
+    Logic:
+    - Picks the move with the highest (base_power * effectiveness * STAB).
+    - No switching logic.
+    - No status move awareness.
+    """
 
     def _select_action(self, battle):
         if not battle.available_moves:

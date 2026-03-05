@@ -1,21 +1,25 @@
-"""Heuristic V3 — V2 logic with per-battle move tracking.
+"""Heuristic V2 — stats-based damage with defensive switching.
 
-Same damage estimator and switching rules as V2, but records which
-moves the agent uses in each battle for downstream analysis.
+Extends V1 by using actual attack/defence stats (with burn penalty)
+and introducing two switching triggers:
+
+* Badly poisoned for several turns → switch to reset toxic counter.
+* Best available move is weak *and* we are outsped → pivot out.
 """
 
 from __future__ import annotations
 
-from ..core.common import calculate_base_damage, get_speed, get_status_name
-from .v2 import HeuristicV2
+from ...core.base import BaseHeuristic1v1
+from ...core.common import calculate_base_damage, get_speed, get_status_name
 
 
-class HeuristicV3(HeuristicV2):
-    """V2 damage + switching, plus per-battle move tracking."""
-
-    @property
-    def tracks_moves(self) -> bool:
-        return True
+class HeuristicV2(BaseHeuristic1v1):
+    """Enhanced version of V1 that includes secondary move considerations.
+    
+    V2 introduces basic type awareness and potential status move evaluation 
+    (if integrated in the score function). It inherits the 'no switch' 
+    policy from V1.
+    """
 
     def _select_action(self, battle):
         me = battle.active_pokemon
@@ -44,6 +48,5 @@ class HeuristicV3(HeuristicV2):
                 return self.create_order(battle.available_switches[0])
 
         if best_move:
-            self._record_used_move(battle.battle_tag, best_move.id)
             return self.create_order(best_move)
         return None
