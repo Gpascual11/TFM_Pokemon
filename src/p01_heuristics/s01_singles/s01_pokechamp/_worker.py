@@ -56,6 +56,7 @@ _SHORT_NAMES: dict[str, str] = {
     "one_step": "OS",
     "abyssal": "AB",
     "random": "RD",
+    "safe_one_step": "SOS",
 }
 
 
@@ -117,8 +118,8 @@ def _create_player(
         return AbyssalPlayer(account_configuration=acct, **base_kw)
     if agent_name == "one_step":
         # Use SafeOneStepPlayer to avoid hang when gen9 pokedex/moves JSON missing.
-        # OneStepPlayer uses LocalSim + pokechamp.prompts (get_number_turns_faint) which
-        # can block or spin on empty cache; SafeOneStepPlayer uses only poke_env scoring.
+        return SafeOneStepPlayer(account_configuration=acct, **base_kw)
+    if agent_name == "safe_one_step":
         return SafeOneStepPlayer(account_configuration=acct, **base_kw)
 
     ns = argparse.Namespace(temperature=temperature, log_dir=log_dir)
@@ -179,6 +180,10 @@ def _create_opponent(
         return TrueSimpleHeuristicsPlayer(account_configuration=acct, **base_kw)
     if opponent_name == "abyssal":
         return AbyssalPlayer(account_configuration=acct, **base_kw)
+    if opponent_name == "one_step":
+        return SafeOneStepPlayer(account_configuration=acct, **base_kw)
+    if opponent_name == "safe_one_step":
+        return SafeOneStepPlayer(account_configuration=acct, **base_kw)
     if opponent_name == "random":
         # RandomPlayer from poke_env might accept it, but for consistency with _create_player, we use base_kw
         return RandomPlayer(account_configuration=acct, **base_kw)

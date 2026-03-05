@@ -30,8 +30,11 @@ import seaborn as sns
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-AGENT_ORDER = ["random", "max_power", "abyssal", "one_step", "pokechamp", "pokellmon"]
-OPPONENT_ORDER = ["v1", "v2", "v3", "v4", "v5", "v6", "random", "max_power", "simple_heuristic"]
+AGENT_ORDER = ["random", "max_power", "abyssal", "one_step", "safe_one_step", "pokechamp", "pokellmon"]
+OPPONENT_ORDER = [
+    "v1", "v2", "v3", "v4", "v5", "v6",
+    "random", "max_power", "simple_heuristic", "abyssal", "one_step", "safe_one_step"
+]
 BASELINES = {"random", "max_power", "simple_heuristic"}
 
 
@@ -270,7 +273,7 @@ def main() -> None:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="src/p01_heuristics/s01_singles/pokechamp/results",
+        default="src/p01_heuristics/s01_singles/s01_pokechamp/results",
         help="Directory to save the PNG report.",
     )
     args = parser.parse_args()

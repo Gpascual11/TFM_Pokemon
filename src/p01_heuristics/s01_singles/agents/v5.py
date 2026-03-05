@@ -4,6 +4,9 @@ from poke_env.data import GenData
 
 from ..core.base import BaseHeuristic1v1
 from ..core.common import get_status_name
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class HeuristicV5(BaseHeuristic1v1):
@@ -226,7 +229,13 @@ class HeuristicV5(BaseHeuristic1v1):
         min_multiplier = 4.0
 
         for pokemon in battle.available_switches:
-            worst = max(pokemon.damage_multiplier(t) for t in opp.types if t is not None)
+            # Safety check: ensure opp.types is not empty before calling max()
+            valid_types = [t for t in opp.types if t is not None]
+            if not valid_types:
+                worst = 1.0
+            else:
+                worst = max(pokemon.damage_multiplier(t) for t in valid_types)
+                
             if worst < min_multiplier:
                 min_multiplier = worst
                 best_teammate = pokemon
