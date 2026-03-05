@@ -27,12 +27,15 @@ import pandas as pd  # noqa: E402
 _DIR = Path(__file__).parent.resolve()
 _SRC = _DIR.parent.parent.parent
 _POKECHAMP_ROOT = _SRC.parent / "pokechamp"
+
 if str(_POKECHAMP_ROOT) not in sys.path:
     sys.path.insert(0, str(_POKECHAMP_ROOT))
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-__package__ = "p01_heuristics.s01_singles.pokechamp"
+__package__ = "p01_heuristics.s01_singles.s01_pokechamp"
+
+from .true_simple_heuristic import TrueSimpleHeuristicsPlayer
 
 from poke_env import AccountConfiguration, ServerConfiguration  # noqa: E402
 from poke_env.player import RandomPlayer  # noqa: E402
@@ -173,6 +176,8 @@ def _create_opponent(
     if opponent_name == "max_power":
         return MaxBasePowerPlayer(account_configuration=acct, **base_kw)
     if opponent_name == "simple_heuristic":
+        return TrueSimpleHeuristicsPlayer(account_configuration=acct, **base_kw)
+    if opponent_name == "abyssal":
         return AbyssalPlayer(account_configuration=acct, **base_kw)
     if opponent_name == "random":
         # RandomPlayer from poke_env might accept it, but for consistency with _create_player, we use base_kw
