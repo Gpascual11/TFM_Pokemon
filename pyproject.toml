@@ -49,13 +49,13 @@ pokechamp = [
     "websockets>=14.2.0",
 ]
 
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
-
-[tool.uv.sources]
-torch = { index = "pytorch-cpu" }
+# PyTorch index: choose per machine (run from project root).
+# CPU (other computer):
+#   uv lock --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
+#   uv sync --all-extras --group dev --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
+# GPU (this computer; use cu121 if your CUDA is 12.1):
+#   uv lock --index-url https://download.pytorch.org/whl/cu124 --extra-index-url https://pypi.org/simple
+#   uv sync --all-extras --group dev --index-url https://download.pytorch.org/whl/cu124 --extra-index-url https://pypi.org/simple
 
 [dependency-groups]
 dev = [

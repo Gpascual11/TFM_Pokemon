@@ -15,6 +15,38 @@ The repo bundles its own fork of `poke_env` (the Python library for interacting 
 | `one_step` | Rule-based | One-step lookahead heuristic |
 | `random` | Rule-based | Picks moves uniformly at random |
 
+---
+
+## Local LLM Setup (Ollama)
+
+To run the LLM agents (`pokechamp`, `pokellmon`) locally without relying on expensive APIs, we use **Ollama**.
+
+### 1. Installation
+Install Ollama on Linux using the official script:
+```sh
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+### 2. Model Selection: Qwen 3 (8B)
+We chose **Qwen 3 (8B)** as our primary local backend for several reasons:
+- **Optimization (RTX 2080):** At ~6GB-8GB VRAM usage, the entire 8B model fits into the 8GB VRAM of an RTX 2080, ensuring fast inference.
+- **Reasoning:** Qwen 3 (released in 2025) significantly improved over Qwen 2.5 in instruction following and "Chain of Thought" reasoning, which is critical for parsing the complex battle state in Pokémon.
+- **Efficiency:** Larger models (13B-14B+) trigger memory swapping on 8GB cards, making each battle turn take minutes instead of seconds.
+
+Pull the model before running benchmarks:
+```sh
+ollama pull qwen3:8b
+```
+
+### 3. Monitoring Performance
+When running LLM battles, you can monitor your GPU health:
+```sh
+watch -n 1 nvidia-smi
+```
+*Expected for RTX 2080:* ~6.5GB VRAM usage, ~90% GPU load, and ~60-70°C temperature. This is normal behavior during the AI's "thinking" phase.
+
+---
+
 ### Cloning the repo
 
 The pokechamp repo must be cloned **inside** the project root as a sibling directory:
@@ -237,7 +269,7 @@ uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 1000 \
 #### Fresh start (clear old data first)
 
 ```sh
-rm -rf data/benchmarks_pokechamp/
+rm -rf data/benchmarks_pokechamp_v4/
 uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 100 \
   -p 8000 \
   --pokechamp-agents random max_power abyssal one_step
@@ -251,7 +283,7 @@ uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 100 \
 | `-p / --ports` | `8000` | Server port(s) |
 | `--pokechamp-agents` | all 6 | Which pokechamp agents to benchmark |
 | `--batch-size` | `50` | Games per subprocess batch (lower = less RAM, more overhead) |
-| `--player_backend` | `ollama/gemma3:4b` | LLM backend (only for `pokechamp`/`pokellmon`) |
+| `--player_backend` | `ollama/qwen3:8b` | LLM backend (only for `pokechamp`/`pokellmon`) |
 | `--player_prompt_algo` | `io` | Prompt algorithm for LLM agents |
 | `--battle-format` | `gen9randombattle` | Battle format |
 | `--temperature` | `0.3` | LLM temperature |
@@ -273,5 +305,6 @@ uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 100 \
 - **Start small** (e.g., `5` games) to validate your setup before large benchmarks.
 - **`--restart-every 3`** (the default) restarts the Showdown server every 3 matchups. Lower it to 1 if you still see hangs; set to 0 to disable entirely.
 - **Batch size trade-off:** batch size 50 = safe RAM, batch size 100 = faster but more RAM per batch.
-- **LLM agents** (`pokechamp`, `pokellmon`) require API keys or a running Ollama instance.
+- **LLM agents** (`pokechamp`, `pokellmon`) require the Ollama service to be running and the model (`qwen3:8b`) to be pulled.
 - **Use `--resume`** to safely re-run after crashes — completed matchups are skipped.
+- **Light Debugging:** Use `benchmark_light.py` to test a single matchup with live turn monitoring if the full benchmark feels too slow.
