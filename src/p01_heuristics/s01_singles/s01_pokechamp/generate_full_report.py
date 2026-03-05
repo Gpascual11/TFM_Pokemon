@@ -30,12 +30,30 @@ import seaborn as sns
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-AGENT_ORDER = ["random", "max_power", "abyssal", "one_step", "safe_one_step", "pokechamp", "pokellmon"]
+AGENT_ORDER = [
+    "v1", "v2", "v3", "v4", "v5", "v6",  # (H)
+    "random", "max_power", "simple_heuristic",  # (PE)
+    "abyssal", "one_step", "safe_one_step", "pokechamp", "pokellmon"  # (PC)
+]
 OPPONENT_ORDER = [
-    "v1", "v2", "v3", "v4", "v5", "v6",
-    "random", "max_power", "simple_heuristic", "abyssal", "one_step", "safe_one_step"
+    "v1", "v2", "v3", "v4", "v5", "v6",  # (H)
+    "random", "max_power", "simple_heuristic",  # (PE)
+    "abyssal", "one_step", "safe_one_step"  # (PC)
 ]
 BASELINES = {"random", "max_power", "simple_heuristic"}
+
+def get_display_name(name: str) -> str:
+    """Add prefixes to differentiate agent types in reports."""
+    # poke-env baselines
+    if name in {"random", "max_power", "simple_heuristic"}:
+        return f"(PE) {name}"
+    # heuristics (v1-v6)
+    if name.startswith("v") and len(name) > 1 and name[1:].isdigit():
+        return f"(H) {name}"
+    # Pokechamp agents
+    if name in {"abyssal", "one_step", "safe_one_step", "pokechamp", "pokellmon"}:
+        return f"(PC) {name}"
+    return name
 
 
 # ---------------------------------------------------------------------------
@@ -88,13 +106,13 @@ def _reorder(series: pd.Categorical, order: list[str]) -> list[str]:
     return [x for x in order if x in present] + [x for x in present if x not in order]
 
 
-def _pivot(df: pd.DataFrame, value: str) -> pd.DataFrame:
+def _pivot(df: pd.DataFrame, value: str, agent_order: list[str], opp_order: list[str]) -> pd.DataFrame:
     """Return an agent × opponent pivot for *value*."""
     summary = df.groupby(["pokechamp_agent", "opponent"])[value].mean().reset_index()
     if value == "won":
         summary[value] *= 100  # convert to %
-    agents = _reorder(summary["pokechamp_agent"], AGENT_ORDER)
-    opps = _reorder(summary["opponent"], OPPONENT_ORDER)
+    agents = _reorder(summary["pokechamp_agent"], agent_order)
+    opps = _reorder(summary["opponent"], opp_order)
     pivot = summary.pivot(index="pokechamp_agent", columns="opponent", values=value)
     return pivot.reindex(index=agents, columns=opps)
 
@@ -115,8 +133,17 @@ def generate_full_report(data_dir: Path, output_dir: Path) -> None:
     df = load_all_data(data_dir)
     df["win_pct"] = df["won"] * 100.0
 
-    agents_present = _reorder(df["pokechamp_agent"], AGENT_ORDER)
-    opps_present = _reorder(df["opponent"], OPPONENT_ORDER)
+    # Apply display names
+    df["pokechamp_agent"] = df["pokechamp_agent"].map(get_display_name)
+    df["opponent"] = df["opponent"].map(get_display_name)
+
+    # Reorder lists based on display names
+    display_agents = [get_display_name(x) for x in AGENT_ORDER]
+    display_opps = [get_display_name(x) for x in OPPONENT_ORDER]
+    display_baselines = {get_display_name(x) for x in BASELINES}
+
+    agents_present = _reorder(df["pokechamp_agent"], display_agents)
+    opps_present = _reorder(df["opponent"], display_opps)
 
     sns.set_theme(style="whitegrid", font_scale=1.05)
     fig = plt.figure(figsize=(22, 18))
@@ -129,7 +156,7 @@ def generate_full_report(data_dir: Path, output_dir: Path) -> None:
 
     # ── Panel 1: Win-Rate Heatmap ──────────────────────────────────────────
     ax1 = fig.add_subplot(3, 2, 1)
-    wr_pivot = _pivot(df, "won")
+    wr_pivot = _pivot(df, "won", agents_present, opps_present)
     sns.heatmap(
         wr_pivot,
         annot=True,
@@ -160,7 +187,9 @@ def generate_full_report(data_dir: Path, output_dir: Path) -> None:
 
     # ── Panel 3: Avg Fainted Us vs Opp heatmap ────────────────────────────
     ax3 = fig.add_subplot(3, 2, 3)
-    fainted_diff = _pivot(df, "fainted_opp") - _pivot(df, "fainted_us")
+    f_opp_pivot = _pivot(df, "fainted_opp", agents_present, opps_present)
+    f_us_pivot = _pivot(df, "fainted_us", agents_present, opps_present)
+    fainted_diff = f_opp_pivot - f_us_pivot
     sns.heatmap(
         fainted_diff,
         annot=True,
@@ -178,7 +207,7 @@ def generate_full_report(data_dir: Path, output_dir: Path) -> None:
 
     # ── Panel 4: Avg Battle Duration Heatmap ─────────────────────────────
     ax4 = fig.add_subplot(3, 2, 4)
-    turns_pivot = _pivot(df, "turns")
+    turns_pivot = _pivot(df, "turns", agents_present, opps_present)
     sns.heatmap(
         turns_pivot,
         annot=True,
@@ -195,10 +224,10 @@ def generate_full_report(data_dir: Path, output_dir: Path) -> None:
 
     # ── Panel 5: Baseline vs Heuristic Comparison ─────────────────────────
     ax5 = fig.add_subplot(3, 2, 5)
-    baseline_df = df[df["opponent"].isin(BASELINES)].copy()
-    heuristic_df = df[~df["opponent"].isin(BASELINES)].copy()
-    baseline_wr = baseline_df.groupby("pokechamp_agent")["win_pct"].mean().reindex(agents_present)
-    heuristic_wr = heuristic_df.groupby("pokechamp_agent")["win_pct"].mean().reindex(agents_present)
+    baseline_df = df[df["opponent"].isin(display_baselines)].copy()
+    heuristic_df = df[~df["opponent"].isin(display_baselines)].copy()
+    baseline_wr = baseline_df.groupby("pokechamp_agent")["win_pct"].mean().reindex(agents_present).fillna(0)
+    heuristic_wr = heuristic_df.groupby("pokechamp_agent")["win_pct"].mean().reindex(agents_present).fillna(0)
     x = np.arange(len(agents_present))
     width = 0.35
     ax5.bar(x - width / 2, baseline_wr.values, width, label="vs Baselines", color="#3498db", alpha=0.85)
@@ -267,7 +296,7 @@ def main() -> None:
     parser.add_argument(
         "--data-dir",
         type=str,
-        default="data/benchmarks_pokechamp",
+        default="data/benchmarks_pokechamp_parallel",
         help="Directory containing per-matchup pokechamp CSVs.",
     )
     parser.add_argument(

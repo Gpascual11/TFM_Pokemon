@@ -1,0 +1,302 @@
+{
+    "random_vs_v1": {
+        "win_rate": 1.9,
+        "avg_turns": 24.923,
+        "total_games": 1000
+    },
+    "random_vs_v2": {
+        "win_rate": 3.2,
+        "avg_turns": 25.585,
+        "total_games": 1000
+    },
+    "random_vs_v3": {
+        "win_rate": 1.9555555555555555,
+        "avg_turns": 24.848,
+        "total_games": 1125
+    },
+    "random_vs_v4": {
+        "win_rate": 9.0,
+        "avg_turns": 28.063,
+        "total_games": 1000
+    },
+    "random_vs_v5": {
+        "win_rate": 7.199999999999999,
+        "avg_turns": 30.946,
+        "total_games": 1000
+    },
+    "random_vs_v6": {
+        "win_rate": 2.1999999999999997,
+        "avg_turns": 25.251,
+        "total_games": 1000
+    },
+    "random_vs_random": {
+        "win_rate": 50.5,
+        "avg_turns": 56.887,
+        "total_games": 1000
+    },
+    "random_vs_max_power": {
+        "win_rate": 10.299999999999999,
+        "avg_turns": 29.034,
+        "total_games": 1000
+    },
+    "random_vs_simple_heuristic": {
+        "win_rate": 1.3,
+        "avg_turns": 22.32,
+        "total_games": 1000
+    },
+    "random_vs_abyssal": {
+        "win_rate": 1.6,
+        "avg_turns": 22.421,
+        "total_games": 1000
+    },
+    "random_vs_one_step": {
+        "win_rate": 2.8000000000000003,
+        "avg_turns": 24.777,
+        "total_games": 1000
+    },
+    "random_vs_safe_one_step": {
+        "win_rate": 3.5000000000000004,
+        "avg_turns": 24.115,
+        "total_games": 1000
+    },
+    "max_power_vs_v1": {
+        "win_rate": 21.2,
+        "avg_turns": 18.674,
+        "total_games": 1000
+    },
+    "max_power_vs_v2": {
+        "win_rate": 19.0,
+        "avg_turns": 18.418,
+        "total_games": 1000
+    },
+    "max_power_vs_v3": {
+        "win_rate": 21.8,
+        "avg_turns": 18.911,
+        "total_games": 1000
+    },
+    "max_power_vs_v4": {
+        "win_rate": 32.0,
+        "avg_turns": 21.311,
+        "total_games": 1000
+    },
+    "max_power_vs_v5": {
+        "win_rate": 40.6,
+        "avg_turns": 23.052,
+        "total_games": 1000
+    },
+    "max_power_vs_v6": {
+        "win_rate": 21.7,
+        "avg_turns": 18.808,
+        "total_games": 1000
+    },
+    "max_power_vs_random": {
+        "win_rate": 89.5,
+        "avg_turns": 28.983,
+        "total_games": 1000
+    },
+    "max_power_vs_max_power": {
+        "win_rate": 50.7,
+        "avg_turns": 22.48,
+        "total_games": 1000
+    },
+    "max_power_vs_simple_heuristic": {
+        "win_rate": 9.2,
+        "avg_turns": 17.605,
+        "total_games": 1000
+    },
+    "max_power_vs_abyssal": {
+        "win_rate": 11.0,
+        "avg_turns": 17.828,
+        "total_games": 1000
+    },
+    "max_power_vs_one_step": {
+        "win_rate": 19.6,
+        "avg_turns": 18.661,
+        "total_games": 1000
+    },
+    "max_power_vs_safe_one_step": {
+        "win_rate": 19.6,
+        "avg_turns": 18.483,
+        "total_games": 1000
+    },
+    "abyssal_vs_v1": {
+        "win_rate": 69.6,
+        "avg_turns": 17.386,
+        "total_games": 1000
+    },
+    "abyssal_vs_v2": {
+        "win_rate": 69.89999999999999,
+        "avg_turns": 17.17,
+        "total_games": 1000
+    },
+    "abyssal_vs_v3": {
+        "win_rate": 70.19999999999999,
+        "avg_turns": 17.224,
+        "total_games": 1000
+    },
+    "abyssal_vs_v4": {
+        "win_rate": 78.7,
+        "avg_turns": 19.328,
+        "total_games": 1000
+    },
+    "abyssal_vs_v5": {
+        "win_rate": 85.1,
+        "avg_turns": 19.212,
+        "total_games": 1000
+    },
+    "abyssal_vs_v6": {
+        "win_rate": 68.2,
+        "avg_turns": 17.177,
+        "total_games": 1000
+    },
+    "abyssal_vs_random": {
+        "win_rate": 97.6,
+        "avg_turns": 21.789,
+        "total_games": 1000
+    },
+    "abyssal_vs_max_power": {
+        "win_rate": 90.0,
+        "avg_turns": 17.929,
+        "total_games": 1000
+    },
+    "abyssal_vs_simple_heuristic": {
+        "win_rate": 50.6,
+        "avg_turns": 17.676,
+        "total_games": 1000
+    },
+    "abyssal_vs_abyssal": {
+        "win_rate": 52.2,
+        "avg_turns": 17.674,
+        "total_games": 1000
+    },
+    "abyssal_vs_one_step": {
+        "win_rate": 67.7,
+        "avg_turns": 17.299,
+        "total_games": 1000
+    },
+    "abyssal_vs_safe_one_step": {
+        "win_rate": 66.7,
+        "avg_turns": 17.184,
+        "total_games": 1000
+    },
+    "one_step_vs_v1": {
+        "win_rate": 49.5,
+        "avg_turns": 17.44,
+        "total_games": 1000
+    },
+    "one_step_vs_v2": {
+        "win_rate": 49.1,
+        "avg_turns": 17.244,
+        "total_games": 1000
+    },
+    "one_step_vs_v3": {
+        "win_rate": 51.2,
+        "avg_turns": 17.461,
+        "total_games": 1000
+    },
+    "one_step_vs_v4": {
+        "win_rate": 64.5,
+        "avg_turns": 19.694,
+        "total_games": 1000
+    },
+    "one_step_vs_v5": {
+        "win_rate": 75.3,
+        "avg_turns": 19.693,
+        "total_games": 1000
+    },
+    "one_step_vs_v6": {
+        "win_rate": 47.699999999999996,
+        "avg_turns": 17.311,
+        "total_games": 1000
+    },
+    "one_step_vs_random": {
+        "win_rate": 96.7,
+        "avg_turns": 24.849,
+        "total_games": 1000
+    },
+    "one_step_vs_max_power": {
+        "win_rate": 77.8,
+        "avg_turns": 18.532,
+        "total_games": 1000
+    },
+    "one_step_vs_simple_heuristic": {
+        "win_rate": 34.1,
+        "avg_turns": 17.122,
+        "total_games": 1000
+    },
+    "one_step_vs_abyssal": {
+        "win_rate": 31.8,
+        "avg_turns": 16.982,
+        "total_games": 1000
+    },
+    "one_step_vs_one_step": {
+        "win_rate": 49.7,
+        "avg_turns": 17.008,
+        "total_games": 1000
+    },
+    "one_step_vs_safe_one_step": {
+        "win_rate": 47.5,
+        "avg_turns": 17.022,
+        "total_games": 1000
+    },
+    "safe_one_step_vs_v1": {
+        "win_rate": 51.4,
+        "avg_turns": 17.444,
+        "total_games": 1000
+    },
+    "safe_one_step_vs_v2": {
+        "win_rate": 50.8,
+        "avg_turns": 17.357,
+        "total_games": 1000
+    },
+    "safe_one_step_vs_v3": {
+        "win_rate": 49.7,
+        "avg_turns": 17.179,
+        "total_games": 1000
+    },
+    "safe_one_step_vs_v4": {
+        "win_rate": 63.800000000000004,
+        "avg_turns": 19.852,
+        "total_games": 1000
+    },
+    "safe_one_step_vs_v5": {
+        "win_rate": 71.6,
+        "avg_turns": 20.061,
+        "total_games": 1000
+    },
+    "safe_one_step_vs_v6": {
+        "win_rate": 53.1,
+        "avg_turns": 17.4,
+        "total_games": 1000
+    },
+    "safe_one_step_vs_random": {
+        "win_rate": 97.89999999999999,
+        "avg_turns": 24.082,
+        "total_games": 1000
+    },
+    "safe_one_step_vs_max_power": {
+        "win_rate": 81.2,
+        "avg_turns": 18.412,
+        "total_games": 1000
+    },
+    "safe_one_step_vs_simple_heuristic": {
+        "win_rate": 29.099999999999998,
+        "avg_turns": 17.021,
+        "total_games": 1000
+    },
+    "safe_one_step_vs_abyssal": {
+        "win_rate": 29.9,
+        "avg_turns": 17.121,
+        "total_games": 1000
+    },
+    "safe_one_step_vs_one_step": {
+        "win_rate": 49.6,
+        "avg_turns": 17.067,
+        "total_games": 1000
+    },
+    "safe_one_step_vs_safe_one_step": {
+        "win_rate": 50.7,
+        "avg_turns": 17.457,
+        "total_games": 1000
+    }
+}
