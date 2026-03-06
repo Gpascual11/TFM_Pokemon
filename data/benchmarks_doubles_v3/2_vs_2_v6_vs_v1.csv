@@ -1,0 +1,11 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
+battle-gen9randomdoublesbattle-132593,v6,v1,v1B13d38a24p8000,0,8,appletun|mimikyubusted|orthworm|shaymin|talonflame|zebstrika,bombirdier|ceruledge|koraidon|latias|magmortar|sneasler,6,0,0.0,5,1,0.26,
+battle-gen9randomdoublesbattle-132594,v6,v1,v1B13d38a24p8000,0,6,ditto|drednaw|flygon|hitmonchan|sylveon|venusaur,hitmonchan|malamar|sudowoodo|uxie|zapdos,6,0,0.0,3,2,1.41,
+battle-gen9randomdoublesbattle-132595,v6,v1,v6A13d38a24p8000,1,6,honchkrow|indeedee|scyther|spiritomb|toxicroak|zangoose,arceusdark|komala|oricoriopompom|swampert|sylveon|veluza,1,5,4.016,6,0,0.0,
+battle-gen9randomdoublesbattle-132593,v6,v1,v1B13d38a24p8001,0,7,alcremiecaramelswirl|brutebonnet|golurk|kleavor|mienshao|sylveon,clawitzer|indeedee|lunala|poliwrath|rampardos|zebstrika,6,0,0.0,4,2,0.85,
+battle-gen9randomdoublesbattle-132594,v6,v1,v1B13d38a24p8001,0,8,corviknight|cyclizar|hydrapple|ironboulder|mightyena|skeledirge,donphan|gogoat|mabosstiff|milotic|mismagius|torkoal,6,0,0.0,5,1,1.0,
+battle-gen9randomdoublesbattle-132595,v6,v1,v6A13d38a24p8001,1,12,amoonguss|arboliva|deoxysdefense|kyuremblack|latias|swalot,duraludon|jolteon|komala|lanturn|lugia|mismagius,5,1,0.571,6,0,0.0,
+battle-gen9randomdoublesbattle-132591,v6,v1,v1B13d38a24p8002,0,7,espathra|kommoo|lapras|phione|yanmega|zamazentacrowned,glimmora|lunala|mew|plusle|thundurustherian|zangoose,6,0,0.0,4,2,1.16,
+battle-gen9randomdoublesbattle-132592,v6,v1,v1B13d38a24p8002,0,32,chandelure|dragonite|rhyperior|slowbrogalar|toucannon|zoroarkhisui,bastiodon|ditto|exeggutoralola|palafin|plusle|ursalunabloodmoon,6,0,0.0,5,1,0.97,
+battle-gen9randomdoublesbattle-132591,v6,v1,v1B13d38a24p8003,0,7,darkrai|goodra|gougingfire|heatran|palossand|toucannon,garganacl|goodra|landorus|primarina|thundurustherian,6,0,0.0,3,2,0.51,
+battle-gen9randomdoublesbattle-132592,v6,v1,v6A13d38a24p8003,1,10,galvantula|goodra|heracross|oricorio|regirock|salazzle,chandelure|conkeldurr|meganium|mudsdale|wochien|wyrdeer,5,1,1.0,6,0,0.0,

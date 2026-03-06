@@ -1,0 +1,11 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp,moves_used
+battle-gen9randomdoublesbattle-132611,v6,max_power,v6A545ed1fep8000,1,8,chiyu|golurk|hariyama|lokix|lugia|swalot,clefable|ironboulder|lokix|pachirisu|rhydon|zamazenta,2,4,3.124,6,0,0.0,
+battle-gen9randomdoublesbattle-132612,v6,max_power,v6A545ed1fep8000,1,6,decidueyehisui|golurk|greninja|mudsdale|pyroar|swalot,annihilape|charizard|donphan|incineroar|necrozmadawnwings|sylveon,3,3,2.115,6,0,0.0,
+battle-gen9randomdoublesbattle-132613,v6,max_power,v6A545ed1fep8000,1,5,illumise|lilliganthisui|morpeko|necrozmaduskmane|tyranitar|ursalunabloodmoon,dugtrioalola|hatterene|kingambit|sawsbuckautumn|spectrier|typhlosion,4,2,1.362,6,0,0.0,
+battle-gen9randomdoublesbattle-132611,v6,max_power,v6A545ed1fep8001,1,7,basculegion|clodsire|galvantula|houndoom|hypno|kingdra,dudunsparce|galvantula|houndoom|miraidon|poliwrath|swanna,3,3,2.437,6,0,0.0,
+battle-gen9randomdoublesbattle-132612,v6,max_power,v6A545ed1fep8001,1,6,drednaw|hydreigon|necrozmadawnwings|snorlax|staraptor|talonflame,cloyster|conkeldurr|electrodehisui|hitmonlee|latias|rotomfrost,4,2,1.811,6,0,0.0,
+battle-gen9randomdoublesbattle-132613,v6,max_power,v6A545ed1fep8001,1,15,ambipom|arceusghost|comfey|fezandipiti|raichualola|vespiquen,maushold|sandyshocks|skeledirge|spiritomb|volcanion|whiscash,5,1,0.034,6,0,0.0,
+battle-gen9randomdoublesbattle-132610,v6,max_power,Opp545ed1fep8002,0,10,azelf|clodsire|dondozo|kommoo|regirock|whiscash,ampharos|eiscue|glaceon|illumise|komala|uxie,6,0,0.0,4,2,0.9,
+battle-gen9randomdoublesbattle-132611,v6,max_power,v6A545ed1fep8002,1,8,dragonite|irontreads|orthworm|sinistcha|tornadus|zangoose,gogoat|greninja|polteageist|sandslash|spectrier|yanmega,3,3,1.983,6,0,0.0,
+battle-gen9randomdoublesbattle-132610,v6,max_power,Opp545ed1fep8003,0,11,dugtrioalola|noivern|primarina|registeel|smeargle|zebstrika,banette|blastoise|blissey|glaceon|stonjourner|vileplume,6,0,0.0,4,2,1.02,
+battle-gen9randomdoublesbattle-132611,v6,max_power,v6A545ed1fep8003,1,7,banette|cresselia|ditto|enamorustherian|fezandipiti|noivern,falinks|honchkrow|ironhands|ironleaves|ironthorns|weezing,2,4,4.0,6,0,0.0,

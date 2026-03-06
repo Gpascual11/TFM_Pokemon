@@ -1,0 +1,128 @@
+{
+    "v1_vs_v1": {
+        "win_rate": 50.0,
+        "avg_turns": 8.3,
+        "avg_fainted_opp": 5.0,
+        "avg_hp_remaining": 0.7468,
+        "total_games": 10
+    },
+    "v1_vs_v2": {
+        "win_rate": 70.0,
+        "avg_turns": 8.6,
+        "avg_fainted_opp": 5.4,
+        "avg_hp_remaining": 0.7589,
+        "total_games": 10
+    },
+    "v1_vs_v6": {
+        "win_rate": 50.0,
+        "avg_turns": 8.7,
+        "avg_fainted_opp": 5.2,
+        "avg_hp_remaining": 0.36479999999999996,
+        "total_games": 10
+    },
+    "v1_vs_random": {
+        "win_rate": 100.0,
+        "avg_turns": 8.8,
+        "avg_fainted_opp": 6.0,
+        "avg_hp_remaining": 3.8009999999999997,
+        "total_games": 10
+    },
+    "v1_vs_max_power": {
+        "win_rate": 80.0,
+        "avg_turns": 8.1,
+        "avg_fainted_opp": 5.6,
+        "avg_hp_remaining": 1.6896999999999998,
+        "total_games": 10
+    },
+    "v1_vs_simple_heuristic": {
+        "win_rate": 70.0,
+        "avg_turns": 8.3,
+        "avg_fainted_opp": 5.4,
+        "avg_hp_remaining": 0.8712,
+        "total_games": 10
+    },
+    "v2_vs_v1": {
+        "win_rate": 70.0,
+        "avg_turns": 8.0,
+        "avg_fainted_opp": 5.4,
+        "avg_hp_remaining": 0.704,
+        "total_games": 10
+    },
+    "v2_vs_v2": {
+        "win_rate": 60.0,
+        "avg_turns": 7.8,
+        "avg_fainted_opp": 5.3,
+        "avg_hp_remaining": 0.7459,
+        "total_games": 10
+    },
+    "v2_vs_v6": {
+        "win_rate": 40.0,
+        "avg_turns": 7.8,
+        "avg_fainted_opp": 4.9,
+        "avg_hp_remaining": 0.6938,
+        "total_games": 10
+    },
+    "v2_vs_random": {
+        "win_rate": 100.0,
+        "avg_turns": 9.2,
+        "avg_fainted_opp": 6.0,
+        "avg_hp_remaining": 2.9148,
+        "total_games": 10
+    },
+    "v2_vs_max_power": {
+        "win_rate": 80.0,
+        "avg_turns": 8.7,
+        "avg_fainted_opp": 5.7,
+        "avg_hp_remaining": 1.4681000000000002,
+        "total_games": 10
+    },
+    "v2_vs_simple_heuristic": {
+        "win_rate": 80.0,
+        "avg_turns": 7.9,
+        "avg_fainted_opp": 5.6,
+        "avg_hp_remaining": 0.9391,
+        "total_games": 10
+    },
+    "v6_vs_v1": {
+        "win_rate": 30.0,
+        "avg_turns": 10.3,
+        "avg_fainted_opp": 4.7,
+        "avg_hp_remaining": 0.5587,
+        "total_games": 10
+    },
+    "v6_vs_v2": {
+        "win_rate": 50.0,
+        "avg_turns": 7.6,
+        "avg_fainted_opp": 5.2,
+        "avg_hp_remaining": 0.6255,
+        "total_games": 10
+    },
+    "v6_vs_v6": {
+        "win_rate": 80.0,
+        "avg_turns": 8.8,
+        "avg_fainted_opp": 5.8,
+        "avg_hp_remaining": 0.9911999999999999,
+        "total_games": 10
+    },
+    "v6_vs_random": {
+        "win_rate": 100.0,
+        "avg_turns": 8.3,
+        "avg_fainted_opp": 6.0,
+        "avg_hp_remaining": 3.3036000000000003,
+        "total_games": 10
+    },
+    "v6_vs_max_power": {
+        "win_rate": 80.0,
+        "avg_turns": 8.3,
+        "avg_fainted_opp": 5.6,
+        "avg_hp_remaining": 1.6865999999999999,
+        "total_games": 10
+    },
+    "v6_vs_simple_heuristic": {
+        "win_rate": 50.0,
+        "avg_turns": 7.7,
+        "avg_fainted_opp": 5.0,
+        "avg_hp_remaining": 0.7058,
+        "total_games": 10
+    }
+}

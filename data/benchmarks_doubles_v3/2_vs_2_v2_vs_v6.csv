@@ -1,0 +1,11 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp
+battle-gen9randomdoublesbattle-132575,v2,v6,v2A649b146ap8000,1,8,azelf|dewgong|galvantula|sceptile|zekrom|zoroarkhisui,froslass|garganacl|ogerpon|okidogi|virizion|weezinggalar,4,2,1.904,6,0,0.0
+battle-gen9randomdoublesbattle-132576,v2,v6,v6B649b146ap8000,0,10,mandibuzz|pachirisu|pelipper|sandyshocks|swalot|wochien,ceruledge|clawitzer|dedenne|gogoat|rotomheat|uxie,6,0,0.0,4,2,1.83
+battle-gen9randomdoublesbattle-132577,v2,v6,v2A649b146ap8000,1,8,clefable|gengar|miniororange|miraidon|palafin|urshifurapidstrike,delibird|eiscue|gyarados|pincurchin|serperior|tentacruel,4,2,1.508,6,0,0.0
+battle-gen9randomdoublesbattle-132575,v2,v6,v2A649b146ap8001,1,7,araquanid|calyrex|espeon|mudsdale|skuntank|staraptor,barraskewda|chienpao|keldeoresolute|magnezone|tropius|zoroark,4,2,1.901,6,0,0.0
+battle-gen9randomdoublesbattle-132576,v2,v6,v6B649b146ap8001,0,9,houndstone|krookodile|mienshao|pincurchin|spectrier|zangoose,dachsbun|dondozo|donphan|komala|lunala|manaphy,6,0,0.0,4,2,1.54
+battle-gen9randomdoublesbattle-132577,v2,v6,v6B649b146ap8001,0,8,ambipom|archaludon|copperajah|kricketune|kyogre|swalot,avalugg|cacturne|cyclizar|gougingfire|medicham|metagross,6,0,0.0,4,2,0.59
+battle-gen9randomdoublesbattle-132572,v2,v6,v2A649b146ap8002,1,7,arceusrock|bellibolt|palossand|sunflora|trevenant|volbeat,chimecho|indeedee|poliwrath|raichu|revavroom|torkoal,4,2,1.625,6,0,0.0
+battle-gen9randomdoublesbattle-132573,v2,v6,v6B649b146ap8002,0,7,arceusflying|basculegionf|emboar|eternatus|vigoroth|zebstrika,excadrill|ironbundle|rampardos|samurott|seviper|tsareena,6,0,0.0,4,2,1.95
+battle-gen9randomdoublesbattle-132572,v2,v6,v6B649b146ap8003,0,6,brambleghast|golduck|infernape|jolteon|mightyena|samurotthisui,clefable|fezandipiti|greninja|kricketune|skeledirge|terrakion,6,0,0.0,4,2,2.0
+battle-gen9randomdoublesbattle-132573,v2,v6,v6B649b146ap8003,0,8,cinderace|kommoo|lapras|sudowoodo|vileplume|virizion,azelf|chesnaught|drifblim|forretress|ironthorns|regirock,6,0,0.0,5,1,1.0

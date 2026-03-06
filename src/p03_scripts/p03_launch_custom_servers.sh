@@ -44,6 +44,8 @@ for ((i=0; i<COUNT; i++)); do
     PORT=$((BASE_PORT + i))
     node "$SHOWDOWN" start --port "$PORT" --no-security &
     echo "   ✅ [Port $PORT] Server launched (PID $!)"
+    # Wait a bit between launches to avoid race conditions on shared config files
+    sleep 2
 done
 
 echo "──────────────────────────────────────────────"
