@@ -3,12 +3,15 @@
 Evaluates valid orders using a simple maximum damage heuristic per Pokémon slot.
 Calculates damage as 'base_power * type_effectiveness * STAB' against the
 specific target defined in the order. Penalizes self-targeting actions.
+
+This agent acts as the baseline heuristic for the 2v2 environment, prioritizing
+immediate offensive pressure without considering status moves or secondary effects.
 """
 
 from __future__ import annotations
 
 from poke_env.player.battle_order import SingleBattleOrder
-from poke_env.battle.move import Move
+from poke_env.environment.move import Move
 
 from ...core.base import BaseHeuristic2v2
 
@@ -24,6 +27,16 @@ class HeuristicV1Doubles(BaseHeuristic2v2):
     def _score_order(
         self, order: SingleBattleOrder, pokemon, slot: int, battle
     ) -> float:
+        """Score a single battle order for a specific Pokémon slot.
+
+        Scoring formula: base_power * type_effectiveness * STAB.
+        
+        :param order: The BattleOrder to evaluate (move/switch and target).
+        :param pokemon: Our active Pokémon in this slot.
+        :param slot: The index of the slot (0 or 1).
+        :param battle: The current DoubleBattle state.
+        :return: A float score where higher is better.
+        """
         action = order.order
         # Switches always score lower than any damage move
         if not isinstance(action, Move):

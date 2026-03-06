@@ -21,8 +21,8 @@ def get_agent_class(name: str) -> type:
         from poke_env.player import RandomPlayer
         return RandomPlayer
     if name == "max_power":
-        from poke_env.player.baselines import MaxBasePowerPlayer
-        return MaxBasePowerPlayer
+        from .baselines.max_power_doubles import MaxPowerDoublesPlayer
+        return MaxPowerDoublesPlayer
     if name == "abyssal":
         from .baselines.abyssal_doubles import AbyssalPlayer
         return AbyssalPlayer

@@ -1,7 +1,12 @@
 """Abyssal Bot baseline for Doubles.
 
-Ported from the pokechamp repository and adapted for Gen 9 Doubles 
-using standard poke-env structures.
+Ported from the PokéChamp repository and adapted for Gen 9 Doubles 
+using the poke-env fork structures. This agent uses a complex evaluation
+function considering stat boosts, matchup estimation, and speed tiers
+to make decisions.
+
+In doubles, it uses a simplified slot-by-slot evaluation but incorporates
+team-level switching logic when a Pokémon is significantly disadvantaged.
 """
 
 from __future__ import annotations
@@ -12,15 +17,14 @@ from typing import List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
-from poke_env.battle.abstract_battle import AbstractBattle
-from poke_env.battle.battle import Battle
-from poke_env.battle.double_battle import DoubleBattle
-from poke_env.battle.move import Move
-from poke_env.battle.move_category import MoveCategory
-from poke_env.battle.pokemon import Pokemon
-from poke_env.battle.side_condition import SideCondition
-from poke_env.player.player import Player
-from poke_env.player.battle_order import DoubleBattleOrder, BattleOrder, PassBattleOrder
+from poke_env.environment.abstract_battle import AbstractBattle
+from poke_env.environment.battle import Battle
+from poke_env.environment.double_battle import DoubleBattle
+from poke_env.environment.move import Move
+from poke_env.environment.move_category import MoveCategory
+from poke_env.environment.pokemon import Pokemon
+from poke_env.environment.side_condition import SideCondition
+from poke_env.player import Player, DoubleBattleOrder, BattleOrder, DefaultBattleOrder
 
 
 class AbyssalPlayer(Player):
@@ -189,8 +193,8 @@ class AbyssalPlayer(Player):
                 else:
                     orders[i] = None
             return DoubleBattleOrder(
-                first_order=orders[0] or PassBattleOrder(), 
-                second_order=orders[1] or PassBattleOrder()
+                first_order=orders[0] or DefaultBattleOrder(), 
+                second_order=orders[1] or DefaultBattleOrder()
             )
         
         # Normal battle logic 
@@ -272,6 +276,6 @@ class AbyssalPlayer(Player):
                 orders[i] = self.create_order(best_switch)
         
         return DoubleBattleOrder(
-            first_order=orders[0] or PassBattleOrder(), 
-            second_order=orders[1] or PassBattleOrder()
+            first_order=orders[0] or DefaultBattleOrder(), 
+            second_order=orders[1] or DefaultBattleOrder()
         )
