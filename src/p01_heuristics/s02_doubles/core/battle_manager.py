@@ -1,8 +1,7 @@
-"""Battle Manager — Simulation Orchestrator for Doubles.
+"""Async Battle Manager for batched 2v2 heuristic simulations.
 
-This module handles the execution of battle batches between two agents in 
-Gen 9 Random Doubles. It manages the async loop, server connections, and 
-extracts detailed results into CSV format.
+Handles the execution of multiple doubles battles, collecting performance
+metrics for up to 4 Pokémon per side and exporting results to CSV format.
 """
 
 from __future__ import annotations
@@ -30,8 +29,14 @@ OPPONENT_CHOICES = ("random", "self", "max_power", "simple_heuristic")
 class BattleManager:
     """Orchestrate a batched doubles simulation and export results to CSV.
 
-    This class manages the lifecycle of a battle batch, ensuring proper 
-    initialization of players and reliable extraction of battle results.
+    :param version: Heuristic version label, e.g. ``v1`` or ``v6``.
+    :param server_url: WebSocket URL of the Pokémon Showdown server.
+    :param total_games: Total battles to simulate.
+    :param batch_size: Battles per ``battle_against`` call.
+    :param concurrent_battles: ``max_concurrent_battles`` passed to each player.
+    :param data_dir: Directory for CSV output.
+    :param opponent: ``random``, ``self``, ``max_power``, ``simple_heuristic``, or a heuristic version.
+    :param run_id: Unique run identifier; auto-generated when ``None``.
     """
 
     def __init__(
@@ -160,7 +165,7 @@ class BattleManager:
         factory = factories.get(self.opponent)
         if factory:
             return factory()
-        if self.opponent in HeuristicFactory.available_internal() or self.opponent in HeuristicFactory.available_baselines():
+        if self.opponent in HeuristicFactory.available_versions():
             return HeuristicFactory.create(
                 self.opponent,
                 account_configuration=AccountConfiguration(
