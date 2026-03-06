@@ -4,9 +4,9 @@ This directory contains the rule-based agents (heuristics) developed for the Pok
 
 ## Directory Structure
 
-- **`s01_singles/`**: Heuristics for 1v1 battles (Gen 9 Singles).
-- **`s02_doubles/`**: Heuristics for 2v2 battles (Gen 9 Doubles).
-- **`backup/`**: Archived experiments and early analysis notebooks.
+- **`s01_singles/`**: Implemented heuristics and evaluation pipeline for 1v1 battles (Gen 9 Singles).
+- **`s02_doubles/`**: Design notes and early guides for 2v2 battles (Gen 9 Doubles).
+- **`backup/`**: Archived experiments and analysis notebooks.
 
 ---
 
@@ -28,23 +28,39 @@ All heuristics follow a general scoring pipeline:
 ---
 
 ## 2. Shared Core Components
-Each sub-module (`s01_singles`, `s02_doubles`) is split into:
-- **`agents/`**: The specific strategy implementations (v1–v6).
+
+In `s01_singles/`, the code is split into:
+
+- **`agents/`**: Strategy implementations (v1–v6), baselines, and LLM labels.
 - **`core/`**: Shared infrastructure:
-    - `base.py`: Abstract base classes for players.
-    - `common.py`: Math utilities (damage estimation, speed checking).
-    - `factory.py`: Instantiates agents by version string (e.g., "v6").
-    - `battle_manager.py`: Handles simulation loops.
+    - `base.py`: Abstract base class for rule-based singles players (`BaseHeuristic1v1`).
+    - `common.py`: Math utilities (damage estimation, speed tiers, status helpers).
+    - `factory.py`: Instantiates agents by string label (e.g. `"v6"`, `"abyssal"`, `"pokechamp"`).
+    - `battle_manager.py`: Handles single-process simulation loops.
+    - `process_launcher.py`: Distributes simulations across multiple ports/processes.
+- **`evaluation/`**: Benchmark engine (`engine/`), reporting scripts (`reporting/`), and docs.
 
 ---
 
 ## 3. Heuristic Generations (v1 - v6)
-- **v1**: Simple Max-Damage greedy selection.
-- **v2-v3**: Adds basic defensive switching and status awareness.
-- **v4-v5**: Expert-level damage formulas (weather, terrain, stat boosts) and danger-aware pivoting.
-- **v6**: The current state-of-the-art combined logic with field awareness.
+
+Singles heuristics in `s01_singles/agents/internal/` evolve as follows:
+
+- **v1**: Primary Power — greedy on base power × effectiveness × STAB, no structured switching.
+- **v2**: Physical/Special Split — shared damage estimator with basic defensive pivoting (Toxic escape + weak-damage/outsped switch).
+- **v3**: Defensive Stability — V2 logic plus per-battle move tracking for analysis.
+- **v4**: Field-Aware Damage Overhaul — burn-aware damage with Weather/Terrain modifiers and simple danger-based pivoting.
+- **v5**: Boost-Aware Field Expert — V4 plus stat-boost-aware damage, KO pre-check, and relaxed pivot rules.
+- **v6**: Priority & Peak Field Awareness — V3-style defence with Weather/Terrain modifiers and priority move valuation.
 
 ---
 
 ## How to Run
-Please refer to the `README.md` inside `s01_singles/` or `s02_doubles/` for specific execution commands and parameter details.
+
+For Singles (`s01_singles/`), see:
+
+- `s01_singles/README.md` for a high-level overview and quick-start commands.
+- `s01_singles/docs/CLI_REFERENCE.md` for all available `uv` commands and CLI flags.
+- `s01_singles/docs/DATA_LAYOUT.md` for where benchmark CSVs are written under `data/1_vs_1/`.
+
+For Doubles (`s02_doubles/`), the current state is documented in `s02_doubles/s02_doubles_guide.md` and focuses on design rather than a full implementation.

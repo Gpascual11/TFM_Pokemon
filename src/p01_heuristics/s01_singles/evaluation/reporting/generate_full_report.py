@@ -1,6 +1,6 @@
 """Full Visual Report Generator for Pokechamp Benchmark Results.
 
-Loads all per-matchup CSVs from ``data/benchmarks_pokechamp/`` across
+Loads all per-matchup CSVs from ``data/1_vs_1/benchmarks/pokechamp_parallel/`` across
 **all** Pokechamp agents and produces a comprehensive multi-panel PNG report:
 
 - Win-rate heatmap (agent × opponent)
@@ -14,7 +14,7 @@ Run once the full benchmark has completed (all agents, all opponents).
 
 Usage::
 
-    uv run python src/p01_heuristics/s01_singles/pokechamp/generate_full_report.py
+    uv run python src/p01_heuristics/s01_singles/evaluation/reporting/generate_full_report.py
 """
 
 from __future__ import annotations
@@ -26,6 +26,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
+# Default location
+DEFAULT_DATA_DIR = Path("data/1_vs_1/benchmarks/pokechamp_parallel")
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -80,7 +83,7 @@ def load_all_data(data_dir: Path) -> pd.DataFrame:
     files = sorted(data_dir.glob("pokechamp_*_vs_*.csv"))
     if not files:
         raise FileNotFoundError(
-            f"No pokechamp CSV files found in '{data_dir}'.\nRun the benchmark first: pokechamp_benchmark.py"
+            f"No pokechamp CSV files found in '{data_dir}'.\nRun the benchmark first: evaluation/engine/benchmark.py"
         )
 
     frames = []
@@ -296,13 +299,13 @@ def main() -> None:
     parser.add_argument(
         "--data-dir",
         type=str,
-        default="data/benchmarks_pokechamp_parallel",
+        default=str(DEFAULT_DATA_DIR),
         help="Directory containing per-matchup pokechamp CSVs.",
     )
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="src/p01_heuristics/s01_singles/s01_pokechamp/results",
+        default="src/p01_heuristics/s01_singles/evaluation/results/pokechamp_reports",
         help="Directory to save the PNG report.",
     )
     args = parser.parse_args()

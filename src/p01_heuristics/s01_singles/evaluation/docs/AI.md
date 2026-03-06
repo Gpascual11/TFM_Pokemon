@@ -6,11 +6,11 @@ This document summarizes the main steps, issues, and fixes while wiring the exte
 
 ## 1. Initial integration
 
-- **Goal**: Use the upstream `pokechamp` repo (`~/TFM/pokechamp`) as an external dependency and benchmark its agents (`pokechamp`, `pokellmon`, `random`, `max_power`, `abyssal`, `one_step`) against your own heuristics via `src/p01_heuristics/s01_singles/pokechamp/benchmark.py`.
+- **Goal**: Use the upstream `pokechamp` repo (`~/TFM/pokechamp`) as an external dependency and benchmark its agents (`pokechamp`, `pokellmon`, `random`, `max_power`, `abyssal`, `one_step`) against your own heuristics via `src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py`.
 - **Key components in this project**:
-  - `benchmark.py`: Orchestrates matchups, spawns `_worker.py` subprocesses, merges CSVs, prints a win‑rate matrix.
-  - `_worker.py`: Creates two players (a "Pokechamp agent" and an opponent), runs `battle_against`, writes per‑battle rows to a temp CSV, then exits.
-  - `HeuristicFactory`: Provides your internal heuristic opponents `v1`–`v6`.
+  - `evaluation/engine/benchmark.py`: Orchestrates matchups, spawns `evaluation/engine/worker.py` subprocesses, merges CSVs, prints a win‑rate matrix.
+  - `evaluation/engine/worker.py`: Creates two players (agent and opponent), runs `battle_against`, writes per‑battle rows to a temp CSV, then exits.
+  - `AgentFactory`: Instantiates internal heuristics, baselines, and pokechamp LLM players by label.
 
 ---
 
@@ -93,12 +93,14 @@ bash src/p03_scripts/p03_launch_custom_servers.sh 1
 
 # Terminal B: benchmark
 cd ~/TFM
-uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 1 \
-  -p 8000 \
-  --pokechamp-agents pokechamp pokellmon \
+uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 1 \
+  --agents pokechamp pokellmon \
+  --opponents random \
+  --ports 1 \
+  --concurrency 1 \
+  --start-port 8000 \
   --player_backend gemini-2.5-flash \
-  --player_prompt_algo io \
-  --batch-size 1
+  --player_prompt_algo io
 ```
 
 ### 4.2. Gemini‑specific errors
@@ -144,13 +146,15 @@ bash src/p03_scripts/p03_launch_custom_servers.sh 1
 
 # Terminal B: LLM benchmark with local Qwen 3 8B
 cd ~/TFM
-uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 1 \
-  -p 8000 \
-  --pokechamp-agents pokechamp pokellmon \
+uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 1 \
+  --agents pokechamp pokellmon \
+  --opponents random \
+  --ports 1 \
+  --concurrency 1 \
+  --start-port 8000 \
   --player_backend ollama/qwen3:8b \
   --player_prompt_algo io \
-  --battle-format gen9randombattle \
-  --batch-size 1
+  --battle-format gen9randombattle
 ```
 
 Notes:
@@ -159,9 +163,9 @@ Notes:
 
 ---
 
-## 6. Debug helper: `pokechamp_ollama_debug.py`
+## 6. Debug helper: `debug_runner.py`
 
-To see live progress for single games without the full benchmark, this project includes `src/p01_heuristics/s01_singles/pokechamp/pokechamp_ollama_debug.py`.
+To see live progress for single games without the full benchmark, this project includes `src/p01_heuristics/s01_singles/evaluation/engine/debug_runner.py`.
 
 **Behavior**
 
@@ -189,7 +193,7 @@ bash src/p03_scripts/p03_launch_custom_servers.sh 1
 
 # Terminal B
 cd ~/TFM
-uv run python src/p01_heuristics/s01_singles/pokechamp/pokechamp_ollama_debug.py
+uv run python src/p01_heuristics/s01_singles/evaluation/engine/debug_runner.py
 ```
 
 ---

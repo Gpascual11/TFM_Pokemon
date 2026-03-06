@@ -62,8 +62,8 @@ def calculate_base_damage(
     Factors: attack / defence stats, burn penalty on physical moves,
     STAB (same-type attack bonus), and type effectiveness.
 
-    Used by V2 and V4.  V1 has its own simpler formula; V5 extends
-    this with weather and terrain modifiers.
+    Used by V2, V3, and V6. V1 has its own simpler formula; V4 and V5
+    implement their own extended damage estimators.
     """
     if move.base_power <= 1:
         return 0.0

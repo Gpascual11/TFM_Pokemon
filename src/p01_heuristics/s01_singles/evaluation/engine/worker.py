@@ -209,6 +209,10 @@ def main() -> None:
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--concurrency", type=int, default=10)
     parser.add_argument("--format", default="gen9randombattle")
+    parser.add_argument("--player_backend", default="ollama/qwen3:8b")
+    parser.add_argument("--player_prompt_algo", default="io")
+    parser.add_argument("--temperature", type=float, default=0.3)
+    parser.add_argument("--log-dir", default="./battle_log/pokechamp_benchmark")
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
 
@@ -222,6 +226,10 @@ def main() -> None:
         server_configuration=server_config,
         battle_format=args.format,
         tag=tag,
+        backend=args.player_backend,
+        prompt_algo=args.player_prompt_algo,
+        temperature=args.temperature,
+        log_dir=args.log_dir,
         max_concurrent_battles=args.concurrency
     )
     
@@ -231,6 +239,10 @@ def main() -> None:
         server_configuration=server_config,
         battle_format=args.format,
         tag=tag,
+        backend=args.player_backend,
+        prompt_algo=args.player_prompt_algo,
+        temperature=args.temperature,
+        log_dir=args.log_dir,
         max_concurrent_battles=args.concurrency
     )
 

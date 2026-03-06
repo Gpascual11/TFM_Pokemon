@@ -11,7 +11,7 @@ and baseline opponents. Designed for high-reliability long-running runs:
 Usage::
 
     # 1 000 games per matchup, 4 parallel ports, resumable
-    uv run python src/p01_heuristics/s01_singles/heuristics/benchmark.py 1000 -p 4 --resume
+    uv run python src/p01_heuristics/s01_singles/evaluation/engine/serial_benchmark.py 1000 -p 4 --resume
 """
 
 import argparse
@@ -29,14 +29,14 @@ from tabulate import tabulate
 # ---------------------------------------------------------------------------
 # Package bootstrap
 # ---------------------------------------------------------------------------
-# This file lives at  src/p01_heuristics/s01_singles/heuristics/benchmark.py
-# We need to walk 3 levels up (heuristics → s01_singles → p01_heuristics → src).
+# This file lives at: src/p01_heuristics/s01_singles/evaluation/engine/serial_benchmark.py
+# We need to walk up to the repository `src/` so imports work when invoked directly.
 _DIR = Path(__file__).parent.resolve()
-_SRC = _DIR.parent.parent.parent
+_SRC = _DIR.parent.parent.parent.parent
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-__package__ = "p01_heuristics.s01_singles.heuristics"
+__package__ = "p01_heuristics.s01_singles.evaluation.engine"
 
 from ..core.battle_manager import BattleManager  # noqa: E402
 from ..core.factory import HeuristicFactory  # noqa: E402
@@ -152,13 +152,13 @@ def main() -> None:
     parser.add_argument(
         "--data-dir",
         type=str,
-        default="data/benchmarks_v2",
+        default="data/1_vs_1/benchmarks/serial_v2",
         help="Directory for per-matchup battle CSVs.",
     )
     parser.add_argument(
         "--output-csv",
         type=str,
-        default="src/p01_heuristics/s01_singles/heuristics/results/benchmark_summary.csv",
+        default="src/p01_heuristics/s01_singles/evaluation/results/benchmark_summary.csv",
         help="Path for the aggregated results CSV.",
     )
     args = parser.parse_args()
@@ -178,7 +178,7 @@ def main() -> None:
     logging.getLogger("p01_heuristics").setLevel(logging.INFO)
     logging.getLogger("poke_env").setLevel(logging.ERROR)
 
-    heuristics = sorted(HeuristicFactory.available_versions())
+    heuristics = sorted(HeuristicFactory.available_internal())
     baselines = ["random", "max_power", "simple_heuristic"]
     rows_v = heuristics
     cols_v = heuristics + baselines

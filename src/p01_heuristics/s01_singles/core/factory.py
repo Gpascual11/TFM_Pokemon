@@ -80,8 +80,6 @@ class AgentFactory:
                 battle_format=battle_format,
                 PNUMBER1=tag,
                 use_timeout=False,
-                account_configuration=kwargs.get("account_configuration"),
-                server_configuration=kwargs.get("server_configuration"),
             )
 
         # Standard heuristics/baselines

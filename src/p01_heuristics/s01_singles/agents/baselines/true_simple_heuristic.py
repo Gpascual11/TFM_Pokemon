@@ -12,24 +12,24 @@ from poke_env.player.player import Player
 class TrueSimpleHeuristicsPlayer(Player):
     ENTRY_HAZARDS = {
         "spikes": SideCondition.SPIKES,
-        "stealhrock": SideCondition.STEALTH_ROCK,
+        "stealthrock": SideCondition.STEALTH_ROCK,
         "stickyweb": SideCondition.STICKY_WEB,
         "toxicspikes": SideCondition.TOXIC_SPIKES,
     }
     ANTI_HAZARDS_MOVES = {"rapidspin", "defog"}
-    SPEED_TIER_COEFICIENT = 0.1
-    HP_FRACTION_COEFICIENT = 0.4
+    SPEED_TIER_COEFFICIENT = 0.1
+    HP_FRACTION_COEFFICIENT = 0.4
     SWITCH_OUT_MATCHUP_THRESHOLD = -2
 
     def _estimate_matchup(self, mon: Pokemon, opponent: Pokemon):
         score = max([opponent.damage_multiplier(t) for t in mon.types if t is not None])
         score -= max([mon.damage_multiplier(t) for t in opponent.types if t is not None])
         if mon.base_stats["spe"] > opponent.base_stats["spe"]:
-            score += self.SPEED_TIER_COEFICIENT
+            score += self.SPEED_TIER_COEFFICIENT
         elif opponent.base_stats["spe"] > mon.base_stats["spe"]:
-            score -= self.SPEED_TIER_COEFICIENT
-        score += mon.current_hp_fraction * self.HP_FRACTION_COEFICIENT
-        score -= opponent.current_hp_fraction * self.HP_FRACTION_COEFICIENT
+            score -= self.SPEED_TIER_COEFFICIENT
+        score += mon.current_hp_fraction * self.HP_FRACTION_COEFFICIENT
+        score -= opponent.current_hp_fraction * self.HP_FRACTION_COEFFICIENT
         return score
 
     def _should_dynamax(self, battle: AbstractBattle, n_remaining_mons: int):

@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 
 # Configuration
-DEFAULT_DATA_DIR = Path("data/benchmarks_unified")
+DEFAULT_DATA_DIR = Path("data/1_vs_1/benchmarks/unified")
 DEFAULT_OUTPUT = Path("src/p01_heuristics/s01_singles/evaluation/results/full_heatmap.png")
 
 def get_display_name(name):

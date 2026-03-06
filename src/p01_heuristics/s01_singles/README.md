@@ -54,13 +54,16 @@ Each version builds upon the successes and failures of the previous one:
 | **V1** | Primary Power | Random switching. |
 | **V2** | Physical/Special Split | Type-disadvantage awareness. |
 | **V3** | **Defensive Stability** | Escape Toxic/Bad matchups + Speed-check pivoting. |
-| **V4** | Damage Overhaul | Added burn penalty and STAB calculations. |
-| **V5** | **Field Awareness** | Weather (Sun/Rain) and Terrain (Electric/Grassy) modifiers. |
+| **V4** | Field-Aware Damage Overhaul | Burn penalty + STAB + Weather/Terrain scaling. |
+| **V5** | **Boost-Aware Field Expert** | Stat-boost-aware damage + KO pre-check + relaxed pivoting. |
 | **V6** | **The Peak** | Priority move valuation + Refined field awareness. |
 
 ---
 
 ## 🚀 4. Usage Guide
+
+For a full list of runnable commands and CLI flags, see `docs/CLI_REFERENCE.md`.  
+For the on-disk outputs layout, see `docs/DATA_LAYOUT.md`.
 
 ### 🏟️ Running a Full Tournament
 
@@ -86,7 +89,7 @@ uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 50 \
 
 ### 📊 Generating the Heatmap
 
-Once CSVs are generated in `data/benchmarks_unified/`:
+Once CSVs are generated in `data/1_vs_1/benchmarks/unified/`:
 
 ```bash
 uv run python src/p01_heuristics/s01_singles/evaluation/reporting/heatmaps.py
@@ -109,7 +112,7 @@ When using LLM agents, a full chain-of-thought is saved for every single move.
 
 ### 3. Server Management
 
-The benchmark automatically launches the required number of local Showdown servers. Use `--restart-every 5` to ensure the Node.js servers stay fresh during long runs.
+The benchmark automatically launches the required number of local Showdown servers. The default is `--restart-every 3` (recommended for long runs); increase or decrease as needed.
 
 ---
 
