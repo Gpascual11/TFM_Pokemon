@@ -7,10 +7,10 @@ configurable number of battles and saves per-battle results to CSV.
 Usage::
 
     # Quick 100-game run: v6 vs random on default port 8000
-    uv run python src/p01_heuristics/s01_singles/heuristics/run.py v6 random 100
+    uv run python src/p01_heuristics/s01_singles/evaluation/engine/run_single.py v6 random 100
 
     # 1 000 games, 4 parallel ports
-    uv run python src/p01_heuristics/s01_singles/heuristics/run.py v5 max_power 1000 -p 8000 8001 8002 8003
+    uv run python src/p01_heuristics/s01_singles/evaluation/engine/run_single.py v5 max_power 1000 -p 8000 8001 8002 8003
 """
 
 from __future__ import annotations
@@ -23,17 +23,18 @@ import sys
 
 # ---------------------------------------------------------------------------
 # Package bootstrap — ensures relative imports work when invoked directly.
-# File lives at: src/p01_heuristics/s01_singles/heuristics/run.py
+# File lives at: src/p01_heuristics/s01_singles/evaluation/engine/run_single.py
 # ---------------------------------------------------------------------------
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-_S01_DIR = os.path.dirname(_THIS_DIR)  # s01_singles/
+_EVAL_DIR = os.path.dirname(_THIS_DIR)  # evaluation/
+_S01_DIR = os.path.dirname(_EVAL_DIR)  # s01_singles/
 _P01_DIR = os.path.dirname(_S01_DIR)  # p01_heuristics/
 _SRC_DIR = os.path.dirname(_P01_DIR)  # src/
 
 if _SRC_DIR not in sys.path:
     sys.path.insert(0, _SRC_DIR)
 
-__package__ = "p01_heuristics.s01_singles.heuristics"
+__package__ = "p01_heuristics.s01_singles.evaluation.engine"
 
 
 importlib.import_module("p01_heuristics.s01_singles")
@@ -80,7 +81,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "-c", "--concurrent-battles", type=int, default=16, help="Max concurrent battles (default: 16)."
     )
     parser.add_argument("-p", "--ports", type=int, nargs="+", default=[8000], help="Server port(s) (default: 8000).")
-    parser.add_argument("--data-dir", type=str, default="data", help="Output directory (default: data).")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="data/1_vs_1/runs",
+        help="Output directory for per-battle CSVs (default: data/1_vs_1/runs).",
+    )
     parser.add_argument(
         "--log-level",
         type=str,

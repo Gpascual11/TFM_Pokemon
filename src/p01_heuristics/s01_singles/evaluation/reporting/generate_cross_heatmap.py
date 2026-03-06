@@ -1,5 +1,7 @@
-"""Generates a cross-matchup heatmap for all heuristic versions (v1-v6) and baselines.
-Uses data from data/benchmarks_singles_v3/
+"""Generates a cross-matchup heatmap for heuristic versions (v1-v6) and baselines.
+
+This script targets the per-matchup CSVs produced by the single-run pipeline
+(`BattleManager` / `ProcessLauncher`).
 """
 
 import pandas as pd
@@ -9,8 +11,8 @@ from pathlib import Path
 import numpy as np
 
 # Configuration
-DATA_DIR = Path("data/benchmarks_singles_v3")
-OUTPUT_DIR = Path("src/p01_heuristics/s01_singles/heuristics/results/v3")
+DATA_DIR = Path("data/1_vs_1/runs")
+OUTPUT_DIR = Path("src/p01_heuristics/s01_singles/evaluation/results/heatmaps")
 OUTPUT_PNG = OUTPUT_DIR / "heuristics_cross_heatmap.png"
 
 # Define order for visual clarity

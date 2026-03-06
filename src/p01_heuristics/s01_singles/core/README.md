@@ -49,11 +49,13 @@ This is the internal orchestrator used by the worker processes.
 
 ## 🧮 3. Shared Mathematics (`common.py`)
 
-To ensure that V2, V4, V5, and V6 are comparable, they all use the same underlying math library for damage estimation.
+To ensure that V2, V3, and V6 are comparable, they all use the same underlying math helper for baseline damage and speed estimation.
 
-- **`calculate_base_damage`**: A standardized implementation of the physical/special attack split.
+- **`calculate_base_damage`**: Standardized physical/special attack split with burn, STAB, and type effectiveness (used by V2, V3, and V6).
 - **`get_speed`**: Correctly factors in Paralysis penalties.
 - **`GameDataManager`**: A performance-optimized singleton that prevents loading the massive Pokémon move/data JSONs multiple times into memory.
+
+V4 and V5 build on the same ideas but use their own extended damage estimators that layer in weather, terrain, and stat-boost awareness.
 
 ---
 

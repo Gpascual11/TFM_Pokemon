@@ -1,7 +1,7 @@
 """Per-agent visual report generator for the Pokechamp benchmark.
 
 Loads all per-matchup CSVs for a given Pokechamp agent from
-``data/benchmarks_pokechamp/`` and produces a multi-panel PNG report with:
+``data/1_vs_1/benchmarks/pokechamp/`` and produces a multi-panel PNG report with:
 
 - Win-rate heatmap (agent vs each opponent)
 - Average battle duration per opponent
@@ -11,14 +11,14 @@ Loads all per-matchup CSVs for a given Pokechamp agent from
 Usage::
 
     # Analyse the 'random' agent (default)
-    uv run python src/p01_heuristics/s01_singles/pokechamp/generate_report.py
+    uv run python src/p01_heuristics/s01_singles/evaluation/reporting/generate_report.py
 
     # Analyse a specific agent
-    uv run python src/p01_heuristics/s01_singles/pokechamp/generate_report.py --agent max_power
+    uv run python src/p01_heuristics/s01_singles/evaluation/reporting/generate_report.py --agent max_power
 
     # Use a custom data directory
-    uv run python src/p01_heuristics/s01_singles/pokechamp/generate_report.py \\
-        --agent abyssal --data-dir data/benchmarks_pokechamp
+    uv run python src/p01_heuristics/s01_singles/evaluation/reporting/generate_report.py \\
+        --agent abyssal --data-dir data/1_vs_1/benchmarks/pokechamp
 """
 
 from __future__ import annotations
@@ -30,6 +30,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
+DEFAULT_DATA_DIR = Path("data/1_vs_1/benchmarks/pokechamp")
 
 
 # ---------------------------------------------------------------------------
@@ -245,13 +247,13 @@ def main() -> None:
     parser.add_argument(
         "--data-dir",
         type=str,
-        default="data/benchmarks_pokechamp",
+        default=str(DEFAULT_DATA_DIR),
         help="Directory containing per-matchup pokechamp CSVs.",
     )
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="src/p01_heuristics/s01_singles/pokechamp/results",
+        default="src/p01_heuristics/s01_singles/evaluation/results/pokechamp_reports",
         help="Directory to save the PNG report.",
     )
     args = parser.parse_args()

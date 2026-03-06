@@ -1,23 +1,19 @@
-"""Heuristic V4: Expert-Level Singles Strategy.
+"""Heuristic V4: Field-Aware Damage Strategist.
 
-This heuristic represents the most advanced version, employing a sophisticated decision pipeline:
+This heuristic extends the V3 defensive foundation with a more expressive
+damage model and basic field awareness:
 
-- **Immediate KO Check**: Prioritizes moves that guarantee a knockout,
-  scanning available moves sorted by priority.
-- **Defensive Pivoting**: Initiates a switch if the active Pokémon is in
-  immediate danger or severely poisoned.
-- **Scored Offensive**: Selects the optimal offensive move based on a
-  ``damage × accuracy`` score, with an additional boost for priority moves.
-
-The damage estimation incorporates environmental factors such as weather
-(sun/rain) and terrain (electric/grassy/psychic) modifiers, extending the
-standard physical/special damage formula.
+- **Defensive Pivoting**: Switches out when in clear danger or badly poisoned.
+- **Scored Offence**: Selects moves by ``damage × accuracy``, with a boost for
+  priority moves.
+- **Field Effects**: Integrates weather (sun/rain) and terrain
+  (electric/grassy/psychic) modifiers into the damage estimate.
 """
 
 from __future__ import annotations
 
 from ...core.base import BaseHeuristic1v1
-from ...core.common import get_status_name
+from ...core.common import get_status_name, get_stat
 import logging
 
 logger = logging.getLogger(__name__)
@@ -72,13 +68,13 @@ class HeuristicV4(BaseHeuristic1v1):
             return 0.0
 
         if move.category.name == "PHYSICAL":
-            atk = attacker.stats.get("atk") or attacker.base_stats["atk"]
-            defe = defender.stats.get("def") or defender.base_stats["def"]
-            if attacker.status and attacker.status.name == "BRN":
+            atk = get_stat(attacker, "atk")
+            defe = get_stat(defender, "def")
+            if get_status_name(attacker) == "BRN":
                 atk *= 0.5
         else:
-            atk = attacker.stats.get("spa") or attacker.base_stats["spa"]
-            defe = defender.stats.get("spd") or defender.base_stats["spd"]
+            atk = get_stat(attacker, "spa")
+            defe = get_stat(defender, "spd")
 
         multiplier = defender.damage_multiplier(move)
         stab = 1.5 if move.type in attacker.types else 1.0
@@ -142,9 +138,8 @@ class HeuristicV4(BaseHeuristic1v1):
         """True when outsped by an opponent with super-effective STAB, or HP < 30%."""
         if me is None or opp is None:
             return False
-
-        opp_speed = opp.stats.get("spe") or opp.base_stats["spe"]
-        my_speed = me.stats.get("spe") or me.base_stats["spe"]
+        opp_speed = get_stat(opp, "spe")
+        my_speed = get_stat(me, "spe")
 
         if my_speed <= opp_speed:
             for opp_type in opp.types:

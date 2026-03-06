@@ -261,31 +261,31 @@ if should_restart:
 
 ```sh
 uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 100 \
-  -p 8000 \
+  --start-port 8000 --ports 1 \
   --agents random max_power abyssal one_step \
   --concurrency 10
 ```
 
 ```sh
 uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 1000 \
-  -p 8000 \
+  --start-port 8000 --ports 4 \
   --agents random max_power abyssal one_step \
-  --ports 4 --concurrency 10
+  --concurrency 10
 ```
 
 #### Resume an interrupted run
 
 ```sh
 uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 1000 \
-  -p 8000 --ports 4 --concurrency 10
+  --start-port 8000 --ports 4 --concurrency 10
 ```
 
 #### Fresh start (clear old data first)
 
 ```sh
-rm -rf data/benchmarks_unified/
+rm -rf data/1_vs_1/benchmarks/unified/
 uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 100 \
-  -p 8000 \
+  --start-port 8000 --ports 1 \
   --agents random max_power abyssal one_step \
   --concurrency 10
 ```
@@ -294,27 +294,24 @@ uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 100 
 
 | Argument | Default | Description |
 |----------|---------|-------------|
-| `total_games` | *(required)* | Number of games per matchup |
-| `-p / --ports` | `8000` | Server port(s) |
-| `--agents` | all 6 | Which primary agents to benchmark (formerly pc-agents) |
-| `--opponents` | all internal & baselines | Which opponents to match against |
-| `--concurrency` | `5` | Battles per worker / concurrent asyncio tasks |
-| `--player_backend` | `ollama/qwen3:8b` | LLM backend (only for `pokechamp`/`pokellmon`) |
+| `n_battles` *(positional)* | `100` | Battles per matchup (each agent vs each opponent) |
+| `--agents` | *(all supported)* | Which primary agents to benchmark (e.g. `pokechamp`, `pokellmon`, `random`, `v6`) |
+| `--opponents` | *(all supported)* | Which opponents to face |
+| `--ports` | `2` | Number of Showdown ports/workers to use |
+| `--start-port` | `8000` | Starting port number (ports are `start-port..start-port+ports-1`) |
+| `--concurrency` | `10` | Concurrent battles per worker process |
+| `--restart-every` | `3` | Restart Showdown servers every N matchups (0 = never restart) |
+| `--out` | `data/1_vs_1/benchmarks/unified` | Output directory for `{agent}_vs_{opponent}.csv` |
+| `--battle-format` | `gen9randombattle` | Showdown battle format |
+| `--player_backend` | `ollama/qwen3:8b` | LLM backend (used by `pokechamp` / `pokellmon`) |
 | `--player_prompt_algo` | `io` | Prompt algorithm for LLM agents |
-| `--battle-format` | `gen9randombattle` | Battle format |
 | `--temperature` | `0.3` | LLM temperature |
-| `--resume` | `false` | Skip completed matchups (uses checkpoint + CSVs) |
-| `--restart-every` | `3` | Restart Showdown server every N matchups (0 = never restart) |
-| `--data-dir` | `data/benchmarks_pokechamp` | Directory for per-matchup CSVs |
-| `--output-csv` | `results/pokechamp_benchmark_summary.csv` | Master summary CSV path |
-| `--log-dir` | `./battle_log/pokechamp_benchmark` | Pokechamp battle log directory |
+| `--log-dir` | `./battle_log/pokechamp_benchmark` | LLM player log directory |
 
 ### Output
 
-1. **Per-matchup CSVs** in `data/benchmarks_pokechamp/` — one file per agent-vs-opponent pair
-2. **Master summary CSV** at `results/pokechamp_benchmark_summary.csv`
-3. **Win-rate matrix** printed to terminal
-4. **Checkpoint file** (`checkpoint_pokechamp.json`) for resuming interrupted runs
+1. **Per-matchup CSVs** in `data/1_vs_1/benchmarks/unified/` — one file per agent-vs-opponent pair
+2. **Win-rate matrix** printed to terminal
 
 ### Tips
 
@@ -322,5 +319,8 @@ uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 100 
 - **`--restart-every 3`** (the default) restarts the Showdown server every 3 matchups. Lower it to 1 if you still see hangs; set to 0 to disable entirely.
 - **Batch size trade-off:** batch size 50 = safe RAM, batch size 100 = faster but more RAM per batch.
 - **LLM agents** (`pokechamp`, `pokellmon`) require the Ollama service to be running and the model (`qwen3:8b`) to be pulled.
-- **Use `--resume`** to safely re-run after crashes — completed matchups are skipped.
-- **Light Debugging:** Use `benchmark_light.py` to test a single matchup with live turn monitoring if the full benchmark feels too slow.
+- **Resume:** Re-running the same command will automatically skip any matchup CSVs that already contain the target number of rows.
+- **Light Debugging:** Run a tiny benchmark (or a single worker batch) to validate connectivity and backend settings, e.g.:
+
+  - `uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 1 --agents pokechamp --opponents random --ports 1 --concurrency 1`
+  - Or directly: `uv run python src/p01_heuristics/s01_singles/evaluation/engine/worker.py --agent pokechamp --opponent random --n-battles 1 --port 8000 --concurrency 1 --out /tmp/test.csv`

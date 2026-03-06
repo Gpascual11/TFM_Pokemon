@@ -141,7 +141,7 @@ class ProcessLauncher:
         total_games: int = 10_000,
         batch_size: int = 250,
         concurrent_battles: int = 10,
-        data_dir: str | Path = "data",
+        data_dir: str | Path = "data/1_vs_1/runs",
         opponent: str = "random",
     ) -> None:
         self.version = version

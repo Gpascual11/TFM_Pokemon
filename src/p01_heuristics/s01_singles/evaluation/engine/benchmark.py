@@ -47,7 +47,7 @@ from p01_heuristics.s01_singles.core.factory import AgentFactory
 DEFAULT_N = 100
 DEFAULT_PORT = 8000
 DEFAULT_CONCURRENT_MATCHUPS = 2
-DEFAULT_DATA_DIR = _ROOT / "data" / "benchmarks_unified"
+DEFAULT_DATA_DIR = _ROOT / "data" / "1_vs_1" / "benchmarks" / "unified"
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,12 @@ async def run_worker_batch(
     port: int, 
     concurrency: int, 
     tmp_csv: Path,
-    batch_info: str
+    batch_info: str,
+    battle_format: str = "gen9randombattle",
+    player_backend: str = "ollama/qwen3:8b",
+    player_prompt_algo: str = "io",
+    temperature: float = 0.3,
+    log_dir: str = "./battle_log/pokechamp_benchmark",
 ) -> int:
     """Invokes a worker subprocess to execute a batch of battles.
 
@@ -111,6 +116,11 @@ async def run_worker_batch(
         "--n-battles", str(n_battles),
         "--port", str(port),
         "--concurrency", str(concurrency),
+        "--format", battle_format,
+        "--player_backend", player_backend,
+        "--player_prompt_algo", player_prompt_algo,
+        "--temperature", str(temperature),
+        "--log-dir", log_dir,
         "--out", str(tmp_csv)
     ]
     
@@ -135,12 +145,17 @@ async def run_worker_batch(
     return total_done
 
 async def run_matchup(
-    agent: str, 
-    opponent: str, 
-    target_battles: int, 
-    port_queue: asyncio.Queue, 
-    concurrency: int, 
-    out_dir: Path
+    agent: str,
+    opponent: str,
+    target_battles: int,
+    port_queue: asyncio.Queue,
+    concurrency: int,
+    out_dir: Path,
+    battle_format: str,
+    player_backend: str,
+    player_prompt_algo: str,
+    temperature: float,
+    log_dir: str,
 ) -> int:
     """Orchestrates a specific matchup between two agents.
 
@@ -189,8 +204,18 @@ async def run_matchup(
         tmp_csv = out_dir / f"_tmp_{agent}_{opponent}_p{port}_b{b_idx}.csv"
         try:
             done = await run_worker_batch(
-                agent, opponent, n, port, concurrency, tmp_csv, 
-                f"[{agent} vs {opponent}] Batch {b_idx+1}"
+                agent,
+                opponent,
+                n,
+                port,
+                concurrency,
+                tmp_csv,
+                f"[{agent} vs {opponent}] Batch {b_idx+1}",
+                battle_format=battle_format,
+                player_backend=player_backend,
+                player_prompt_algo=player_prompt_algo,
+                temperature=temperature,
+                log_dir=log_dir,
             )
             return done, tmp_csv
         finally:
@@ -218,7 +243,6 @@ async def run_matchup(
         # Append new results to the main CSV
         new_df = pd.concat(frames, ignore_index=True)
         if out_csv.exists():
-            # If main file exists, we merge (ensuring we don't have duplicate headers)
             existing_df = pd.read_csv(out_csv)
             final_df = pd.concat([existing_df, new_df], ignore_index=True)
         else:
@@ -237,9 +261,14 @@ async def main_async():
     parser.add_argument("--opponents", nargs="+", help="Opponents to face")
     parser.add_argument("--ports", type=int, default=DEFAULT_CONCURRENT_MATCHUPS)
     parser.add_argument("--start-port", type=int, default=DEFAULT_PORT)
-    parser.add_argument("--restart-every", type=int, default=10, help="Restart servers every N matchups")
+    parser.add_argument("--restart-every", type=int, default=3, help="Restart servers every N matchups")
     parser.add_argument("--concurrency", type=int, default=10, help="Concurrent battles per worker")
     parser.add_argument("--out", type=str, default=str(DEFAULT_DATA_DIR))
+    parser.add_argument("--battle-format", type=str, default="gen9randombattle", help="Battle format to play")
+    parser.add_argument("--player_backend", type=str, default="ollama/qwen3:8b", help="LLM backend for pokechamp/pokellmon")
+    parser.add_argument("--player_prompt_algo", type=str, default="io", help="Prompt algorithm for pokechamp/pokellmon")
+    parser.add_argument("--temperature", type=float, default=0.3, help="LLM temperature")
+    parser.add_argument("--log-dir", type=str, default="./battle_log/pokechamp_benchmark", help="LLM player log directory (pokechamp fork)")
     args = parser.parse_args()
 
     out_dir = Path(args.out)
@@ -272,7 +301,19 @@ async def main_async():
             if matchup_count > 0 and matchup_count % args.restart_every == 0:
                 await restart_servers_async(args.ports)
             
-            total_done = await run_matchup(agent, opp, args.n_battles, port_queue, args.concurrency, out_dir)
+            total_done = await run_matchup(
+                agent,
+                opp,
+                args.n_battles,
+                port_queue,
+                args.concurrency,
+                out_dir,
+                args.battle_format,
+                args.player_backend,
+                args.player_prompt_algo,
+                args.temperature,
+                args.log_dir,
+            )
             matchup_count += 1
             
             # Load results for summary

@@ -4,6 +4,19 @@ This directory contains every agent implementation available in the 1v1 Singles 
 
 ---
 
+## 🔎 Agent Families Overview
+
+| Family | Labels (examples) | Implementation source | Typical use |
+|--------|-------------------|------------------------|-------------|
+| **Internal Heuristics** | `v1`–`v6` | `agents/internal/` (`HeuristicV1`–`HeuristicV6`) | Main research agents; all inherit from `BaseHeuristic1v1` and use shared math in `core/common.py`. |
+| **poke-env Baselines** | `random`, `max_power`, `simple_heuristic` | `poke_env.player.*` + `agents/baselines/true_simple_heuristic.py` | Standard reference bots from `poke-env` (plus a local copy of `SimpleHeuristicsPlayer`). |
+| **Pokechamp Baselines** | `abyssal`, `one_step`, `safe_one_step` | external `pokechamp` repo + `agents/baselines/safe_one_step_player.py` | Rule-based agents from PokéChamp. `one_step` and `safe_one_step` both map to `SafeOneStepPlayer` to avoid LocalSim hangs. |
+| **Pokechamp LLM Agents** | `pokechamp`, `pokellmon` | external `pokechamp` repo via `AgentFactory` | Minimax + LLM agents; configured via `--player_backend`, `--player_prompt_algo`, `--temperature`, etc. in the benchmark CLI. |
+
+All of these can be requested by **string label** (e.g. `v6`, `abyssal`, `pokechamp`) via `AgentFactory.create(...)` or the benchmark `--agents / --opponents` flags.
+
+---
+
 ## 🏛️ 1. Internal Heuristics (`internal/`)
 
 These represent the core research output of the project. They follow an evolutionary path, where each version attempts to solve a specific weakness identified in the previous one.
@@ -26,17 +39,15 @@ These represent the core research output of the project. They follow an evolutio
 - **Speed Check**: If the opponent is faster AND the agent's best move does < 20HP damage, it switches to a better teammate.
 - **Note**: This switching logic is so stable that V4, V5, and V6 still use it as their base.
 
-### ⛈️ V4: Damage Refinement
+### ⛈️ V4: Field-Aware Damage Refinement
 
-- **Logic**: Adds Status check to damage calculation. If Burned (BRN), physical moves have their power halved in the math.
-- **Weakness**: Still unaware of the environment (weather/terrain).
+- **Logic**: Refines damage with burn-aware physical/special scaling and integrates Weather/Terrain modifiers (Sun/Rain, Electric/Grassy/Psychic terrain).
+- **Defence**: Uses a basic danger check to pivot out of obviously bad positions.
 
-### ☀️ V5: Weather & Terrain Expert
+### ☀️ V5: Boost-Aware Field Expert
 
-- **Logic**: Multiplies move power based on field state.
-- **Sun**: Fire moves (1.5x) / Water moves (0.5x).
-- **Rain**: Water moves (1.5x) / Fire moves (0.5x).
-- **Terrain**: Boosts moves matching the terrain (Electric, Grassy, Psychic) by 1.3x.
+- **Logic**: Extends V4 by accounting for in-battle stat boosts in the damage formula (attack/defence stages) while still applying Weather/Terrain modifiers.
+- **Defence**: Adds a KO pre-check and relaxed pivoting rules (Toxic escape, speed/damage thresholds, low-HP safety switches).
 
 ### 🏆 V6: Priority & Final Polishing
 

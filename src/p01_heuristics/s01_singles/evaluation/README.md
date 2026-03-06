@@ -4,6 +4,9 @@ The `evaluation` directory is the lab where we prove that our agents are getting
 
 ---
 
+For a complete CLI reference (including all flags and `uv` commands), see `../docs/CLI_REFERENCE.md`.  
+For where outputs are written, see `../docs/DATA_LAYOUT.md`.
+
 ## 🏎️ 1. The Benchmark Engine (`engine/`)
 
 We provide two main ways to run experiments.
@@ -32,7 +35,7 @@ Data is only useful if it can be understood.
 
 ### `heatmaps.py` — The Win Rate Matrix
 
-This script scans the `data/benchmarks_unified/` folder and generates a high-resolution heatmap.
+This script scans the `data/1_vs_1/benchmarks/unified/` folder (legacy: `data/1_vs_1/benchmarks_unified/` or `data/benchmarks_unified/`) and generates a high-resolution heatmap.
 
 - **X-axis**: Opponents
 - **Y-axis**: Our Agents

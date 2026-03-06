@@ -14,11 +14,11 @@ from ...core.common import calculate_base_damage, get_speed, get_status_name
 
 
 class HeuristicV2(BaseHeuristic1v1):
-    """Enhanced version of V1 that includes secondary move considerations.
+    """Enhanced version of V1 with basic defensive switching.
     
-    V2 introduces basic type awareness and potential status move evaluation 
-    (if integrated in the score function). It inherits the 'no switch' 
-    policy from V1.
+    V2 introduces the shared damage estimator and two simple pivot rules:
+    escape stacking Toxic damage and switch out when our best move is weak
+    and we are outsped.
     """
 
     def _select_action(self, battle):

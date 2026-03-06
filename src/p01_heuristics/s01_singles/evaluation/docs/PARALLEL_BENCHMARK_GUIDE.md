@@ -24,7 +24,7 @@ When you run a tournament, the `benchmark.py` script executes the following hand
 
 1. **Matchup Generation**: It uses the `AgentFactory` to resolve labels into classes. It then builds a Cartesian product of all requested `--agents` and `--opponents`.
 2. **Missing Data Analysis (Self-Healing)**:
-    - For every matchup (e.g., `v1 vs random`), it checks if `data/benchmarks_unified/v1_vs_random.csv` exists.
+    - For every matchup (e.g., `v1 vs random`), it checks if `data/1_vs_1/benchmarks/unified/v1_vs_random.csv` exists (legacy: `data/1_vs_1/benchmarks_unified/...` or `data/benchmarks_unified/...`).
     - If it exists, it reads the row count.
     - If `row_count < target_n`, it calculates precisely how many battles are left to play.
     - If `row_count >= target_n`, it skips that matchup entirely.
@@ -72,7 +72,7 @@ The `AgentFactory` (and its alias `HeuristicFactory`) allows you to swap agents 
 | `simple_heuristic` | Optimized | Use basic type-effectiveness table. |
 | `abyssal` | Pokechamp | Uses the Abyssal rule-set for singles. |
 | `one_step` | Pokechamp | Evaluates moves based on one-step lookahead. |
-| `safe_one_step` | Pokechamp | One-step logic with defensive switch priority. |
+| `safe_one_step` | Pokechamp | One-step damage-based lookahead using poke_env only (no LocalSim/prompts). |
 
 ### 🧠 LLM / AI Agents
 
@@ -156,7 +156,7 @@ Sometimes the Node.js server doesn't die immediately. Use `fuser -k 8000/tcp` to
 
 ### Q: Where are my results?
 
-- **Combined CSV**: `data/benchmarks_unified/`
+- **Combined CSV**: `data/1_vs_1/benchmarks/unified/` (legacy: `data/1_vs_1/benchmarks_unified/` or `data/benchmarks_unified/`)
 - **Thinking Logs**: `src/p01_heuristics/s01_singles/evaluation/results/LLM/`
 - **Temporary Buffers**: If you see files starting with `_tmp_`, it means the benchmark is still running or was interrupted. The next run will clean them up.
 
@@ -226,5 +226,7 @@ src/p01_heuristics/s01_singles/
 │   │   └── worker.py     <-- The Worker
 │   └── results/          <-- LLM logs and JSONs
 data/
-└── benchmarks_unified/    <-- CSV Tournament Outputs
+└── 1_vs_1/
+    └── benchmarks/
+        └── unified/    <-- CSV Tournament Outputs
 ```

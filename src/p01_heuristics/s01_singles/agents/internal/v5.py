@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from poke_env.data import GenData
-
 from ...core.base import BaseHeuristic1v1
 from ...core.common import get_status_name
 import logging
@@ -22,10 +20,6 @@ class HeuristicV5(BaseHeuristic1v1):
     - KO Pre-Check: Dedicated logic in `_pre_move_hook` to instantly select moves that secure a knockout.
     - Relaxed Pivoting: Switches to neutral teammates if in danger or HP < 25%.
     """
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.dm = GenData.from_gen(9)
 
     @property
     def tracks_moves(self) -> bool:
