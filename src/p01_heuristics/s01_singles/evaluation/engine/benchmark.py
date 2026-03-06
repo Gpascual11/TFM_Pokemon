@@ -46,7 +46,7 @@ from p01_heuristics.s01_singles.core.factory import AgentFactory
 # Configuration
 DEFAULT_N = 100
 DEFAULT_PORT = 8000
-DEFAULT_CONCURRENT_MATCHUPS = 4
+DEFAULT_CONCURRENT_MATCHUPS = 2
 DEFAULT_DATA_DIR = _ROOT / "data" / "benchmarks_unified"
 
 logger = logging.getLogger(__name__)

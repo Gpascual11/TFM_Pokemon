@@ -101,7 +101,7 @@ def main():
     parser.add_argument(
         "--data-dir",
         type=str,
-        default="data/benchmarks_doubles_v2",
+        default="data/benchmarks_doubles_v3",
         help="Data directory.",
     )
     parser.add_argument(
