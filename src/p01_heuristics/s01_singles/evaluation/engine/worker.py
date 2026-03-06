@@ -17,8 +17,6 @@ import csv
 from pathlib import Path
 from typing import Any
 
-from poke_env import AccountConfiguration, ServerConfiguration
-
 # ---------------------------------------------------------------------------
 # Package bootstrap
 # ---------------------------------------------------------------------------
@@ -34,10 +32,83 @@ if str(_ROOT) not in sys.path:
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-# Set package context for births
-__package__ = "p01_heuristics.s01_singles.evaluation.engine"
+# Always inject pokechamp fork FIRST so its poke_env overrides site-packages
+_POKECHAMP = _ROOT / "pokechamp"
+if _POKECHAMP.exists() and str(_POKECHAMP) not in sys.path:
+    sys.path.insert(0, str(_POKECHAMP))
 
-from ...core.factory import AgentFactory
+from poke_env import AccountConfiguration, ServerConfiguration
+
+from p01_heuristics.s01_singles.core.factory import AgentFactory
+
+# ---------------------------------------------------------------------------
+# LLM Logging Utils
+# ---------------------------------------------------------------------------
+def _apply_llm_logging(player: Any, agent_name: str, log_dir: Path):
+    """Monkey-patches the LLM player to extract and store chain-of-thought reasonings.
+
+    Args:
+        player (Any): The instantiated LLMPlayer instance.
+        agent_name (str): Label of the agent (e.g. 'pokechamp').
+        log_dir (Path): Base directory for LLM logs.
+    """
+    if not hasattr(player, "llm"):
+        return
+
+    log_dir.mkdir(parents=True, exist_ok=True)
+    thinking_file = log_dir / f"thinking_{agent_name}.txt"
+    decisions_file = log_dir / f"decisions_{agent_name}.txt"
+    
+    # Clear/Initialize files at start of worker session
+    with open(thinking_file, "w") as f:
+        f.write(f"=== {agent_name.upper()} THINKING LOG ===\n\n")
+    with open(decisions_file, "w") as f:
+        f.write(f"=== {agent_name.upper()} DECISIONS LOG ===\n\n")
+
+    original_get_llm_action = player.llm.get_LLM_action
+
+    def patched_get_llm_action(system_prompt, user_prompt, model, *args, **kwargs):
+        output, success, raw_message = original_get_llm_action(system_prompt, user_prompt, model, *args, **kwargs)
+        
+        # Extract battle from args or kwargs (index 7 in LLMPlayer.get_LLM_action)
+        battle = kwargs.get("battle")
+        if not battle and len(args) >= 7:
+             battle = args[6]
+        
+        turn = battle.turn if hasattr(battle, "turn") else "N/A"
+        
+        thinking = ""
+        decision = raw_message
+        
+        if raw_message:
+            if "THINKING: " in raw_message and "\n\nRESPONSE: " in raw_message:
+                parts = raw_message.split("\n\nRESPONSE: ")
+                thinking = parts[0].replace("THINKING: ", "").strip()
+                decision = parts[1].strip()
+            elif "THINKING: " in raw_message:
+                thinking = raw_message.replace("THINKING: ", "").strip()
+
+        # Clean JSON from decision (aggressive split for Qwen)
+        if decision and "{" in decision and "}" in decision:
+            import re
+            json_match = re.search(r'\{.*\}', decision, re.DOTALL)
+            if json_match:
+                json_part = json_match.group(0)
+                text_before = decision[:json_match.start()].strip()
+                if text_before and text_before not in thinking:
+                    thinking = f"{thinking}\n\n[From Output]: {text_before}".strip()
+                decision = json_part
+
+        if success:
+            with open(thinking_file, "a") as f:
+                f.write(f"--- Turn {turn} ---\n{thinking}\n\n")
+            with open(decisions_file, "a") as f:
+                f.write(f"--- Turn {turn} ---\n{decision}\n\n")
+            
+        return output, success, raw_message
+
+    player.llm.get_LLM_action = patched_get_llm_action
+
 
 _SHORT_NAMES: dict[str, str] = {
     "simple_heuristic": "SH",
@@ -53,13 +124,28 @@ _SHORT_NAMES: dict[str, str] = {
 def _short(name: str) -> str:
     return _SHORT_NAMES.get(name, name.replace("_", "")[:8])
 
-async def _run_streaming(player, opponent, total_n: int, pc_agent: str, opp_name: str, out_csv: Path) -> int:
-    """Run battles in small chunks to prevent memory bloat."""
+async def _run_streaming(player, opponent, total_n: int, agent_name: str, opp_name: str, out_csv: Path) -> int:
+    """Executes battles in small, isolated chunks to optimize memory usage.
+
+    This function cycles through player.battle_against, result extraction, 
+    and explicit garbage collection (gc.collect()) every 25 games.
+
+    Args:
+        player: Primary agent player instance.
+        opponent: Opponent player instance.
+        total_n (int): Games to play.
+        agent_name (str): Label of the primary agent.
+        opp_name (str): Label of the opponent.
+        out_csv (Path): Where to append the battle data.
+
+    Returns:
+        int: Total number of battles finished.
+    """
     chunk_size = 25 
     done_total = 0
     
     fieldnames = [
-        "battle_id", "pokechamp_agent", "opponent", "won", "turns",
+        "battle_id", "heuristic", "opponent", "won", "turns",
         "fainted_us", "remaining_pokemon_us", "total_hp_us",
         "fainted_opp", "remaining_pokemon_opp", "total_hp_opp"
     ]
@@ -71,15 +157,19 @@ async def _run_streaming(player, opponent, total_n: int, pc_agent: str, opp_name
     
     for i in range(0, total_n, chunk_size):
         this_n = min(chunk_size, total_n - i)
+        
+        # Run battles using poke-env's internal concurrency management
         await player.battle_against(opponent, n_battles=this_n)
         
         # Extract results
         rows: list[dict] = []
-        for bid, b in player.battles.items():
+        # Access internal battles dict directly to ensure we can clear it
+        battles = player.battles
+        for bid, b in battles.items():
             if not b.finished: continue
             row = {
                 "battle_id": bid,
-                "pokechamp_agent": pc_agent,
+                "heuristic": agent_name,
                 "opponent": opp_name,
                 "won": 1 if b.won else 0,
                 "turns": b.turn,
@@ -100,19 +190,24 @@ async def _run_streaming(player, opponent, total_n: int, pc_agent: str, opp_name
                 writer.writerows(rows)
             done_total += len(rows)
             
-        player.battles.clear()
-        if hasattr(opponent, 'battles'):
-            opponent.battles.clear()
+        # IMPORTANT: Clear both player and opponent to free memory
+        player.reset_battles()
+        if hasattr(opponent, 'reset_battles'):
+            opponent.reset_battles()
+        
+        # Manually clear the local rows and battles references
+        del rows
         gc.collect()
         
     return done_total
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pc-agent", required=True)
+    parser.add_argument("--agent", required=True)
     parser.add_argument("--opponent", required=True)
     parser.add_argument("--n-battles", type=int, required=True)
     parser.add_argument("--port", type=int, required=True)
+    parser.add_argument("--concurrency", type=int, default=10)
     parser.add_argument("--format", default="gen9randombattle")
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
@@ -122,11 +217,12 @@ def main() -> None:
     
     # Create agents using the Unified Factory
     player = AgentFactory.create(
-        args.pc_agent, 
-        account_configuration=AccountConfiguration(f"PC{_short(args.pc_agent)}{tag}", None),
+        args.agent, 
+        account_configuration=AccountConfiguration(f"S{_short(args.agent)}{tag}", None),
         server_configuration=server_config,
         battle_format=args.format,
-        tag=tag
+        tag=tag,
+        max_concurrent_battles=args.concurrency
     )
     
     opponent = AgentFactory.create(
@@ -135,15 +231,22 @@ def main() -> None:
         server_configuration=server_config,
         battle_format=args.format,
         tag=tag,
-        max_concurrent_battles=5
+        max_concurrent_battles=args.concurrency
     )
 
-    # Change to pokechamp root if needed for LLMs
-    if args.pc_agent in AgentFactory.available_llm():
-        os.chdir(str(_ROOT / "pokechamp"))
+    # Always change to pokechamp root because our poke_env fork expects it for data loading
+    if _POKECHAMP.exists():
+        os.chdir(str(_POKECHAMP))
+    
+    # Patch for logging if requested (pokellmon/pokechamp)
+    llm_log_dir = _SINGLES / "evaluation" / "results" / "LLM"
+    if "pokellmon" in args.agent or "pokechamp" in args.agent:
+        _apply_llm_logging(player, args.agent, llm_log_dir)
+    if "pokellmon" in args.opponent or "pokechamp" in args.opponent:
+        _apply_llm_logging(opponent, args.opponent, llm_log_dir)
     
     total_done = asyncio.run(_run_streaming(
-        player, opponent, args.n_battles, args.pc_agent, args.opponent, Path(args.out)
+        player, opponent, args.n_battles, args.agent, args.opponent, Path(args.out)
     ))
 
     print(f"WORKER_OK:{total_done}")

@@ -22,27 +22,35 @@ The repo bundles its own fork of `poke_env` (the Python library for interacting 
 To run the LLM agents (`pokechamp`, `pokellmon`) locally without relying on expensive APIs, we use **Ollama**.
 
 ### 1. Installation
+
 Install Ollama on Linux using the official script:
+
 ```sh
 curl -fsSL https://ollama.com/install.sh | sh
 ```
 
 ### 2. Model Selection: Qwen 3 (8B)
+
 We chose **Qwen 3 (8B)** as our primary local backend for several reasons:
+
 - **Optimization (RTX 2080):** At ~6GB-8GB VRAM usage, the entire 8B model fits into the 8GB VRAM of an RTX 2080, ensuring fast inference.
 - **Reasoning:** Qwen 3 (released in 2025) significantly improved over Qwen 2.5 in instruction following and "Chain of Thought" reasoning, which is critical for parsing the complex battle state in Pokémon.
 - **Efficiency:** Larger models (13B-14B+) trigger memory swapping on 8GB cards, making each battle turn take minutes instead of seconds.
 
 Pull the model before running benchmarks:
+
 ```sh
 ollama pull qwen3:8b
 ```
 
 ### 3. Monitoring Performance
+
 When running LLM battles, you can monitor your GPU health:
+
 ```sh
 watch -n 1 nvidia-smi
 ```
+
 *Expected for RTX 2080:* ~6.5GB VRAM usage, ~90% GPU load, and ~60-70°C temperature. This is normal behavior during the AI's "thinking" phase.
 
 ---
@@ -57,6 +65,7 @@ git clone git@github.com:sethkarten/pokechamp.git
 ```
 
 Expected directory structure:
+
 ```
 TFM/
 ├── pokechamp/           ← cloned repo (bundled poke_env fork)
@@ -64,8 +73,8 @@ TFM/
 │   └── p01_heuristics/
 │       └── s01_singles/
 │           ├── benchmark.py
-│           ├── _worker.py
-│           └── POKECHAMP_BENCHMARK.md
+│           ├── worker.py
+│           └── README.md
 └── pyproject.toml
 ```
 
@@ -79,7 +88,7 @@ The **`benchmark.py`** script runs a 1-vs-1 tournament between **Pokechamp AI ag
 
 ```
 benchmark.py (orchestrator)
-  └── spawns → _worker.py (subprocess per batch)
+  └── spawns → worker.py (subprocess per batch, runs games concurrently)
                  ├── Creates players
                  ├── Runs N battles
                  ├── Writes temp CSV
@@ -108,9 +117,11 @@ Each mini-batch runs in a **separate Python process**. When the worker exits, th
 #### 1. `ModuleNotFoundError: No module named 'torch'`
 
 **Cause:** Pokechamp's bundled `poke_env` has an eager import chain:
+
 ```
 poke_env.player.baselines → local_simulation → pokechamp.llama_player → torch, transformers
 ```
+
 Even importing `poke_env` for simple baseline players triggers `torch` and `transformers` imports.
 
 **Solution:** Added both packages to `pyproject.toml` under the `pokechamp` optional dependency group. `torch` resolves to CPU-only via the existing `[tool.uv.sources]` pointing to the `pytorch-cpu` index.
@@ -130,6 +141,7 @@ Even importing `poke_env` for simple baseline players triggers `torch` and `tran
 **Cause:** Pokechamp's `ps_client.py` builds URLs by **prepending** `ws://` and **appending** `/showdown/websocket`. Passing a full URL caused double-prefixing. Using `127.0.0.1` instead of `localhost` triggered the online (TLS) URL path.
 
 **Solution:** Pass just `"localhost:PORT"` as `server_url`:
+
 ```python
 server_config = ServerConfiguration(f"localhost:{port}", None)
 ```
@@ -176,7 +188,7 @@ server_config = ServerConfiguration(f"localhost:{port}", None)
 
 **First attempt (failed):** Recreate players every 50 games within the same process. Failed because `POKE_LOOP` never releases references.
 
-**Final solution:** **Subprocess isolation** — each mini-batch runs in a completely separate Python process (`_worker.py`). When the worker process exits, the OS reclaims *everything*. The orchestrator merges partial CSVs afterwards.
+**Final solution:** **Subprocess isolation** — each mini-batch runs in a completely separate Python process (`worker.py`). When the worker process exits, the OS reclaims *everything*. The orchestrator merges partial CSVs afterwards.
 
 ```
 Batch 1: spawn worker → 50 battles → write CSV → exit (RAM freed)
@@ -192,8 +204,9 @@ Merge all CSVs → final result
 | File | Purpose |
 |------|---------|
 | [`benchmark.py`](benchmark.py) | Main orchestrator — spawns workers, merges CSVs, produces summary |
-| [`_worker.py`](_worker.py) | Subprocess worker — runs N battles, writes CSV, exits |
+| [`worker.py`](../engine/worker.py) | Subprocess worker — runs N battles concurrently via asyncio, writes CSV, exits |
 | [`pyproject.toml`](../../../pyproject.toml) | Added `torch`, `transformers` to `pokechamp` dep group |
+
 #### 9. Showdown server hangs after ~150–200 games
 
 **Cause:** Each Pokémon Showdown battle spawns a `room-battle.js` Node.js worker process that **never gets freed**. After 3 matchups of 50 games each (~150 battles), the server's Node.js heap fills up. CPU drops to near zero, RAM keeps climbing, and all new battle requests stall.
@@ -222,7 +235,6 @@ if should_restart:
 
 ---
 
-
 ---
 
 ## Usage
@@ -230,14 +242,17 @@ if should_restart:
 ### Prerequisites
 
 1. **Install dependencies:**
+
    ```sh
    uv sync --extra pokechamp
    ```
 
 2. **Start the Pokémon Showdown server** (in a separate terminal):
+
    ```sh
    bash src/p03_scripts/p03_launch_custom_servers.sh 1
    ```
+
    Wait until you see `📡 Port 8000: READY`.
 
 ### Running the Benchmark
@@ -245,34 +260,34 @@ if should_restart:
 #### 100 games, all rule-based agents (recommended first run)
 
 ```sh
-uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 100 \
+uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 100 \
   -p 8000 \
-  --pokechamp-agents random max_power abyssal one_step
+  --agents random max_power abyssal one_step \
+  --concurrency 10
 ```
 
-#### 1000 games (RAM-safe with subprocess batching)
-
 ```sh
-uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 1000 \
+uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 1000 \
   -p 8000 \
-  --pokechamp-agents random max_power abyssal one_step \
-  --batch-size 50 --restart-every 3
+  --agents random max_power abyssal one_step \
+  --ports 4 --concurrency 10
 ```
 
 #### Resume an interrupted run
 
 ```sh
-uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 1000 \
-  -p 8000 --resume
+uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 1000 \
+  -p 8000 --ports 4 --concurrency 10
 ```
 
 #### Fresh start (clear old data first)
 
 ```sh
-rm -rf data/benchmarks_pokechamp_v4/
-uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 100 \
+rm -rf data/benchmarks_unified/
+uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 100 \
   -p 8000 \
-  --pokechamp-agents random max_power abyssal one_step
+  --agents random max_power abyssal one_step \
+  --concurrency 10
 ```
 
 ### CLI Arguments
@@ -281,8 +296,9 @@ uv run python src/p01_heuristics/s01_singles/pokechamp/benchmark.py 100 \
 |----------|---------|-------------|
 | `total_games` | *(required)* | Number of games per matchup |
 | `-p / --ports` | `8000` | Server port(s) |
-| `--pokechamp-agents` | all 6 | Which pokechamp agents to benchmark |
-| `--batch-size` | `50` | Games per subprocess batch (lower = less RAM, more overhead) |
+| `--agents` | all 6 | Which primary agents to benchmark (formerly pc-agents) |
+| `--opponents` | all internal & baselines | Which opponents to match against |
+| `--concurrency` | `5` | Battles per worker / concurrent asyncio tasks |
 | `--player_backend` | `ollama/qwen3:8b` | LLM backend (only for `pokechamp`/`pokellmon`) |
 | `--player_prompt_algo` | `io` | Prompt algorithm for LLM agents |
 | `--battle-format` | `gen9randombattle` | Battle format |

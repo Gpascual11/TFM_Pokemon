@@ -1,40 +1,77 @@
-# ⚔️ Evaluation Lab — Benchmarking Pokémon Agents
+# ⚔️ EVALUATION: Testing, Benchmarking & Analysis
 
-This directory contains the unified engine for running large-scale battle simulations and analyzing agent performance.
+The `evaluation` directory is the lab where we prove that our agents are getting smarter. It handles everything from battle execution to data visualization.
 
-## 🚀 Execution Guide
+---
 
-### 1. The Benchmark Engine
-The primary entry point is `engine/benchmark.py`. It uses a parallel worker pattern to run battles across multiple Showdown server ports simultaneously.
+## 🏎️ 1. The Benchmark Engine (`engine/`)
 
-**Run 100 battles for all combinations (Standard):**
-```bash
-uv run python evaluation/engine/benchmark.py 100 --ports 4
-```
+We provide two main ways to run experiments.
 
-**Test a specific matchup (e.g., v6 vs abyssal):**
-```bash
-uv run python evaluation/engine/benchmark.py 50 --agents v6 --opponents abyssal
-```
+### 💂 The Parallel Orchestrator (`benchmark.py`)
 
-### 2. Visualization & Reporting
-After running benchmarks, data is stored in `data/benchmarks_unified/`. Use the reporting scripts to visualize results.
+This is the **High-Level Entry Point**. It is designed for large tournaments (e.g., 10 agents vs 10 opponents, 1000 games each).
 
-**Generate a full cross-matchup heatmap:**
-```bash
-uv run python evaluation/reporting/heatmaps.py
-```
+- **Matchup Matrix**: It generates a list of every possible agent/opponent pair.
+- **Dynamic Port Scaling**: It distributes work to workers as ports become available.
+- **CSV Merging**: It takes the results from every parallel worker and merges them into a clean, final dataset.
+- **Resume Feature**: Automatically detects existing files to finish interrupted runs.
 
-## 📂 Folder Overview
+### 🛡️ The Subprocess Worker (`worker.py`)
 
-- **`engine/`**: The core execution logic. 
-    - `benchmark.py`: Orchestrator that manages workers and restarts servers.
-    - `worker.py`: Isolated subprocess that runs battles (prevents memory leaks).
-- **`reporting/`**: Scripts for data analysis and graph generation.
-- **`docs/`**: Detailed guides on specific topics (e.g., [LLM Setup with Ollama](docs/LLM_SETUP_GUIDE.md)).
-- **`results/`**: Final artifacts like PNG heatmaps and summary CSVs.
+This is the **Low-Level Executor**. Each worker handles one specific port and one specific matchup at a time.
 
-## 🛠️ Performance Tuning
-- **`--ports`**: Number of parallel Showdown servers to use. Recommended: 4-8.
-- **`--n-battles`**: Total battles per matchup. Recommended: 100 for dev, 1000 for final results.
-- **Server Restarts**: The engine automatically restarts Showdown servers between matchups to clear Node.js memory bloat.
+- **RAM Safety**: It implements massive memory-cleanup (chunking, clearing battle history, and calling the Garbage Collector).
+- **Independence**: A worker does not care about other workers; it only cares about its assigned port and target game count.
+
+---
+
+## 📊 2. Reporting & Visualization (`reporting/`)
+
+Data is only useful if it can be understood.
+
+### `heatmaps.py` — The Win Rate Matrix
+
+This script scans the `data/benchmarks_unified/` folder and generates a high-resolution heatmap.
+
+- **X-axis**: Opponents
+- **Y-axis**: Our Agents
+- **Color**: Darker/Warmer colors indicate higher win rates.
+- **Command**: `uv run python src/p01_heuristics/s01_singles/evaluation/reporting/heatmaps.py`
+
+---
+
+## 📁 3. Results Management (`results/`)
+
+This directory is organized into several key areas:
+
+- **`LLM/`**: Contains the reasoning logs (`thinking_*.txt`) for model-based agents.
+- **`heatmaps/`**: Stores the generated PNG visualizations.
+- **`matchups/`**: Older JSON-based results for specific single-run debugs.
+
+---
+
+## 🛠️ 4. How to run an Evaluation (Step-by-Step)
+
+1. **Prep the Servers**: Ensure you have enough Pokémon Showdown servers available. The system can handle up to 16+ parallel ports if your hardware allows.
+2. **Start the Benchmark**:
+
+    ```bash
+    # Run 100 battles for all pairs of v4,v5,v6 against abyssal
+    uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 100 \
+        --agents v4 v5 v6 \
+        --opponents abyssal \
+        --ports 4
+    ```
+
+3. **Monitor Progress**: The benchmark will show you in real-time which "Batch" is running on which "Port".
+4. **Analyze**: Run the heatmap script to see which version performs best.
+
+---
+
+## ⚡ Performance Tips
+
+- **CPU Bound**: For rule-based heuristics (`v1-v6`), you are CPU-bound. Increase `--ports` to use all your cores.
+- **RAM Bound**: If you see "Out of Memory," decrease `--concurrency`.
+- **IO Bound**: The system writes to CSV frequently to ensure data safety. Using an SSD is highly recommended.
+- **GPU Bound**: When testing LLMs (`pokechamp`), stick to `--ports 1` or `2` unless you have multiple GPUs.
