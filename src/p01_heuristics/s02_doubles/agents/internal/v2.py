@@ -3,13 +3,17 @@
 Extends V1 by introducing a defensive switch-out mechanism. Compares the
 effectiveness of the current matchup against potential switches, prioritizing
 safety when facing major type disadvantages.
+
+This version is designed to minimize risk by identifying situations where a
+Pokémon is significantly vulnerable to opponent types and swapping it for a
+teammate with better resistance.
 """
 
 from __future__ import annotations
 
 from poke_env.player.battle_order import SingleBattleOrder
-from poke_env.battle.move import Move
-from poke_env.battle.pokemon import Pokemon as PokemonClass
+from poke_env.environment.move import Move
+from poke_env.environment.pokemon import Pokemon as PokemonClass
 
 from ...core.base import BaseHeuristic2v2
 from ...core.common import calculate_base_damage, get_status_name

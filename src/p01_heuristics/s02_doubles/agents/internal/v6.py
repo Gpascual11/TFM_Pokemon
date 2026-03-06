@@ -3,13 +3,17 @@
 Advanced version of the stat-based heuristic that incorporates weather
 effects (Sun/Rain), terrain boosts (Electric/Grassy/Psychic), and move
 priority modifiers into the final score calculation.
+
+This version mimics competitive play by valuing move synergy with the field
+state and prioritizing high-priority moves (like Extreme Speed or Fake Out) 
+when appropriate.
 """
 
 from __future__ import annotations
 
 from poke_env.player.battle_order import SingleBattleOrder
-from poke_env.battle.move import Move
-from poke_env.battle.pokemon import Pokemon as PokemonClass
+from poke_env.environment.move import Move
+from poke_env.environment.pokemon import Pokemon as PokemonClass
 
 from .v2 import HeuristicV2Doubles
 from ...core.common import calculate_base_damage, get_status_name

@@ -1,14 +1,17 @@
 """Safe 1-step lookahead player for Doubles.
 
 Provides a robust baseline that selects moves based on a simple 1-turn 
-damage projection for each active slot.
+damage projection for each active slot. This agent is "safe" because it
+uses pre-validated target identification and filters out illegal action 
+combinations using `join_orders`.
 """
 
 from __future__ import annotations
 
-from poke_env.battle.move_category import MoveCategory
-from poke_env.player import Player
-from poke_env.player.battle_order import DoubleBattleOrder
+from poke_env.environment.move import Move
+from poke_env.environment.move_category import MoveCategory
+from poke_env.environment.pokemon import Pokemon
+from poke_env.player import Player, DoubleBattleOrder
 
 
 class SafeOneStepDoublesPlayer(Player):

@@ -1,11 +1,17 @@
 """Abstract Foundation for Rule-Based Doubles Strategies.
 
-This class implements a **score-then-combine** decision pattern:
-1. Validates all possible orders for each active Pokémon slot.
-2. Subclasses implement `_score_order` to evaluate individual slot actions 
-   (moves or switches).
-3. Combines slot scores to select the optimal pair of actions that maximizes 
-   the collective utility for the turn.
+This class implements a **score-then-combine** decision pattern specifically
+tailored for the Pokemon Showdown 2v2 environment:
+
+1.  **Validation**: Interacts with `DoubleBattle.valid_orders` to retrieve ALL
+    valid actions (moves, targets, and switches) for both active slots.
+2.  **Scoring**: Subclasses implement `_score_order` to assign numerical 
+    utility to individual slot actions.
+3.  **Combination**: Combines scores from both slots (slot0 + slot1) and 
+    uses `DoubleBattleOrder.join_orders` to filter out illegal 
+    combinations (e.g., both slots attempting to switch to the same teammate).
+4.  **Selection**: Executes the pair of actions that maximizes the 
+    total team utility for the turn.
 
 Inherits from `poke_env.Player` to provide a standard interface for 
 multiprocessing and server communication.
@@ -17,12 +23,13 @@ import abc
 import logging
 from typing import Dict, Set, Any
 
-from poke_env.player import Player
-from poke_env.player.battle_order import (
-    DoubleBattleOrder,
-    SingleBattleOrder,
-    BattleOrder,
-)
+from poke_env.environment.abstract_battle import AbstractBattle
+from poke_env.environment.double_battle import DoubleBattle
+from poke_env.environment.move import Move
+from poke_env.environment.pokemon import Pokemon
+from poke_env.player import Player, DoubleBattleOrder, BattleOrder, DefaultBattleOrder
+from poke_env.player.battle_order import SingleBattleOrder
+
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +58,7 @@ class BaseHeuristic2v2(Player, abc.ABC):
 
     def choose_move(self, battle: Any) -> BattleOrder:
         """Called by poke-env each turn. Dispatches doubles battles here."""
-        from poke_env.battle.double_battle import DoubleBattle
+        from poke_env.environment.double_battle import DoubleBattle
 
         if isinstance(battle, DoubleBattle):
             return self.choose_doubles_move(battle)
@@ -76,7 +83,11 @@ class BaseHeuristic2v2(Player, abc.ABC):
             
             # If both are empty, fallback to default random
             if not slot0_orders and not slot1_orders:
-                return super().choose_move(battle)
+                # Fallback to default random for both slots if no valid orders
+                return DoubleBattleOrder(
+                    first_order=DefaultBattleOrder(),
+                    second_order=DefaultBattleOrder(),
+                )
 
             active = battle.active_pokemon
             mon0 = active[0] if len(active) > 0 else None

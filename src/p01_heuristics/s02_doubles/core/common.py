@@ -1,7 +1,8 @@
 """Common utility functions for doubles heuristic players.
 
 Centralizes stat calculation, status identification, and damage estimation
-formulas for the 2v2 environment.
+formulas for the 2v2 environment. These utilities are used by all internal 
+heuristic versions (V1, V2, V6) to ensure consistent calculations.
 """
 
 from __future__ import annotations
