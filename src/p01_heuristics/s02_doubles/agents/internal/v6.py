@@ -12,7 +12,7 @@ from poke_env.battle.move import Move
 from poke_env.battle.pokemon import Pokemon as PokemonClass
 
 from .v2 import HeuristicV2Doubles
-from ..core.common import calculate_base_damage, get_status_name
+from ...core.common import calculate_base_damage, get_status_name
 
 _OPP1 = 1
 _OPP2 = 2

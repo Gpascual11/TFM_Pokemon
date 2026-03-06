@@ -42,7 +42,7 @@ class AgentFactory:
 
     @staticmethod
     def available_llm() -> list[str]:
-        return ["pokechamp", "pokellmon"]
+        return ["pokechamp", "pokellmon", "llm_vgc"]
 
     @staticmethod
     def create(name: str, **kwargs: Any) -> Any:
@@ -51,15 +51,22 @@ class AgentFactory:
         :param name: Label like 'v5', 'abyssal', or 'pokechamp'.
         :param kwargs: Forwarded to the player constructor.
         """
-        # Special handling for LLM agents which require the pokechamp library
-        if name in ["pokechamp", "pokellmon"]:
+        # Special handling for agents which require the pokechamp library fork of poke_env
+        if name in ["pokechamp", "pokellmon", "abyssal", "simple_heuristic"]:
+            # Ensure pokechamp is in path
+            root = Path(__file__).parent.parent.parent.parent.parent.resolve()
+            pokechamp_path = root / "pokechamp"
+            if pokechamp_path.exists() and str(pokechamp_path) not in sys.path:
+                sys.path.insert(0, str(pokechamp_path))
+
+        if name in ["pokechamp", "pokellmon", "llm_vgc"]:
             from poke_env.player.team_util import get_llm_player
             import argparse
             
             # Extract LLM specific args or use defaults
             temperature = kwargs.pop("temperature", 0.3)
             log_dir = kwargs.pop("log_dir", "./battle_log")
-            backend = kwargs.pop("backend", "ollama")
+            backend = kwargs.pop("backend", "ollama/qwen3:8b")
             prompt_algo = kwargs.pop("prompt_algo", "io")
             tag = kwargs.pop("tag", "0")
             battle_format = kwargs.get("battle_format", "gen9randombattle")
@@ -73,9 +80,17 @@ class AgentFactory:
                 battle_format=battle_format,
                 PNUMBER1=tag,
                 use_timeout=False,
+                account_configuration=kwargs.get("account_configuration"),
+                server_configuration=kwargs.get("server_configuration"),
             )
 
         # Standard heuristics/baselines
+        kwargs.pop("tag", None)
+        kwargs.pop("log_dir", None)
+        kwargs.pop("temperature", None)
+        kwargs.pop("backend", None)
+        kwargs.pop("prompt_algo", None)
+        
         cls = get_agent_class(name)
         return cls(**kwargs)
 

@@ -6,19 +6,22 @@ Pokémon battle tournaments. It ensures memory safety by isolating
 individual matchups in their own processes.
 
 Key Features:
+- Resume & Complete: Automatically detects partially finished matchups and completes them.
 - Multi-port Showdown server management.
-- Automatic server restarts to prevent Node.js memory bloat.
-- Checkpoint support (via file presence checks).
+- Dynamic Port Allocation: Spawns workers as ports become available.
+- Automatic server restarts to prevent memory bloat.
 - Consolidated reporting via terminal and CSV.
 """
 
 import argparse
+import asyncio
 import json
 import logging
 import subprocess
 import sys
 import time
 import os
+import random
 from pathlib import Path
 import pandas as pd
 from tabulate import tabulate
@@ -38,7 +41,7 @@ if str(_ROOT) not in sys.path:
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from ...core.factory import AgentFactory
+from p01_heuristics.s01_singles.core.factory import AgentFactory
 
 # Configuration
 DEFAULT_N = 100
@@ -48,97 +51,258 @@ DEFAULT_DATA_DIR = _ROOT / "data" / "benchmarks_unified"
 
 logger = logging.getLogger(__name__)
 
-def restart_servers(n_ports: int) -> None:
-    """Kill running Showdown servers and launch n_ports instances."""
+# ---------------------------------------------------------------------------
+# Server Management
+# ---------------------------------------------------------------------------
+async def restart_servers_async(n_ports: int) -> None:
+    """Kills existing Showdown servers and launches new ones.
+
+    This ensures that memory bloat in Node.js processes is cleared before starting
+    a new set of matchups. Use the `--restart-every` flag to trigger this periodically.
+
+    Args:
+        n_ports (int): The number of ports to launch (starting from DEFAULT_PORT).
+    """
     print(f"\n♻️  RESTARTING {n_ports} SHOWDOWN SERVERS...")
     try:
         subprocess.run(["pkill", "-f", "pokemon-showdown"], check=False)
-        time.sleep(2)
+        await asyncio.sleep(2)
         subprocess.Popen(
             ["bash", "src/p03_scripts/p03_launch_custom_servers.sh", str(n_ports)],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=str(_ROOT)
         )
-        print("⏳ Waiting 15 seconds for startup...")
-        time.sleep(15)
+        print(f"⏳ Waiting 15 seconds for {n_ports} servers to initialize...")
+        await asyncio.sleep(15)
     except Exception as e:
-        print(f"Server restart error: {e}")
+        print(f"❌ Server restart error: {e}")
 
-def run_matchup(agent: str, opponent: str, n_battles: int, ports: list[int], out_dir: Path) -> int:
-    """Run a single matchup split across multiple ports."""
-    out_csv = out_dir / f"{agent}_vs_{opponent}.csv"
-    if out_csv.exists():
-        print(f"⏩ Matchup {agent} vs {opponent} already exists. Skipping.")
-        return n_battles
+# ---------------------------------------------------------------------------
+# Matchup Logic
+# ---------------------------------------------------------------------------
+async def run_worker_batch(
+    agent: str, 
+    opponent: str, 
+    n_battles: int, 
+    port: int, 
+    concurrency: int, 
+    tmp_csv: Path,
+    batch_info: str
+) -> int:
+    """Invokes a worker subprocess to execute a batch of battles.
 
-    print(f"⚔️  Executing {agent} vs {opponent} ({n_battles} games)...")
+    Args:
+        agent (str): Label of the primary agent.
+        opponent (str): Label of the opponent agent.
+        n_battles (int): Games to play in this batch.
+        port (int): Showdown port to connect to.
+        concurrency (int): Maximum simultaneous battles for the worker.
+        tmp_csv (Path): Output location for worker-specific data.
+        batch_info (str): Descriptive label for logging.
+
+    Returns:
+        int: Number of battles successfully completed.
+    """
+    print(f"      {batch_info} -> Port {port}: Starting {n_battles} games...", flush=True)
     
-    n_ports = len(ports)
-    battles_per_port = n_battles // n_ports
-    processes = []
+    cmd = [
+        sys.executable, str(_ENGINE / "worker.py"),
+        "--agent", agent,
+        "--opponent", opponent,
+        "--n-battles", str(n_battles),
+        "--port", str(port),
+        "--concurrency", str(concurrency),
+        "--out", str(tmp_csv)
+    ]
     
-    for i, port in enumerate(ports):
-        this_n = battles_per_port + (n_battles % n_ports if i == 0 else 0)
-        cmd = [
-            sys.executable, str(_ENGINE / "worker.py"),
-            "--pc-agent", agent,
-            "--opponent", opponent,
-            "--n-battles", str(this_n),
-            "--port", str(port),
-            "--out", str(out_csv)
-        ]
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        processes.append((p, port))
-
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    
+    stdout, stderr = await proc.communicate()
+    
     total_done = 0
-    for p, port in processes:
-        stdout, stderr = p.communicate()
-        if "WORKER_OK:" in stdout:
-            total_done += int(stdout.split("WORKER_OK:")[1].strip())
-        if p.returncode != 0:
-            print(f"❌ Worker on port {port} failed: {stderr}")
+    if proc.returncode == 0:
+        output = stdout.decode().strip()
+        for line in output.splitlines():
+            if "WORKER_OK:" in line:
+                total_done = int(line.split("WORKER_OK:")[1].strip())
+        print(f"      {batch_info} -> Port {port}: Finished (Done: {total_done})", flush=True)
+    else:
+        print(f"      ❌ {batch_info} -> Port {port} failed: {stderr.decode().strip()}", flush=True)
             
     return total_done
 
-def main():
+async def run_matchup(
+    agent: str, 
+    opponent: str, 
+    target_battles: int, 
+    port_queue: asyncio.Queue, 
+    concurrency: int, 
+    out_dir: Path
+) -> int:
+    """Orchestrates a specific matchup between two agents.
+
+    This function handles the 'Resume & Complete' logic: it checks existing CSVs
+    and only runs the remaining number of battles if the target hasn't been reached.
+
+    Args:
+        agent (str): Primary agent label.
+        opponent (str): Opponent label.
+        target_battles (int): Desired total games for this pair.
+        port_queue (asyncio.Queue): Available ports for parallel workers.
+        concurrency (int): max_concurrent_battles per worker.
+        out_dir (Path): Where results are stored.
+
+    Returns:
+        int: Total number of games now recorded in the CSV (including previous ones).
+    """
+    out_csv = out_dir / f"{agent}_vs_{opponent}.csv"
+    
+    already_done = 0
+    if out_csv.exists():
+        try:
+            df = pd.read_csv(out_csv)
+            already_done = len(df)
+        except Exception:
+            already_done = 0
+            
+    n_to_run = target_battles - already_done
+    if n_to_run <= 0:
+        print(f"⏩ Matchup {agent} vs {opponent} already finished ({already_done}/{target_battles}). skipping.")
+        return target_battles
+
+    print(f"⚔️  Executing {agent} vs {opponent}: {n_to_run} missing games (Total Target: {target_battles})...")
+    
+    n_ports = port_queue.qsize()
+    # If we have 4 servers, we split the n_to_run into 4 chunks
+    battles_per_worker = (n_to_run + n_ports - 1) // n_ports 
+    
+    tasks = []
+    remaining = n_to_run
+    
+    # Define a helper to manage port acquisition/release
+    async def task_wrapper(n, b_idx):
+        port = await port_queue.get()
+        # Use a unique temporary file for this specific worker batch
+        tmp_csv = out_dir / f"_tmp_{agent}_{opponent}_p{port}_b{b_idx}.csv"
+        try:
+            done = await run_worker_batch(
+                agent, opponent, n, port, concurrency, tmp_csv, 
+                f"[{agent} vs {opponent}] Batch {b_idx+1}"
+            )
+            return done, tmp_csv
+        finally:
+            await port_queue.put(port)
+
+    batch_idx = 0
+    while remaining > 0:
+        this_n = min(battles_per_worker, remaining)
+        tasks.append(task_wrapper(this_n, batch_idx))
+        remaining -= this_n
+        batch_idx += 1
+        
+    results = await asyncio.gather(*tasks)
+    
+    # Merge all tmp files into the final CSV
+    frames = []
+    total_new = 0
+    for done, tmp_csv in results:
+        if done > 0 and tmp_csv.exists():
+            frames.append(pd.read_csv(tmp_csv))
+            tmp_csv.unlink() # Delete tmp file after reading
+            total_new += done
+    
+    if frames:
+        # Append new results to the main CSV
+        new_df = pd.concat(frames, ignore_index=True)
+        if out_csv.exists():
+            # If main file exists, we merge (ensuring we don't have duplicate headers)
+            existing_df = pd.read_csv(out_csv)
+            final_df = pd.concat([existing_df, new_df], ignore_index=True)
+        else:
+            final_df = new_df
+        final_df.to_csv(out_csv, index=False)
+            
+    return already_done + total_new
+
+# ---------------------------------------------------------------------------
+# Main Runner
+# ---------------------------------------------------------------------------
+async def main_async():
     parser = argparse.ArgumentParser()
     parser.add_argument("n_battles", type=int, nargs="?", default=DEFAULT_N)
     parser.add_argument("--agents", nargs="+", help="Primary agents to test")
     parser.add_argument("--opponents", nargs="+", help="Opponents to face")
     parser.add_argument("--ports", type=int, default=DEFAULT_CONCURRENT_MATCHUPS)
     parser.add_argument("--start-port", type=int, default=DEFAULT_PORT)
+    parser.add_argument("--restart-every", type=int, default=10, help="Restart servers every N matchups")
+    parser.add_argument("--concurrency", type=int, default=10, help="Concurrent battles per worker")
     parser.add_argument("--out", type=str, default=str(DEFAULT_DATA_DIR))
     args = parser.parse_args()
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    ports = [args.start_port + i for i in range(args.ports)]
+    # Initialize Port Queue
+    port_queue = asyncio.Queue()
+    for i in range(args.ports):
+        await port_queue.put(args.start_port + i)
     
-    # Defaults if not specified
-    agents = args.agents or (AgentFactory.available_internal() + AgentFactory.available_llm())
-    opponents = args.opponents or (AgentFactory.available_internal() + AgentFactory.available_baselines())
+    # Preferred non-LLM agent list
+    HEURISTICS = [
+        "v1", "v2", "v3", "v4", "v5", "v6", 
+        "random", "max_power", "simple_heuristic",
+        "abyssal", "one_step", "safe_one_step"
+    ]
+    
+    agents = args.agents or HEURISTICS
+    opponents = args.opponents or HEURISTICS
 
-    restart_servers(len(ports))
+    await restart_servers_async(args.ports)
     
     stats = []
+    matchup_count = 0
     for agent in agents:
         for opp in opponents:
             if agent == opp: continue
             
-            done = run_matchup(agent, opp, args.n_battles, ports, out_dir)
+            # Periodic Restart
+            if matchup_count > 0 and matchup_count % args.restart_every == 0:
+                await restart_servers_async(args.ports)
+            
+            total_done = await run_matchup(agent, opp, args.n_battles, port_queue, args.concurrency, out_dir)
+            matchup_count += 1
             
             # Load results for summary
             csv_path = out_dir / f"{agent}_vs_{opp}.csv"
             if csv_path.exists():
-                df = pd.read_csv(csv_path)
-                wr = df["won"].mean() * 100
-                stats.append({"Agent": agent, "Opponent": opp, "WR%": f"{wr:.1f}", "Games": len(df)})
+                try:
+                    df = pd.read_csv(csv_path)
+                    if len(df) > 0:
+                        wr = df["won"].mean() * 100
+                        stats.append({
+                            "Agent": agent, 
+                            "Opponent": opp, 
+                            "WR%": f"{wr:.1f}", 
+                            "Games": f"{len(df)}/{args.n_battles}"
+                        })
+                except Exception:
+                    pass
 
     print("\n📊 UNIFIED BENCHMARK SUMMARY")
     if stats:
         print(tabulate(stats, headers="keys", tablefmt="github"))
     
     print(f"\n✅ All results saved to: {out_dir}")
+
+def main():
+    try:
+        asyncio.run(main_async())
+    except KeyboardInterrupt:
+        print("\n🛑 Benchmark interrupted by user.")
+        sys.exit(130)
 
 if __name__ == "__main__":
     main()

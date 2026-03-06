@@ -10,7 +10,7 @@ from __future__ import annotations
 from poke_env.player.battle_order import SingleBattleOrder
 from poke_env.battle.move import Move
 
-from ..core.base import BaseHeuristic2v2
+from ...core.base import BaseHeuristic2v2
 
 # poke-env target constants (from DoubleBattle)
 _OPP1 = 1  # OPPONENT_1_POSITION

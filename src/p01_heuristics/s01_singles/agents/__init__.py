@@ -1,7 +1,23 @@
 from typing import Any
 
 def get_agent_class(name: str) -> type:
-    """Lazy-load and return the agent class for the given name."""
+    """Lazy-load and return the agent class associated with a string label.
+
+    This function maps human-readable names to their Python class implementation.
+    It handles:
+    1. Internal Heuristics (v1-v6) - custom rule-based agents.
+    2. Baselines (random, max_power, abyssal) - standard wrappers.
+    3. Optimized Baselines (simple_heuristic) - local enhancements.
+
+    Args:
+        name (str): The label of the agent (e.g. 'v6', 'abyssal').
+
+    Returns:
+        type: The Python Class for the requested player.
+
+    Raises:
+        ValueError: If the name is not recognized.
+    """
     
     # Internal Heuristics (v1-v6)
     if name.startswith("v"):
@@ -21,6 +37,12 @@ def get_agent_class(name: str) -> type:
         from poke_env.player.baselines import MaxBasePowerPlayer
         return MaxBasePowerPlayer
     if name == "abyssal":
+        import sys
+        from pathlib import Path
+        root = Path(__file__).parent.parent.parent.parent.parent.resolve()
+        pokechamp_path = root / "pokechamp"
+        if pokechamp_path.exists() and str(pokechamp_path) not in sys.path:
+            sys.path.insert(0, str(pokechamp_path))
         from poke_env.player.baselines import AbyssalPlayer
         return AbyssalPlayer
     if name == "one_step":
