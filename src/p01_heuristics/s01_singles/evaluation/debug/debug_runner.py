@@ -10,8 +10,10 @@ single battles with turn-level progress so you can validate:
 
 Typical usage (after starting a server on port 8000):
 
-    uv run python src/p01_heuristics/s01_singles/evaluation/engine/debug_runner.py \\
+    uv run python src/p01_heuristics/s01_singles/evaluation/debug/debug_runner.py \\
         --backend ollama/qwen3:8b --format gen9randombattle
+
+(engine/debug_runner.py is a shim that forwards to this module.)
 """
 
 from __future__ import annotations
@@ -22,6 +24,14 @@ import os
 import time
 from pathlib import Path
 import sys
+
+# ---------------------------------------------------------------------------
+# Package bootstrap — allow running this file directly via `python .../debug_runner.py`
+# ---------------------------------------------------------------------------
+_DIR = Path(__file__).parent.resolve()
+_SRC = _DIR.parent.parent.parent.parent  # src/
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
 
 from poke_env import AccountConfiguration, ServerConfiguration
 

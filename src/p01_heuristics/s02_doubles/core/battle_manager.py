@@ -17,9 +17,10 @@ import pandas as pd
 
 from poke_env import AccountConfiguration, ServerConfiguration
 from poke_env.player import RandomPlayer
-from poke_env.player.baselines import MaxBasePowerPlayer, SimpleHeuristicsPlayer
+from poke_env.player.baselines import MaxBasePowerPlayer
 
 from .factory import HeuristicFactory
+from ..agents.baselines.simple_doubles_baseline import SimpleHeuristicsDoublesPlayer
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +158,7 @@ class BattleManager:
                 account_configuration=AccountConfiguration(opp_name, None),
                 **common_kwargs,
             ),
-            "simple_heuristic": lambda: SimpleHeuristicsPlayer(
+            "simple_heuristic": lambda: SimpleHeuristicsDoublesPlayer(
                 account_configuration=AccountConfiguration(opp_name, None),
                 **common_kwargs,
             ),

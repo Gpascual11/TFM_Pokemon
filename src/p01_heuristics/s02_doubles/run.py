@@ -40,7 +40,7 @@ _OPPONENT_LABELS = {
     "random": "RandomPlayer",
     "self": "Self-Play",
     "max_power": "MaxBasePowerPlayer",
-    "simple_heuristic": "SimpleHeuristicsPlayer",
+    "simple_heuristic": "SimpleHeuristicsDoublesPlayer",
 }
 
 
@@ -98,8 +98,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--data-dir",
         type=str,
-        default="data",
-        help="Output directory (default: data).",
+        default="data/2_vs_2/runs",
+        help="Output directory (default: data/2_vs_2/runs).",
     )
     parser.add_argument(
         "--log-level",

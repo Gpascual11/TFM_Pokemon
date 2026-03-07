@@ -50,15 +50,15 @@ uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 20 \
 ### Parameters
 
 - **`n_battles`** *(positional)*: games per matchup.
-- **`--agents <...>`**: primary agents to evaluate. If omitted, runs all known agents.
-- **`--opponents <...>`**: opponent set. If omitted, runs all known agents.
+- **`--agents <...>`**: primary agents to evaluate. If omitted, runs all registered heuristic and baseline agents from `AgentFactory` (no LLMs).
+- **`--opponents <...>`**: opponent set. If omitted, runs all registered heuristic and baseline agents from `AgentFactory` (no LLMs).
 - **`--ports N`**: number of worker ports (and processes) to use.
 - **`--start-port P`**: first port (ports are `P..P+N-1`).
 - **`--concurrency M`**: max concurrent battles per worker.
 - **`--restart-every K`**: restart Showdown servers every K matchups (0 disables).
 - **`--out DIR`**: output directory for matchup CSVs.
 - **`--battle-format FORMAT`**: e.g. `gen9randombattle`.
-- **LLM-only (pokechamp/pokellmon)**:
+- **LLM-only (pokechamp/pokellmon/llm_vgc)**:
   - **`--player_backend BACKEND`**: e.g. `ollama/qwen3:8b`, `gemini-2.5-flash`.
   - **`--player_prompt_algo ALGO`**: usually `io`.
   - **`--temperature T`**.
@@ -147,13 +147,13 @@ Unified heatmap (from `benchmarks/unified`):
 uv run python src/p01_heuristics/s01_singles/evaluation/reporting/heatmaps.py
 ```
 
-Pokechamp per-agent report:
+Pokechamp per-agent report (expects legacy `pokechamp_{agent}_vs_*.csv` under `data/1_vs_1/benchmarks/pokechamp`, not the unified benchmark output):
 
 ```bash
 uv run python src/p01_heuristics/s01_singles/evaluation/reporting/generate_report.py --agent pokechamp
 ```
 
-Pokechamp full report:
+Pokechamp full report (expects legacy `pokechamp_*_vs_*.csv` under `data/1_vs_1/benchmarks/pokechamp_parallel`):
 
 ```bash
 uv run python src/p01_heuristics/s01_singles/evaluation/reporting/generate_full_report.py

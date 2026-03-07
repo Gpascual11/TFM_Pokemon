@@ -59,10 +59,10 @@ def _apply_llm_logging(player: Any, agent_name: str, log_dir: Path):
     thinking_file = log_dir / f"thinking_{agent_name}.txt"
     decisions_file = log_dir / f"decisions_{agent_name}.txt"
     
-    # Clear/Initialize files at start of worker session
-    with open(thinking_file, "w") as f:
+    # Initialize files for this worker session without truncating existing logs
+    with open(thinking_file, "a") as f:
         f.write(f"=== {agent_name.upper()} THINKING LOG ===\n\n")
-    with open(decisions_file, "w") as f:
+    with open(decisions_file, "a") as f:
         f.write(f"=== {agent_name.upper()} DECISIONS LOG ===\n\n")
 
     original_get_llm_action = player.llm.get_LLM_action
