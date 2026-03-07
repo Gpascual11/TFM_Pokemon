@@ -38,9 +38,9 @@ if str(_SRC) not in sys.path:
 
 __package__ = "p01_heuristics.s01_singles.evaluation.engine"
 
-from ..core.battle_manager import BattleManager  # noqa: E402
-from ..core.factory import HeuristicFactory  # noqa: E402
-from ..core.process_launcher import ProcessLauncher  # noqa: E402
+from ...core.battle_manager import BattleManager  # noqa: E402
+from ...core.factory import HeuristicFactory  # noqa: E402
+from ...core.process_launcher import ProcessLauncher  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +96,15 @@ def run_matchup(v_a: str, v_b: str, games: int, ports: list[int], data_dir: Path
         gc.collect()
 
     df = pd.read_csv(csv_path)
+
+    # Ensure a stable, resume-friendly CSV name without run_id suffix.
+    base_csv = data_dir / f"1_vs_1_{v_a}_vs_{v_b}.csv"
+    if csv_path != base_csv:
+        original_csv = csv_path
+        df.to_csv(base_csv, index=False)
+        if original_csv.exists():
+            original_csv.unlink()
+        csv_path = base_csv
     metrics = {
         "win_rate": (df["won"].sum() / len(df)) * 100,
         "avg_turns": df["turns"].mean(),

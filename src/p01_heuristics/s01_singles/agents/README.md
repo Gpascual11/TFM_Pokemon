@@ -11,7 +11,7 @@ This directory contains every agent implementation available in the 1v1 Singles 
 | **Internal Heuristics** | `v1`–`v6` | `agents/internal/` (`HeuristicV1`–`HeuristicV6`) | Main research agents; all inherit from `BaseHeuristic1v1` and use shared math in `core/common.py`. |
 | **poke-env Baselines** | `random`, `max_power`, `simple_heuristic` | `poke_env.player.*` + `agents/baselines/true_simple_heuristic.py` | Standard reference bots from `poke-env` (plus a local copy of `SimpleHeuristicsPlayer`). |
 | **Pokechamp Baselines** | `abyssal`, `one_step`, `safe_one_step` | external `pokechamp` repo + `agents/baselines/safe_one_step_player.py` | Rule-based agents from PokéChamp. `one_step` and `safe_one_step` both map to `SafeOneStepPlayer` to avoid LocalSim hangs. |
-| **Pokechamp LLM Agents** | `pokechamp`, `pokellmon` | external `pokechamp` repo via `AgentFactory` | Minimax + LLM agents; configured via `--player_backend`, `--player_prompt_algo`, `--temperature`, etc. in the benchmark CLI. |
+| **Pokechamp LLM Agents** | `pokechamp`, `pokellmon`, `llm_vgc` | external `pokechamp` repo via `AgentFactory` | Minimax + LLM agents; configured via `--player_backend`, `--player_prompt_algo`, `--temperature`, etc. in the benchmark CLI. |
 
 All of these can be requested by **string label** (e.g. `v6`, `abyssal`, `pokechamp`) via `AgentFactory.create(...)` or the benchmark `--agents / --opponents` flags.
 
@@ -83,4 +83,4 @@ These agents use Large Language Models (LLMs) to reason about the battle.
 4. Register the agent in `agents/__init__.py`.
 5. Update `AgentFactory.available_internal()` in `core/factory.py`.
 
-Now your new agent is automatically compatible with the parallel benchmark engine!
+Now your new agent is automatically compatible with the parallel benchmark engine defaults (it will be picked up whenever `--agents/--opponents` are omitted, alongside all registered baselines but excluding LLM agents).

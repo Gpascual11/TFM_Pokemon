@@ -101,8 +101,8 @@ def main():
     parser.add_argument(
         "--data-dir",
         type=str,
-        default="data/benchmarks_doubles_v3",
-        help="Data directory.",
+        default="data/2_vs_2/benchmarks/unified",
+        help="Data directory for per-matchup CSVs.",
     )
     parser.add_argument(
         "--output-csv",

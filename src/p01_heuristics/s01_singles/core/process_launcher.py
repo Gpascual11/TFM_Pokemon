@@ -246,6 +246,7 @@ class ProcessLauncher:
         if failed:
             logger.error("%d/%d processes exited with errors", len(failed), len(processes))
             print(f"\n⚠️  {len(failed)}/{len(processes)} processes failed! Check logs above.")
+            raise RuntimeError(f"{len(failed)}/{len(processes)} worker processes failed; see logs above.")
 
     def _merge_results(self) -> Path:
         """Concatenate all per-process CSVs into one merged file."""

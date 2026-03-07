@@ -6,10 +6,10 @@ This document summarizes the main steps, issues, and fixes while wiring the exte
 
 ## 1. Initial integration
 
-- **Goal**: Use the upstream `pokechamp` repo (`~/TFM/pokechamp`) as an external dependency and benchmark its agents (`pokechamp`, `pokellmon`, `random`, `max_power`, `abyssal`, `one_step`) against your own heuristics via `src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py`.
+- **Goal**: Use the upstream `pokechamp` repo (`~/TFM_Pokemon/pokechamp`) as an external dependency and benchmark its agents (`pokechamp`, `pokellmon`, `random`, `max_power`, `abyssal`, `one_step`) against your own heuristics via `src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py`.
 - **Key components in this project**:
-  - `evaluation/engine/benchmark.py`: Orchestrates matchups, spawns `evaluation/engine/worker.py` subprocesses, merges CSVs, prints a win‑rate matrix.
-  - `evaluation/engine/worker.py`: Creates two players (agent and opponent), runs `battle_against`, writes per‑battle rows to a temp CSV, then exits.
+- `evaluation/engine/benchmark.py`: Orchestrates matchups, spawns `evaluation/engine/worker.py` subprocesses, merges CSVs, prints a win‑rate matrix.
+- `evaluation/engine/worker.py`: Creates two players (agent and opponent), runs `battle_against`, writes per‑battle rows to a temp CSV, then exits.
   - `AgentFactory`: Instantiates internal heuristics, baselines, and pokechamp LLM players by label.
 
 ---
@@ -28,7 +28,7 @@ TypeError: OneStepPlayer.__init__() got an unexpected keyword argument 'max_conc
 
 **Fix in this project**
 
-- `_worker.py` was updated so that bundled baselines (`RandomPlayer`, `MaxBasePowerPlayer`, `AbyssalPlayer`, `OneStepPlayer`) are created with a shared `server_configuration` but **without** `max_concurrent_battles`. Only your heuristics use the concurrency kwarg.
+- `worker.py` was updated so that bundled baselines (`RandomPlayer`, `MaxBasePowerPlayer`, `AbyssalPlayer`, `OneStepPlayer`) are created with a shared `server_configuration` but **without** `max_concurrent_battles`. Only your heuristics use the concurrency kwarg.
 
 Result: `OneStepPlayer` can be instantiated successfully.
 
@@ -60,7 +60,7 @@ Result: `OneStepPlayer` can be instantiated successfully.
   - Uses only `poke_env` types and `damage_multiplier`.
   - Scores moves by `base_power * STAB * type effectiveness * accuracy`.
   - Never calls `LocalSim` or `pokechamp.prompts`.
-- `_worker.py` uses `SafeOneStepPlayer` when the CLI agent name is `one_step`.
+- `worker.py` uses `SafeOneStepPlayer` when the CLI agent name is `one_step`.
 
 Result: the `one_step` agent now behaves as a simple rule‑based lookahead without touching `LocalSim`.
 
@@ -73,7 +73,7 @@ Result: the `one_step` agent now behaves as a simple rule‑based lookahead with
 - Extra dependencies are installed via the `pokechamp` optional extra in `pyproject.toml`:
 
 ```bash
-cd ~/TFM
+cd ~/TFM_Pokemon
 uv sync --extra pokechamp
 ```
 
@@ -88,11 +88,11 @@ uv sync --extra pokechamp
 export GEMINI_API_KEY="YOUR_GEMINI_KEY"
 
 # Terminal A: Showdown server
-cd ~/TFM
+cd ~/TFM_Pokemon
 bash src/p03_scripts/p03_launch_custom_servers.sh 1
 
 # Terminal B: benchmark
-cd ~/TFM
+cd ~/TFM_Pokemon
 uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 1 \
   --agents pokechamp pokellmon \
   --opponents random \
@@ -141,11 +141,11 @@ ollama pull qwen3:8b
 
 ```bash
 # Terminal A: Showdown server
-cd ~/TFM
+cd ~/TFM_Pokemon
 bash src/p03_scripts/p03_launch_custom_servers.sh 1
 
 # Terminal B: LLM benchmark with local Qwen 3 8B
-cd ~/TFM
+cd ~/TFM_Pokemon
 uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 1 \
   --agents pokechamp pokellmon \
   --opponents random \
@@ -165,11 +165,11 @@ Notes:
 
 ## 6. Debug helper: `debug_runner.py`
 
-To see live progress for single games without the full benchmark, this project includes `src/p01_heuristics/s01_singles/evaluation/engine/debug_runner.py`.
+To see live progress for single games without the full benchmark, this project includes `src/p01_heuristics/s01_singles/evaluation/debug/debug_runner.py` (with `evaluation/engine/debug_runner.py` kept as a backwards-compatible shim).
 
 **Behavior**
 
-- Uses the same bootstrap and backend as `_worker.py` / `benchmark.py`.
+- Uses the same bootstrap and backend as `worker.py` / `benchmark.py`.
 - Runs three battles in sequence:
   1. `pokellmon` vs `random`.
   2. `pokechamp` vs `random`.
@@ -188,12 +188,12 @@ To see live progress for single games without the full benchmark, this project i
 
 ```bash
 # Terminal A
-cd ~/TFM
+cd ~/TFM_Pokemon
 bash src/p03_scripts/p03_launch_custom_servers.sh 1
 
 # Terminal B
-cd ~/TFM
-uv run python src/p01_heuristics/s01_singles/evaluation/engine/debug_runner.py
+cd ~/TFM_Pokemon
+uv run python src/p01_heuristics/s01_singles/evaluation/debug/debug_runner.py
 ```
 
 ---
@@ -202,4 +202,3 @@ uv run python src/p01_heuristics/s01_singles/evaluation/engine/debug_runner.py
 
 - On CPU, 8B models (Gemini via API or local Ollama) + heavyweight prompts mean **minutes per game** are normal.
 - A mid‑range NVIDIA GPU (8–12GB VRAM) typically reduces per‑turn latency by an order of magnitude or more, bringing games down to tens of seconds to a couple of minutes even with the same logic.
-

@@ -39,9 +39,9 @@ __package__ = "p01_heuristics.s01_singles.evaluation.engine"
 
 importlib.import_module("p01_heuristics.s01_singles")
 
-from ..core.battle_manager import BattleManager  # noqa: E402
-from ..core.factory import HeuristicFactory  # noqa: E402
-from ..core.process_launcher import ProcessLauncher  # noqa: E402
+from ...core.battle_manager import BattleManager  # noqa: E402
+from ...core.factory import HeuristicFactory  # noqa: E402
+from ...core.process_launcher import ProcessLauncher  # noqa: E402
 
 _OPPONENT_LABELS = {
     "random": "RandomPlayer",
@@ -53,7 +53,7 @@ _OPPONENT_LABELS = {
 
 def _build_parser() -> argparse.ArgumentParser:
     """Build and return the CLI argument parser."""
-    versions = HeuristicFactory.available_versions()
+    versions = HeuristicFactory.available_internal()
     parser = argparse.ArgumentParser(
         description="Run batched Pokémon Showdown 1-vs-1 heuristic simulations.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
