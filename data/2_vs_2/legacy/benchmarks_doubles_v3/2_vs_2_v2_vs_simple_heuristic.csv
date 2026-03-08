@@ -1,0 +1,11 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp
+battle-gen9randomdoublesbattle-132590,v2,simple_heuristic,v2A910146d4p8000,1,6,golduck|hippowdon|incineroar|sudowoodo|toucannon|vikavolt,deoxysdefense|gliscor|illumise|plusle|scovillain|vaporeon,2,4,2.35,6,0,0.0
+battle-gen9randomdoublesbattle-132591,v2,simple_heuristic,v2A910146d4p8000,1,10,copperajah|golem|mewtwo|palossand|skeledirge|vespiquen,flapple|kricketune|malamar|pecharunt|screamtail|tsareena,4,2,1.369,6,0,0.0
+battle-gen9randomdoublesbattle-132592,v2,simple_heuristic,Opp910146d4p8000,0,6,articuno|crabominable|garchomp|pachirisu|persian|slowking,dragonite|haxorus|mismagius|overqwil|sylveon|tinkaton,6,0,0.0,4,2,1.05
+battle-gen9randomdoublesbattle-132590,v2,simple_heuristic,v2A910146d4p8001,1,10,blastoise|gallade|mabosstiff|meloetta|primarina|probopass,granbull|hawlucha|heracross|manaphy|qwilfish|whimsicott,4,2,0.969,6,0,0.0
+battle-gen9randomdoublesbattle-132591,v2,simple_heuristic,v2A910146d4p8001,1,11,appletun|electivire|espeon|grafaiai|spectrier|volcanion,donphan|hypno|pincurchin|torterra|toxicroak|vigoroth,5,1,0.628,6,0,0.0
+battle-gen9randomdoublesbattle-132592,v2,simple_heuristic,v2A910146d4p8001,1,8,crawdaunt|meowscarada|oinkologne|ribombee|suicune|tsareena,dragonite|indeedee|luxray|mightyena|miniorindigo|ninetales,4,2,0.962,6,0,0.0
+battle-gen9randomdoublesbattle-132589,v2,simple_heuristic,v2A910146d4p8002,1,8,eelektross|grimmsnarl|kyurem|manaphy|moltres|toxicroak,amoonguss|hitmontop|klawf|mausholdfour|pincurchin|victreebel,4,2,1.728,6,0,0.0
+battle-gen9randomdoublesbattle-132590,v2,simple_heuristic,v2A910146d4p8002,1,7,clawitzer|entei|hoopaunbound|ironboulder|ironbundle|weavile,arceusbug|hitmonchan|meowsticf|persianalola|rabsca|ursaluna,4,2,0.263,6,0,0.0
+battle-gen9randomdoublesbattle-132589,v2,simple_heuristic,Opp910146d4p8003,0,6,blissey|espathra|hooh|kilowattrel|kricketune|sandyshocks,bellibolt|coalossal|flapple|hitmonchan|sawsbuckautumn|ursalunabloodmoon,6,0,0.0,4,2,1.21
+battle-gen9randomdoublesbattle-132590,v2,simple_heuristic,v2A910146d4p8003,1,7,bellibolt|chiyu|crabominable|emboar|hydrapple|polteageist,cramorant|hippowdon|miniorblue|plusle|regigigas|sawsbuckautumn,4,2,1.122,6,0,0.0

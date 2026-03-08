@@ -1,0 +1,11 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp
+battle-gen9randomdoublesbattle-132572,v2,v2,v2A55af6dc8p8000,1,11,braviaryhisui|hypno|manaphy|minun|sunflora|toedscruel,florges|grafaiai|magmar|thundurustherian|vigoroth|volbeat,4,2,0.797,6,0,0.0
+battle-gen9randomdoublesbattle-132573,v2,v2,v2B55af6dc8p8000,0,7,ariados|clefairy|electivire|hoopa|ironbundle|rayquaza,bellibolt|hitmonlee|ironmoth|lokix|mudsdale|oricoriopompom,6,0,0.0,5,1,0.68
+battle-gen9randomdoublesbattle-132574,v2,v2,v2A55af6dc8p8000,1,6,arceusfire|electrode|feraligatr|kricketune|lanturn|tsareena,fluttermane|hypno|kilowattrel|swanna|veluza|vileplume,4,2,1.244,6,0,0.0
+battle-gen9randomdoublesbattle-132572,v2,v2,v2B55af6dc8p8001,0,9,dugtrio|kommoo|probopass|reshiram|sudowoodo|whiscash,ariados|eelektross|garganacl|tinkaton|vivillonhighplains|zangoose,6,0,0.0,4,2,0.39
+battle-gen9randomdoublesbattle-132573,v2,v2,v2B55af6dc8p8001,0,7,arceusfighting|diancie|ironleaves|ninetales|pachirisu|rabsca,baxcalibur|cresselia|passimian|pyroar|rillaboom|tsareena,6,0,0.0,4,2,1.29
+battle-gen9randomdoublesbattle-132574,v2,v2,v2A55af6dc8p8001,1,6,carbink|cramorant|eiscuenoice|mienshao|sceptile|smeargle,braviary|gallade|incineroar|mabosstiff|sudowoodo|thundurus,4,2,1.697,6,0,0.0
+battle-gen9randomdoublesbattle-132570,v2,v2,v2A55af6dc8p8002,1,9,altaria|florgesyellow|galvantula|ironbundle|sandyshocks|whiscash,glastrier|mabosstiff|magnezone|phione|rillaboom|slowking,5,1,1.0,6,0,0.0
+battle-gen9randomdoublesbattle-132571,v2,v2,v2A55af6dc8p8002,1,9,corviknight|enamorus|greninja|mienshao|venusaur|zamazentacrowned,drednaw|gougingfire|hydreigon|maushold|overqwil|victreebel,5,1,0.4,6,0,0.0
+battle-gen9randomdoublesbattle-132570,v2,v2,v2A55af6dc8p8003,1,6,calyrexice|drednaw|excadrill|granbull|hatterene|victreebel,alcremierainbowswirl|brutebonnet|electrode|hitmontop|leavanny|mesprit,3,3,2.321,6,0,0.0
+battle-gen9randomdoublesbattle-132571,v2,v2,v2B55af6dc8p8003,0,8,charizard|donphan|drednaw|gliscor|mienshao|uxie,copperajah|darkrai|incineroar|necrozma|vivillonsun,6,0,0.0,4,1,1.0

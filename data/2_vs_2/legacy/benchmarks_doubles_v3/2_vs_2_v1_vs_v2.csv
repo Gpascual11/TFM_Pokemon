@@ -1,0 +1,11 @@
+battle_id,heuristic,opponent_type,winner,won,turns,team_us,team_opp,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp
+battle-gen9randomdoublesbattle-132548,v1,v2,v1A3cba1b94p8000,1,9,ampharos|klefki|slitherwing|sneasler|snorlax|vikavolt,appletun|giratina|houndoom|jolteon|mightyena|oricoriopau,3,3,2.18,6,0,0.0
+battle-gen9randomdoublesbattle-132549,v1,v2,v2B3cba1b94p8000,0,8,basculinbluestriped|fluttermane|minun|okidogi|pelipper|wochien,cetitan|gyarados|luvdisc|mabosstiff|tinglu,6,0,0.0,3,2,0.99
+battle-gen9randomdoublesbattle-132550,v1,v2,v1A3cba1b94p8000,1,6,barraskewda|ironvaliant|landorustherian|magcargo|mightyena|miraidon,kyogre|luxray|ninetalesalola|passimian|persian|veluza,5,1,0.462,6,0,0.0
+battle-gen9randomdoublesbattle-132548,v1,v2,v1A3cba1b94p8001,1,7,komala|kommoo|morpeko|porygon2|sinistcha|skuntank,chienpao|dragapult|luvdisc|sandslash|swanna|wyrdeer,3,3,1.776,6,0,0.0
+battle-gen9randomdoublesbattle-132549,v1,v2,v1A3cba1b94p8001,1,9,basculin|breloom|dewgong|dusknoir|rabsca|reshiram,cacturne|dragalge|dudunsparce|eelektross|phione|zapdos,5,1,0.191,6,0,0.0
+battle-gen9randomdoublesbattle-132550,v1,v2,v2B3cba1b94p8001,0,12,altaria|clawitzer|dewgong|dragalge|garganacl|salazzle,amoonguss|bombirdier|corviknight|hydrapple|sudowoodo|tinkaton,6,0,0.0,5,1,0.27
+battle-gen9randomdoublesbattle-132547,v1,v2,v1A3cba1b94p8002,1,14,falinks|golem|leavanny|luvdisc|porygon2|roaringmoon,bastiodon|cresselia|dragonite|meowscarada|minun|walkingwake,5,1,0.222,6,0,0.0
+battle-gen9randomdoublesbattle-132548,v1,v2,v1A3cba1b94p8002,1,5,galvantula|gardevoir|irontreads|oranguru|ribombee|sandyshocks,basculegion|dodrio|exeggutor|salazzle|thundurus|zamazentacrowned,3,3,2.709,6,0,0.0
+battle-gen9randomdoublesbattle-132547,v1,v2,v1A3cba1b94p8003,1,9,gastrodon|inteleon|latias|revavroom|sudowoodo|toxicroak,basculegionf|calyrex|empoleon|lugia|raichu|slaking,5,1,0.049,6,0,0.0
+battle-gen9randomdoublesbattle-132548,v1,v2,v2B3cba1b94p8003,0,7,hydreigon|lokix|manaphy|sandslashalola|terapagosterastal|whiscash,ludicolo|mightyena|shiftry|spectrier|toucannon|wigglytuff,6,0,0.0,4,2,1.68
