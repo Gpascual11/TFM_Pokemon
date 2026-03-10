@@ -1,38 +1,189 @@
 \chapter{Implementació d'Agents: De les Fases Heurístiques a l'Aprenentatge Profund}
 \label{chap:implementacio}
 
-D'acord amb la metodologia evolutiva exposada al capítol anterior, aquest apartat detalla l'arquitectura de software construïda per donar vida als agents racionals dins del simulador \textit{Pokémon Showdown}. Es divideix tècnicament entre la infraestructura d'orquestració creada i l'evolució de les heurístiques del format bàsic (\textit{Singles}) cap a l'alta complexitat (\textit{Dobles VGC}). L'apartat final es reserva a la futura arquitectura d'aprenentatge profund.
+D'acord amb la metodologia evolutiva exposada al capítol anterior, aquest apartat detalla l'arquitectura de software construïda per donar vida als agents racionals dins del simulador \textit{Pokémon Showdown}. Es cobreixen la infraestructura d'orquestració, l'evolució de les heurístiques, la integració d'agents externs i LLMs, i la implementació del pipeline de Reinforcement Learning.
 
-\section{Orquestració Operacional i Entorn Parallelitzat}
+\section{Orquestració Operacional i Entorn Paral·lelitzat}
 
-El motor d'aquest projecte recau en un mòdul orquestrador propi, situat a \texttt{src/p03\_scripts}, encarregat de trencar la limitació original d'un sol fil de connexió pròpia de \textit{poke-env}. Fent ús intensiu de l'asincronia i sub-processos de Python (\texttt{asyncio}), els scripts desenvolupats són capaços de:
+El motor d'aquest projecte recau en un mòdul orquestrador propi, situat a \texttt{src/p03\_scripts/}, encarregat de trencar la limitació original d'un sol fil de connexió pròpia de \textit{poke-env}. Fent ús intensiu de l'asincronia de Python (\texttt{asyncio}), els scripts desenvolupats són capaços de:
+
 \begin{enumerate}
-    \item \textbf{Llançament massiu de Showdown}: Aixecar múltiples ports actius sota demandar per instanciar arenes de combat separades geogràficament i lògicament.
-    \item \textbf{Gestió de Memòria (GC)}: S'han establert regles fixes d'alliberament de memòria (neteja manual al Garbage Collector de Python) a l'acabar petits "batches" de partides, evitant excepcions de consum i colls d'ampolla dels servidors node subjacents.
-    \item \textbf{Recuperació per Checkpoints}: Es disposen d'estructures JSON al directori \texttt{data/} que mapen quants combats han efectuat l'agent \textit{A} contra l'agent \textit{B}. Això fa completament robust el cicle de benchmarking a aturades elèctriques o interrupcions en màquines virtuals.
+    \item \textbf{Llançament massiu de servidors Showdown}: Aixecar dinàmicament múltiples instàncies de Pokémon Showdown en ports consecutius (p. ex.\ 8000, 8001, 8002...), cadascuna com a procés Node.js independent. Es deshabiliten serveis innecessaris (\textit{verifier}, \textit{friends}, \textit{repl}) per reduir consum i prevenir errors de connexió.
+    \item \textbf{Distribució d'agents}: L'orquestrador Python distribueix les batalles entre els ports disponibles mitjançant tasques asíncrones massives amb \texttt{asyncio}, permetent que múltiples batalles s'executin simultàniament.
+    \item \textbf{Gestió de memòria}: Neteja manual del Garbage Collector de Python a l'acabar petits \textit{batches} de partides. A més, els servidors Showdown es reinicien automàticament cada cert nombre de matchups (\texttt{--restart-every}) per evitar l'acumulació de processos \texttt{room-battle.js} de Node.js que no s'alliberen.
+    \item \textbf{Checkpoints de represa}: Estructures JSON al directori \texttt{data/} registren el progrés de cada parella d'agents, permetent reprendre l'execució si s'interromp per qualsevol motiu.
 \end{enumerate}
+
 
 \section{Fase 1.1: Desenvolupament d'Heurístiques per Singles (1vs1)}
 
-Abans de submergir models al pur format \textit{Dobles VGC}, el projecte exigeix garantir l'abstracció matemàtica dins d'un control màxim i un espai d'accions reduït. El format \textbf{Singles} (1vs1) es converteix en l'arena de desenvolupament ideal. Reduint l'espai i problemàtica del \textit{Spread Damage}, on l'agent només interacciona contra una diana visible prenent sobre un màxim limitant de 9 decisions asíncrones per torn dictades lliurement entre Atacar (4) o Substituir el personatge (5) del propi camp.
+Abans de desplegar models d'aprenentatge, el projecte exigeix validar la infraestructura dins d'un espai d'accions reduït. El format \textbf{Singles} (1vs1) serveix com a arena de desenvolupament: l'agent interactua contra un sol oponent visible, amb un màxim de 9 accions per torn (4 atacs + 5 substitucions).
 
-Mitjançant sis cicles evolutius de codi, s'han consolidat directrius pures allotjades sota \texttt{src/p01\_heuristics/s01\_singles/agents/}:
-\begin{itemize}
-    \item \textbf{Heurística v1 (Naïve Aggressive)}: Un esbós de prova que prioritza purament els moviments danyosos respecte l'estat lliurement amagat, buscant un petit desmarcatge cognitiu vers els oponents totalment aleatoris del format random.
-    \item \textbf{Heurístiques v2 / v3 (Incorporació d'STAB i Taula Tipus)}: El codi fa un salt numèric i llegeix dades del \textit{wrapper}. Multiplica el càlcul pel factor genètic relatiu $x1.5$ de tipus propi i pre-calcula les immunitats i febleses sobre l'enemic abans d'ordenar impactes. Resideix com a tall quantitatiu principal per ratificar efectivitat teòrica de l'operatiu de Poke-env intern en operacions d'escala.
-    \item \textbf{Heurística v4 / v5 (Tàctica de Supressió i Mitigació)}: El model es divideix en components i evalua \textit{switches}. Ara l'arquitectura ja no ataca constantment sinó que avalua l'estat tàcit: on, si es troba en clara inferioritat matricial d'atributs d'acord amb el càlcul d'impacte previst vers el \textit{Matchup} frontal, ordena retrocedir al de camp intercanviant per rebre menys dany i col·lapsant dinàmiques de model purament avar \textit{Max Power}.
-    \item \textbf{Heurística v6 (Master Heuristic)}: Integra totes les regles i condicionals anteriors al voltant d'un eix comú. Es converteix de lluny d'arquitectura base formal a un vertader agent competent per al seu camp format: preveu debuff, preveu velocitat calculada a priori i determina exactament què i sobre quins lligams estratègics s'aferma la partida general. Aquest model serveix el repte d'una validació clara pel RL tàctic final abstracte de decisió sobre oponents experts en un entorn pur.
-\end{itemize}
-
-\section{Fase 1.2: L'Ascens al Competitiu Real (Dobles VGC)}
-
-Tot repte d'IA queda coix comparativament a la comunitat global si no salta al lligam establert final: \textbf{Dobles 2 vs 2}. La base formal dissenyada per a les versions Singles va quedar automàticament invàlida perquè la classe de *Poke-env* no llegeix atacs lineals i obliga a retornar tuples dobles i l'algoritme perd el focus absolut d'optimització unària tancada. Dins de \texttt{src/p01\_heuristics/s02\_doubles/} es reestructura radicalment al pur formal funcional \textit{Score-then-Combine} (Avaluar i Lligar).
+Mitjançant sis cicles evolutius de codi, s'han consolidat heurístiques progressivament més sofisticades sota \texttt{src/p01\_heuristics/s01\_singles/agents/internal/}:
 
 \begin{itemize}
-    \item \textbf{Escala de Candidats (V1 i V2)}: L'algoritme fragmentada el model V6 antic, on la mecànica numèrica esdevé asíncrona assignant puntuacions teòriques pures de dany a tots moviments generats lliurament i després ho uneix. És on si els nostres agents formals dictaminen decisions enganyoses impossibles el lligam ho corregeix (ex. vetar ordres enganyoses d'intentar que ambdós atacs asimètrics canviïn del *slot* generant excepcions en enviar l'ordre al JSON principal asíncron i provocant tancament del servidor per cridades al dany a unitats diferents al Showdown). 
-    \item \textbf{Lligams de Propagació Espacial (Spread i Focus V3)}: Amb el sistema tàctic previ s'imposa finalment incloure al càrrec lògic el dany d'àrea pel multiplicador oficial competitiu (\textit{x0.75}) per calcular la utilitat o inclús la mitigació tàctica defensiva preveient un bloc abstracte de *Protect* que un aliat executa al costat de si mateix mitigant absolutament i atracant moviments asimptòtics nuls als enemics per sobre control oponent sobre els danyats al centre del camp paral·lel asimètric a resoldre finalment abans de llançar intel·ligència general total asíncrona sobre RL.
+    \item \textbf{Heurística v1 (Naïve Aggressive)}: Selecciona el moviment amb la potència base més alta, ignorant completament tipus, STAB i substitucions.
+    \item \textbf{Heurística v2 (Damage Awareness)}: Introdueix el càlcul de dany estimat, multiplicant la potència base pel factor d'efectivitat de tipus ($\times 0.5$, $\times 1$, $\times 2$, $\times 4$) i l'STAB ($\times 1.5$).
+    \item \textbf{Heurística v3 (Defensive Pivot)}: Afegeix la primera lògica defensiva. Si el Pokémon actiu està enverinat (Toxic) durant més de 2 torns, es substitueix. Si l'oponent és més ràpid i l'atac previst fa menys de 20 HP de dany, es busca un company millor. Aquesta lògica de \textit{switching} és tan estable que les versions posteriors (v4--v6) la reutilitzen.
+    \item \textbf{Heurística v4 (Field-Aware)}: Refina el càlcul de dany incorporant el sistema de categories (físic vs. especial, considerant si l'atacant està cremat) i els modificadors climàtics i de terreny (Sol, Pluja, Electric/Grassy/Psychic Terrain).
+    \item \textbf{Heurística v5 (Boost-Aware)}: Estén v4 comptant les modificacions d'estadístiques en combat (\textit{boosts}): considera els $+/-$ d'Atac, Defensa i Velocitat en la fórmula de dany, i afegeix regles de seguretat (substitucions preventives quan la vida pròpia és baixa).
+    \item \textbf{Heurística v6 (Priority Master)}: Integra totes les regles anteriors i afegeix un multiplicador de $\times 1.2$ als moviments de prioritat (\textit{Quick Attack}, \textit{Shadow Sneak}, etc.), permetent assegurar KOs contra oponents amb poca vida abans de rebre un atac.
 \end{itemize}
 
-\section{Fase 2: Implementació Neuronal per Aprenentatge}
 
-\textit{[Espai d'Avaluació reservat per exposar properes setmanes els codis subjacents de les xarxes DQN / PPO on la integració respectiva a xarxes neuronals sota Pytorch prendran com a límit control els algoritmes iteratius validats previement, relegant l'escenari manual establert prèviament a una deducció autònoma tàctica per decisió computacional independent formal].}
+\section{Fase 1.2: Integració d'Agents Externs (Pokechamp)}
+\label{sec:pokechamp_integracio}
+
+Per ampliar el conjunt de baselines i disposar d'agents externs contra els quals validar les heurístiques, s'ha integrat el repositori \textbf{Pokechamp}~\cite{pokechamp} al pipeline de benchmarking.
+
+\subsection{Agents Heurístics de Pokechamp (1vs1)}
+
+S'han incorporat els agents basats en regles de Pokechamp per al format Singles Generació~9:
+
+\begin{itemize}
+    \item \textbf{AbyssalPlayer}: Agent heurístic que combina avaluació de matchups de tipus, estimació de dany amb STAB i efectivitat, i anàlisi de l'equip rival complet. Incorpora lògica específica de la Generació~9, incloent la Teracristal·lització.
+    \item \textbf{SafeOneStepPlayer}: Reimplementació pròpia de l'agent \textit{OneStepPlayer} original de Pokechamp. L'original utilitzava un simulador local (\textit{LocalSim}) que causava bloquejos (\textit{hangs}) per dependències de fitxers de cache absents. La nostra versió calcula $\text{dany} = \text{potència} \times \text{STAB} \times \text{efectivitat} \times \text{precisió}$ usant exclusivament l'API de poke-env, sense dependències externes.
+\end{itemize}
+
+\subsection{Agents LLM: Pokechamp i PokeLLMon}
+\label{subsec:llm_impl}
+
+Els agents basats en Models de Llenguatge (LLMs) representen un enfocament radicalment diferent: en lloc de regles codificades, utilitzen raonament en text natural per escollir accions.
+
+\paragraph{Backend: Ollama amb Qwen3 8B.}
+Per executar els LLMs de forma local sense dependre d'APIs costoses, s'ha configurat \textbf{Ollama} com a servidor d'inferència local. El model seleccionat, \textbf{Qwen3 8B}, ocupa $\sim$6--8~GB de VRAM i encaixa completament dins d'una GPU RTX 2080 (8~GB), permetent una inferència ràpida ($\sim$2--5 segons per torn). Models més grans (13B+) causaven \textit{memory swapping} que alentia cada torn a minuts.
+
+La configuració al benchmark s'especifica com:
+\begin{verbatim}
+  --player_backend ollama/qwen3:8b
+  --player_prompt_algo io
+  --temperature 0.3
+\end{verbatim}
+
+\paragraph{Arquitectura d'integració.}
+L'agent Pokechamp rep l'estat de la batalla en format text, l'envia al LLM via API HTTP, i interpreta la resposta per generar una ordre de batalla. El flux és:
+\begin{enumerate}
+    \item El benchmark llança un \textit{worker subprocess} per cada batch de batalles.
+    \item L'\texttt{AgentFactory} detecta l'identificador (\texttt{pokechamp} o \texttt{pokellmon}) i importa dinàmicament \texttt{get\_llm\_player} del repositori Pokechamp clonat.
+    \item L'agent tradueix l'estat de batalla a un \textit{prompt} textual i l'envia a Ollama.
+    \item El LLM genera un raonament (\textit{Chain of Thought}) i una acció seleccionada.
+    \item L'acció es tradueix a una ordre de Showdown.
+\end{enumerate}
+
+\paragraph{Logging de raonament.}
+A diferència de les heurístiques, els agents LLM generen fitxers de \textit{``Thinking''} que expliquen el raonament darrere de cada decisió. Aquests logs es guarden a \texttt{evaluation/results/LLM/} i permeten analitzar la qualitat del raonament estratègic del model (anàlisi de tipo matchups, predicció de moviments rivals, gestió de recursos, etc.).
+
+\paragraph{Aïllament de processos.}
+El principal repte tècnic va ser la gestió de memòria: el fil de fons \texttt{POKE\_LOOP} de Pokechamp manté referències als objectes de la batalla fins i tot després de \texttt{del} + \texttt{gc.collect()}, acumulant memòria de forma il·limitada. La solució va ser l'\textbf{aïllament per subprocessos}: cada batch de batalles s'executa en un procés Python independent (\texttt{worker.py}), i quan el procés acaba, el sistema operatiu reclama \textit{tota} la memòria.
+
+
+\section{Fase 1.2b: L'Ascens al Competitiu Real (Dobles VGC)}
+
+Tot repte d'IA queda incomplet si no aborda el format oficial de competició: \textbf{Dobles 2 vs 2}. La base d'heurístiques dissenyada per Singles resulta invàlida perquè la classe de poke-env per Dobles requereix retornar tuples d'accions coordinades per als dos Pokémon al camp. Dins de \texttt{src/p01\_heuristics/s02\_doubles/} s'ha reestructurat l'arquitectura al patró \textit{Score-then-Combine}:
+
+\begin{itemize}
+    \item \textbf{Escala de Candidats (V1 i V2)}: L'algorisme assigna puntuacions de dany teòric a tots els moviments possibles de cada Pokémon i després combina les dues millors accions, verificant que no entrin en conflicte (p. ex.\ evitant que ambdós Pokémon intentin substituir-se simultàniament).
+    \item \textbf{Propagació Espacial (Spread/Focus V3)}: Inclou el multiplicador oficial de dany d'àrea ($\times 0.75$) i la lògica de \textit{Protect} com a eina tàctica defensiva, coordinant quan un aliat es protegeix mentre l'altre ataca.
+\end{itemize}
+
+\textit{[Nota: El desenvolupament de les heurístiques de Dobles es troba en fase de finalització i es completarà properes setmanes.]}
+
+
+% ============================================================
+%  3.5 — RL PIPELINE
+% ============================================================
+\section{Fase 2: Implementació del Pipeline de Reinforcement Learning}
+\label{sec:rl_impl}
+
+Amb les heurístiques com a baselines experts, la segona gran fase del projecte ha consistit a construir un pipeline complet de Reinforcement Learning per entrenar agents neuronals, implementat a \texttt{src/p02\_rl\_models/}.
+
+\subsection{Vectorització de l'Estat (\texttt{StateVectorizer})}
+
+Les xarxes neuronals necessiten dades numèriques com a entrada. El mòdul \texttt{vectorizer.py} converteix l'objecte complex \texttt{Battle} de poke-env en un \textbf{vector float32 de 238 dimensions}, normalitzat a l'interval $[0, 1]$ per estabilitzar l'entrenament. El vector codifica:
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|l|c|p{7cm}|}
+    \hline
+    \textbf{Component} & \textbf{Dims} & \textbf{Detall} \\ \hline
+    Pokémon actiu propi & $\sim$33 & HP normalitzat, tipus (18-dim multi-hot), status (one-hot), 7 boosts $[-6,6] \rightarrow [0,1]$. \\ \hline
+    Pokémon actiu rival & $\sim$33 & Mateixa estructura que el propi. \\ \hline
+    Moviments propis & 76 & 4 slots $\times$ (18 tipus one-hot + 1 potència normalitzada). \\ \hline
+    Banc propi & 6 & HP fraccional de cada Pokémon de l'equip. \\ \hline
+    Banc rival & 7 & HP dels Pokémon revelats + estimació de vius. \\ \hline
+    Clima i camp & $\sim$20 & Weather i Field com a multi-hot encoding. \\ \hline
+    Condicions laterals & $2 \times 24$ & Hazards, pantalles, etc.\ per bàndol (normalitzats). \\ \hline
+    \end{tabular}
+    \caption{Estructura del vector d'observació de 238 dimensions generat pel \texttt{StateVectorizer}.}
+    \label{tab:vectorizer}
+\end{table}
+
+\subsection{Entorn Gymnasium amb Action Masking}
+
+L'entorn \texttt{PokemonMaskedEnv} hereta de la classe \texttt{SinglesEnv} de poke-env i implementa la interfície estàndard de \textbf{Gymnasium}. L'espai d'accions és discret amb 10 accions possibles:
+\begin{itemize}
+    \item \textbf{Accions 0--3}: Atacs (un per cada slot de moviment).
+    \item \textbf{Accions 4--9}: Substitucions (un per cada posició del banc).
+\end{itemize}
+
+Per evitar que l'agent intenti accions il·legals (atacar amb un moviment sense PP, substituir per un Pokémon debilitat), s'utilitza \textbf{Action Masking}: cada torn, un vector binari indica quines de les 10 accions són legals. L'algorisme \texttt{MaskablePPO}~\cite{sb3_contrib} utilitza aquesta màscara per assignar probabilitat zero a les accions invàlides.
+
+\subsection{Reward Shaping (Disseny de la Recompensa)}
+\label{subsec:reward}
+
+La funció de recompensa densa combina múltiples senyals per guiar l'aprenentatge:
+
+\begin{itemize}
+    \item \textbf{Base}: Delta de HP (propis i rivals) + bonus per Pokémon derrotat $(\pm 2)$ + victòria/derrota $(\pm 30)$.
+    \item \textbf{Boosts ofensius}: $+0.3$ per nivell de boost positiu en Atac, Atac Especial o Velocitat.
+    \item \textbf{Penalització defensiva}: $-0.1$ per nivell de debuff propi.
+    \item \textbf{Status oponent}: $+0.3$ si el rival actiu té un status debilitant (Burn, Paralysis, Toxic).
+    \item \textbf{Hazards}: $+0.5$ per hazard plantat al camp rival; penalització proporcional per hazards propis.
+    \item \textbf{Penalització temporal}: $-0.02$ per torn, per evitar partides infinitament llargues.
+\end{itemize}
+
+\subsection{Currículum d'Entrenament en 4 Fases}
+
+Per evitar que l'agent col·lapsi davant d'oponents massa complexos des de l'inici, s'ha implementat un \textbf{currículum progressiu} on la dificultat escala gradualment:
+
+\begin{enumerate}
+    \item \textbf{Fase 1 — Fonaments}: Entrenament contra \textit{RandomPlayer}. L'agent aprèn les mecàniques bàsiques: atacar és millor que no fer res, substituir un Pokémon debilitat és obligatori.
+    \item \textbf{Fase 1.5 — Supervivència}: Transició contra \textit{MaxBasePowerPlayer}. L'agent ha d'aprendre a resistir un oponent que sempre ataca amb la potència màxima, desenvolupant nocions defensives.
+    \item \textbf{Fase 2 — Tàctica}: Transferència contra \textit{SimpleHeuristicPlayer}. L'oponent ara avalua tipus i fa substitucions defensives, forçant l'agent a desenvolupar estratègia real.
+    \item \textbf{Fase 3 — Gauntlet}: Entrenament contra \textbf{tots els oponents simultàniament} (Random, MaxPower, SimpleHeuristic) amb reward shaping agressiu: victòria $\pm 100$ i penalització temporal de $-0.1$ per torn, per evitar \textit{stalling} i l'oblit catastròfic (\textit{Cathedral Forgetting}).
+\end{enumerate}
+
+En cada fase, es carrega el checkpoint de la fase anterior i es continua l'entrenament amb el nou oponent, permetent una \textbf{transferència progressiva} de coneixement.
+
+\subsection{Arquitectura del Model i Infraestructura GPU}
+
+L'agent utilitza \textbf{MaskablePPO} de la llibreria \texttt{sb3-contrib}~\cite{sb3_contrib} amb els següents hiperparàmetres:
+\begin{itemize}
+    \item \textbf{Xarxa}: MLP amb 2 capes ocultes de 256 neurones cadascuna (\texttt{net\_arch=[256, 256]}).
+    \item \textbf{Learning rate}: $3 \times 10^{-4}$.
+    \item \textbf{Steps per batch}: 2048.
+    \item \textbf{Entropy coefficient}: 0.01 (incentiva l'exploració en les primeres fases).
+    \item \textbf{Discount factor ($\gamma$)}: 0.99.
+\end{itemize}
+
+L'entrenament s'executa en una màquina amb una \textbf{GPU RTX 2080} (8~GB VRAM) i 16 nuclis de CPU. Per maximitzar el throughput, es despleguen \textbf{10 instàncies paral·leles} de Showdown (ports 8000--8009) amb \texttt{SubprocVecEnv}, permetent recopilar experiència 10 vegades més ràpid que amb un sol servidor.
+
+
+% ============================================================
+%  3.6 — DATASET-BASED
+% ============================================================
+\section{Treball Futur: Aprenentatge Basat en Datasets de Partides}
+\label{sec:dataset_training}
+
+Més enllà del Reinforcement Learning pur, una línia de treball futur prometedora consisteix a explotar \textbf{datasets de partides existents} per entrenar agents mitjançant tècniques d'\textit{Imitation Learning} o \textit{Behavioral Cloning}.
+
+El repositori Pokechamp~\cite{pokechamp} inclou internament un conjunt de replays de partides competitives que registren seqüències completes d'estats i accions. La idea és:
+
+\begin{enumerate}
+    \item \textbf{Extracció}: Parsejar els replays per obtenir parelles $(s_t, a_t)$ d'estat-acció de jugadors experts.
+    \item \textbf{Supervisió}: Entrenar una xarxa neuronal per predir l'acció experta $a_t$ donat l'estat vectoritzat $\mathbf{o}_t$ (usant el \texttt{StateVectorizer} ja implementat i la loss de cross-entropy).
+    \item \textbf{Fine-tuning amb RL}: Utilitzar el model pre-entrenat com a punt de partida per a les fases de RL, combinant el coneixement humà amb l'aprenentatge autònom.
+\end{enumerate}
+
+Aquesta aproximació podria accelerar significativament la convergència del RL: en lloc de descobrir des de zero que ``un atac de tipus Aigua és efectiu contra un Pokémon de Foc'', l'agent partiria d'un \textit{prior} expert, i el RL només hauria de refinar les decisions en situacions ambigües o no representades al dataset.

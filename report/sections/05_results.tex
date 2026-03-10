@@ -3,6 +3,21 @@
 
 Aquest capítol presenta els resultats obtinguts de l'avaluació exhaustiva d'ambdós entorns de simulació (Singles i Doubles). S'analitza l'efectivitat i fiabilitat de les versions estructurades respecte als baselines, utilitzant les eines de \textit{benchmark} internes de l'entorn Core, desenvolupades sota el disseny \textit{Round-Robin} automatitzat explicat prèviament.
 
+\section{Infraestructura d'Execució: Gestió de Recursos}
+
+Un aspecte crític del procés de benchmarking massiu és la \textbf{gestió de memòria RAM}. Cada batalla Pokémon consumeix memòria tant al procés Python (objectes Battle, Players) com al servidor Showdown (processos \texttt{room-battle.js} de Node.js). Sense mecanismes de neteja, la memòria creix de forma il·limitada.
+
+La Figura~\ref{fig:ram_usage} mostra el perfil de consum de RAM durant l'execució d'un benchmark complet de Singles:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{images/ram_usage_singles1.png}
+    \caption{Consum de RAM durant un benchmark de Singles. S'observa com la memòria puja progressivament durant cada matchup (acumulació de batalles) i cau bruscament quan el servidor Showdown es reinicia i el Garbage Collector de Python s'executa entre grups de matchups.}
+    \label{fig:ram_usage}
+\end{figure}
+
+El patró de dents de serra reflecteix el mecanisme de \texttt{--restart-every}: cada $N$ matchups completats, l'orquestrador mata i reenlaira els servidors Showdown, alliberant tots els processos \texttt{room-battle.js} acumulats. Combinat amb l'aïllament per subprocessos (cada batch de batalles en un procés Python independent), aquest sistema permet executar desenes de milers de batalles sense excedir els límits de memòria de la màquina.
+
 \section{Avaluació Exhaustiva al Format 1 vs 1 (Singles)}
 
 L'anàlisi sistemàtic del format \textit{Singles} va procedir a confrontar iterativament tots els agents heurístics dissenyats (des de \textit{v1} fins a \textit{v6}) i els \textit{baselines} absoluts de l'entorn.
@@ -13,7 +28,7 @@ Generacions inicials com la $v1$ no obtenien victòries aclaparadores més enll�
 \textbf{El pes de la Estocasticitat}: Malgrat crear intel·ligències heurístiques altament sofisticades, de la visió general numèrica se n'extreu que una \textbf{victòria del 100\% és intrínsecament impossible en aquest entorn i tipus d'agents reaccionaris purs}. Això resideix essencialment a la incommensurable potència de la inobservabilitat, afegit al RNG absolut del joc i al dany latent d'encerts crítics aleatoris que es poden atorgar de manera favorable totalment a un element de sort inferior que utilitzi combinatòries subòptimes (\textit{baselines}). L'anàlisi de matrius presentades indica clarament aquesta resistència asimptòtica.
 
 \vspace{0.5cm}
-\begin{figure}[htbp]
+\begin{figure}[H]
     \centering
     % Espai preparat per afegir la matriu i la gràfica v3 del repertori 1vs1
     \includegraphics[width=0.85\linewidth, draft]{benchmarks_singles_v3/placeholder_singles_heatmap.png}
@@ -29,7 +44,7 @@ La visualització empírica als tornejos demostrà de nou que hi hagué una fita
 No obstant això, el rendiment estabilitzador a través de combinant parelles òptimes per pes amb el \textit{v3 Doubles} garanteix ser base per establir estratègies pre-predictores suficients i emmagatzemar la pre-avaluació requerida que encoratjarà bases de model entrenables i més complexes.   
 
 \vspace{0.5cm}
-\begin{figure}[htbp]
+\begin{figure}[H]
     \centering
     % Espai preparat per afegir la visualització procedent de s02_doubles/results/ o data/benchmarks_doubles_v2
     \includegraphics[width=0.85\linewidth, draft]{benchmarks_doubles_v2/placeholder_doubles_heatmap.png}

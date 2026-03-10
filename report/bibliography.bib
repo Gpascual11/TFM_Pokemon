@@ -1,16 +1,74 @@
-@misc{pokemon_showdown,
-  title        = {Pokémon Showdown!},
-  author       = {Zarel, Guang and others},
-  howpublished = {\url{https://pokemonshowdown.com/}},
-  year         = {2011}
+% ============================================================
+%  BIBLIOGRAPHY — TFM: Agent DRL per Pokémon VGC
+% ============================================================
+
+% --- IA Clàssica: Escacs i Go ---
+@article{CAMPBELL200257,
+  title    = {Deep Blue},
+  journal  = {Artificial Intelligence},
+  volume   = {134},
+  number   = {1},
+  pages    = {57-83},
+  year     = {2002},
+  issn     = {0004-3702},
+  doi      = {https://doi.org/10.1016/S0004-3702(01)00129-1},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0004370201001291},
+  author   = {Murray Campbell and A.Joseph Hoane and Feng-hsiung Hsu}
 }
 
-@misc{poke_env,
-  author = {Haris Sahovic},
-  title  = {Poke-env: pokemon AI in python},
-  url    = {https://github.com/hsahovic/poke-env}
+@article{alphago,
+  title     = {Mastering the game of Go with deep neural networks and tree search},
+  author    = {Silver, David and Huang, Aja and Maddison, Chris J and Guez, Arthur and Sifre, Laurent and Van Den Driessche, George and Schrittwieser, Julian and Antonoglou, Ioannis and Panneershelvam, Veda and Lanctot, Marc and others},
+  journal   = {Nature},
+  volume    = {529},
+  number    = {7587},
+  pages     = {484--489},
+  year      = {2016},
+  doi       = {https://doi.org/10.1038/nature16961},
+  publisher = {Nature Publishing Group}
 }
 
+@article{alphazero,
+  title   = {A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play},
+  author  = {Silver, David and Hubert, Thomas and Schrittwieser, Julian and Antonoglou, Ioannis and Lai, Matthew and Guez, Arthur and Lanctot, Marc and Sifre, Laurent and Kumaran, Dharshan and Graepel, Thore and others},
+  journal = {Science},
+  volume  = {362},
+  number  = {6419},
+  pages   = {1140--1144},
+  year    = {2018},
+  doi     = {https://doi.org/10.1126/science.aar6404}
+}
+
+% --- IA en Videojocs Moderns ---
+@article{alphastar,
+  title   = {Grandmaster level in StarCraft II using multi-agent reinforcement learning},
+  author  = {Vinyals, Oriol and Babuschkin, Igor and Czarnecki, Wojciech M and Mathieu, Michaël and Dudzik, Andrew and Chung, Junyoung and Choi, David H and Powell, Richard and Ewalds, Timo and Georgiev, Petko and others},
+  journal = {Nature},
+  volume  = {575},
+  number  = {7782},
+  pages   = {350--354},
+  year    = {2019},
+  doi     = {https://doi.org/10.1038/s41586-019-1724-z}
+}
+
+@article{openai_five,
+  title   = {Dota 2 with Large Scale Deep Reinforcement Learning},
+  author  = {Berner, Christopher and Brockman, Greg and Chan, Brooke and Cheung, Vicki and Debiak, Przemyslaw and Dennison, Christy and Farhi, David and Fischer, Quirin and Hashme, Shariq and Hesse, Chris and others},
+  journal = {arXiv preprint arXiv:1912.06680},
+  year    = {2019},
+  doi     = {https://doi.org/10.48550/arXiv.1912.06680}
+}
+
+% --- Teoria de Jocs ---
+@book{von_neumann,
+  title     = {Theory of Games and Economic Behavior},
+  author    = {Von Neumann, John and Morgenstern, Oskar},
+  year      = {2007},
+  url       = {https://press.princeton.edu/books/paperback/9780691130613/theory-of-games-and-economic-behavior},
+  publisher = {Princeton University Press}
+}
+
+% --- Processos de Decisió i POMDPs ---
 @article{pomdp,
   title     = {The optimal control of partially observable Markov processes over a finite horizon},
   author    = {Smallwood, Richard D. and Sondik, Edward J.},
@@ -23,18 +81,44 @@
   publisher = {INFORMS}
 }
 
-@article{ppo,
-  title   = {Proximal policy optimization algorithms},
-  author  = {Schulman, John and Wolski, Filip and Dhariwal, Prafulla and Radford, Alec and Klimov, Oleg},
-  journal = {arXiv preprint arXiv:1707.06347},
-  year    = {2017},
-  doi     = {https://doi.org/10.48550/arXiv.1707.06347}
+@book{sutton_barto,
+  title     = {Reinforcement Learning: An Introduction},
+  author    = {Sutton, Richard S. and Barto, Andrew G.},
+  edition   = {2nd},
+  year      = {2018},
+  publisher = {MIT Press},
+  url       = {http://incompleteideas.net/book/the-book.html}
 }
 
+% --- Algorismes de Cerca ---
+@incollection{minimax_knuth,
+  title     = {An analysis of alpha-beta pruning},
+  author    = {Knuth, Donald E. and Moore, Ronald W.},
+  journal   = {Artificial Intelligence},
+  volume    = {6},
+  number    = {4},
+  pages     = {293--326},
+  year      = {1975},
+  doi       = {https://doi.org/10.1016/0004-3702(75)90019-3},
+  publisher = {Elsevier}
+}
+
+@inproceedings{mcts_survey,
+  title     = {A Survey of Monte Carlo Tree Search Methods},
+  author    = {Browne, Cameron B. and Powley, Edward and Whitehouse, Daniel and Lucas, Simon M. and Cowling, Peter I. and Rohlfshagen, Philipp and Tavener, Stephen and Perez, Diego and Samothrakis, Spyridon and Colton, Simon},
+  journal   = {IEEE Transactions on Computational Intelligence and AI in Games},
+  volume    = {4},
+  number    = {1},
+  pages     = {1--43},
+  year      = {2012},
+  doi       = {https://doi.org/10.1109/TCIAIG.2012.2186810}
+}
+
+% --- Deep Reinforcement Learning ---
 @article{dqn,
   title     = {Human-level control through deep reinforcement learning},
   author    = {Mnih, Volodymyr and Kavukcuoglu, Koray and Silver, David and Rusu, Andrei A and Veness, Joel and Bellemare, Marc G and Graves, Alex and Riedmiller, Martin and Fidjeland, Andreas K and Ostrovski, Georg and others},
-  journal   = {nature},
+  journal   = {Nature},
   volume    = {518},
   number    = {7540},
   pages     = {529--533},
@@ -43,33 +127,74 @@
   publisher = {Nature Publishing Group}
 }
 
-@article{alphago,
-  title     = {Mastering the game of Go with deep neural networks and tree search},
-  author    = {Silver, David and Huang, Aja and Maddison, Chris J and Guez, Arthur and Sifre, Laurent and Van Den Driessche, George and Schrittwieser, Julian and Antonoglou, Ioannis and Panneershelvam, Veda and Lanctot, Marc and others},
-  journal   = {nature},
-  volume    = {529},
-  number    = {7587},
-  pages     = {484--489},
-  year      = {2016},
-  doi       = {https://doi.org/10.1038/nature16961},
-  publisher = {Nature Publishing Group}
+@article{ppo,
+  title   = {Proximal Policy Optimization Algorithms},
+  author  = {Schulman, John and Wolski, Filip and Dhariwal, Prafulla and Radford, Alec and Klimov, Oleg},
+  journal = {arXiv preprint arXiv:1707.06347},
+  year    = {2017},
+  doi     = {https://doi.org/10.48550/arXiv.1707.06347}
 }
 
-@article{CAMPBELL200257,
-  title    = {Deep Blue},
-  journal  = {Artificial Intelligence},
-  volume   = {134},
-  number   = {1},
-  pages    = {57-83},
-  year     = {2002},
-  issn     = {0004-3702},
-  doi      = {https://doi.org/10.1016/S0004-3702(01)00129-1},
-  url      = {https://www.sciencedirect.com/science/article/pii/S0004370201001291},
-  author   = {Murray Campbell and A.Joseph Hoane and Feng-hsiung Hsu},
-  keywords = {Computer chess, Game tree search, Parallel search, Selective search, Search extensions, Evaluation function},
-  abstract = {Deep Blue is the chess machine that defeated then-reigning World Chess Champion Garry Kasparov in a six-game match in 1997. There were a number of factors that contributed to this success, including: •a single-chip chess search engine,•a massively parallel system with multiple levels of parallelism,•a strong emphasis on search extensions,•a complex evaluation function, and•effective use of a Grandmaster game database. This paper describes the Deep Blue system, and gives some of the rationale that went into the design decisions behind Deep Blue.}
+@article{a3c,
+  title   = {Asynchronous Methods for Deep Reinforcement Learning},
+  author  = {Mnih, Volodymyr and Badia, Adrià Puigdomènech and Mirza, Mehdi and Graves, Alex and Lillicrap, Timothy and Harley, Tim and Silver, David and Kavukcuoglu, Koray},
+  journal = {Proceedings of the 33rd International Conference on Machine Learning (ICML)},
+  pages   = {1928--1937},
+  year    = {2016}
 }
 
+% --- Xarxes Neuronals ---
+@article{lecun_deep_learning,
+  title   = {Deep learning},
+  author  = {LeCun, Yann and Bengio, Yoshua and Hinton, Geoffrey},
+  journal = {Nature},
+  volume  = {521},
+  number  = {7553},
+  pages   = {436--444},
+  year    = {2015},
+  doi     = {https://doi.org/10.1038/nature14539}
+}
+
+% --- Pokémon i IA ---
+@misc{pokemon_showdown,
+  title        = {Pokémon Showdown!},
+  author       = {Guangcong Luo and {Smogon Community}},
+  howpublished = {\url{https://pokemonshowdown.com/}},
+  year         = {2011}
+}
+
+@misc{poke_env,
+  author       = {Haris Sahovic},
+  title        = {poke-env: A Python Interface for Creating Pokémon Showdown Bots},
+  year         = {2020},
+  url          = {https://github.com/hsahovic/poke-env},
+  howpublished = {\url{https://github.com/hsahovic/poke-env}}
+}
+
+@misc{pokechamp,
+  author       = {Champion Lee and others},
+  title        = {Pokechamp: A Collection of Pokémon Battle AI Agents},
+  year         = {2024},
+  howpublished = {\url{https://github.com/champion-lee/pokechamp}},
+  note         = {Inclou agents basats en MCTS, Minimax, Xarxes Neuronals i heurístiques avançades}
+}
+
+@inproceedings{pokemon_rl_huang,
+  title     = {Action Q-Transformer: Visual Explanation in Deep Reinforcement Learning with Encoder-Decoder Model for Pokémon Battle},
+  author    = {Huang, Mon-Shu and others},
+  booktitle = {Proceedings of the IEEE Conference on Games (CoG)},
+  year      = {2023},
+  doi       = {https://doi.org/10.1109/CoG57401.2023.10333246}
+}
+
+@misc{pokemon_ai_sahovic,
+  author = {Haris Sahovic},
+  title  = {Creating a Pokémon battling bot with reinforcement learning},
+  year   = {2021},
+  url    = {https://hsahovic.github.io/poke-env/}
+}
+
+% --- Pokémon Competitiu i VGC ---
 @misc{world_champ_prizes,
   title        = {Pokémon World Championships Prize Pool and Awards},
   author       = {{The Pokémon Company International}},
@@ -77,14 +202,55 @@
   howpublished = {\url{https://www.pokemon.com/us/play-pokemon/worlds/2024/vgc-competitor-info/}}
 }
 
-@book{von_neumann,
-  title     = {Theory of games and economic behavior},
-  author    = {Von Neumann, John and Morgenstern, Oskar},
-  year      = {2007},
-  url       = {https://press.princeton.edu/books/paperback/9780691130613/theory-of-games-and-economic-behavior},
-  publisher = {Princeton university press}
+@misc{vgc_history,
+  title        = {History of the Video Game Championships},
+  author       = {{The Pokémon Company International}},
+  year         = {2024},
+  howpublished = {\url{https://www.pokemon.com/us/play-pokemon/about/vgc/}}
 }
 
+@misc{wolfey_vgc,
+  title        = {WolfeyVGC — Pokémon VGC Educational Content},
+  author       = {Wolfe Glick},
+  year         = {2024},
+  howpublished = {\url{https://www.youtube.com/@WolfeyVGC}},
+  note         = {Doble campió del món de VGC (2016, 2019)}
+}
+
+@misc{smogon_metagame,
+  author       = {{Smogon University}},
+  title        = {Smogon Strategy Pokédex},
+  year         = {2024},
+  howpublished = {\url{https://www.smogon.com/}},
+  note         = {Comunitat principal d'estratègia Pokémon competitiva}
+}
+
+% --- Pokémon: Mecàniques i Dades ---
+@misc{bulbapedia_stats,
+  author = {{Bulbapedia Contributors}},
+  title  = {Statistic --- {Bulbapedia}, {T}he community-driven {Pok\'emon} encyclopedia},
+  year   = {2024},
+  url    = {https://bulbapedia.bulbagarden.net/wiki/Stat},
+  note   = {[Online; accessed 4-March-2026]}
+}
+
+@misc{smogon_damage,
+  author       = {{Smogon University}},
+  title        = {Damage Formula},
+  year         = {2024},
+  url          = {https://www.smogon.com/dp/articles/damage_formula},
+  note         = {[Online; accessed 4-March-2026]}
+}
+
+@misc{bulbapedia_pokemon,
+  author       = {{Bulbapedia Contributors}},
+  title        = {Pokémon (species) --- {Bulbapedia}},
+  year         = {2024},
+  url          = {https://bulbapedia.bulbagarden.net/wiki/Pok\%C3\%A9mon_(species)},
+  note         = {Enciclopèdia completa de la franquícia Pokémon}
+}
+
+% --- OpenAI Gym ---
 @article{brockman2016openai,
   title   = {OpenAI Gym},
   author  = {Brockman, Greg and Cheung, Vicki and Pettersson, Ludwig and Schneider, Jonas and Schulman, John and Tang, Jie and Zaremba, Wojciech},
@@ -92,18 +258,43 @@
   year    = {2016}
 }
 
-@misc{bulbapedia_stats,
-  author = {{Bulbapedia Contributors}},
-  title  = {Statistic --- {Bulbapedia}, {T}he community-driven {P}ok\'emon encyclopedia},
-  year   = {2024},
-  url    = {https://bulbapedia.bulbagarden.net/wiki/Stat},
-  note   = {[Online; accessed 4-March-2026]}
+% --- Jocs de cartes i informació imperfecta ---
+@article{pluribus,
+  title   = {Superhuman AI for multiplayer poker},
+  author  = {Brown, Noam and Sandholm, Tuomas},
+  journal = {Science},
+  volume  = {365},
+  number  = {6456},
+  pages   = {885--890},
+  year    = {2019},
+  doi     = {https://doi.org/10.1126/science.aay2400}
 }
 
-@misc{smogon_damage,
-  author = {{Smogon University}},
-  title  = {Damage Formula},
-  year   = {2024},
-  url    = {https://www.smogon.com/dp/articles/damage_formula},
-  note   = {[Online; accessed 4-March-2026]}
+@article{libratus,
+  title   = {Superhuman AI for heads-up no-limit poker: Libratus beats top professionals},
+  author  = {Brown, Noam and Sandholm, Tuomas},
+  journal = {Science},
+  volume  = {359},
+  number  = {6374},
+  pages   = {418--424},
+  year    = {2018},
+  doi     = {https://doi.org/10.1126/science.aao1733}
+}
+
+% --- IA en eSports ---
+@misc{lol_ai,
+  title        = {League of Legends AI: Reinforcement Learning in Complex Multiplayer Games},
+  author       = {{Riot Games Research}},
+  year         = {2023},
+  howpublished = {\url{https://technology.riotgames.com/}},
+  note         = {Investigació d'IA aplicada a League of Legends}
+}
+
+% --- Stable-Baselines3 Contrib ---
+@misc{sb3_contrib,
+  title        = {Stable-Baselines3 Contrib: Reliable Reinforcement Learning Implementations},
+  author       = {Raffin, Antonin and Hill, Ashley and Gleave, Adam and Kanervisto, Anssi and Ernestus, Maximilian and Dormann, Noah},
+  year         = {2021},
+  howpublished = {\url{https://github.com/Stable-Baselines-Team/stable-baselines3-contrib}},
+  note         = {Inclou MaskablePPO per a entorns amb action masking}
 }
