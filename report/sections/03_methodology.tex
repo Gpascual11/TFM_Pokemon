@@ -1,57 +1,231 @@
-\chapter{Metodologia: Entorn, Arquitectura i Baselines}
+\chapter{Metodologia: Disseny Experimental}
 \label{chap:metodologia}
 
-Per poder dissenyar, analitzar i finalment entrenar intel·ligències artificials en el Meta-game presentat en l'anterior capítol, és requerit estructurar prèviament les bases experimentals i procedimentals de l'arquitectura del projecte. Aquest capítol detalla la construcció de l'entorn de simulació propi i l'establiment dels models numèrics de referència fonamentals.
+Per poder dissenyar, avaluar i entrenar agents d'IA en el metagame Pokémon presentat al capítol anterior, cal estructurar les bases experimentals del projecte. Aquest capítol detalla l'entorn de simulació, la complexitat del problema, els espais formals de treball i les mètriques d'avaluació. Finalment, s'exposa l'estratègia de desenvolupament en fases progressives.
 
-\section{Entorn i Simulació: Infraestructura Escalable}
+% ============================================================
+%  2.1 — ENTORN
+% ============================================================
+\section{Entorn de Simulació}
+\label{sec:entorn}
 
-Un cop presentats conceptualment \textit{Pokémon Showdown} i l'API de \textit{Poke-env} al Capítol~\ref{chap:marc_teoric}, el veritable repte metodològic recau en com orquestrar-los per suportar càrregues de validació científica. La naturalesa per defecte d'executar avaluacions amb un únic servidor central pateix greus limitacions a causa del col·lapse temporal quan es requereix un volum de batalles estadísticament rellevant.
+\subsection{Arquitectura Interna de Pokémon Showdown}
 
-Per resoldre aquest coll d'ampolla, en aquest projecte s'ha elaborat una infraestructura pròpia centralitzada (situada a \texttt{src/p03\_scripts}). Aquest conjunt d'eines està focalitzat en permetre aixecar dinàmicament múltiples instàncies paral·leles del servidor en diferents ports consecutius (ex. 8000 endavant) tot deshabilitant protocols de seguretat log-in locals innecessaris. D'aquesta manera, el nostre codi orquestrador Python és capaç de llançar tasques asíncrones massives i distribuir els agents entre diversos ports de Showdown. 
-
-Aquest component metodològic resulta l'eix clau del treball: permet efectuar una injecció massiva de connexions i extreure altes proporcions d'estudis de casos, aconseguint executar centenars de jocs simultàniament. Garanteix una escalabilitat gairebé il·limitada per als benchmarks heurístics i agilitza dràsticament els futurs processos de recol·lecció d'experiència requerits per qualsevol algoritme de *Reinforcement Learning*.
-
-\section{Fases de Desenvolupament i Models de Referència}
-
-El desplegament d'agències asíncrones sobre \textit{Showdown} s'ha estructurat metodològicament en dues grans fases consecutives per garantir una monitorització i isolació de variables controlada. 
-
-\subsection{Fase 1: Models de Regles Expertes (Heurístiques)}
-Abans de submergir el codi en hiperparàmetres de *Machine Learning*, la prioritat metodològica ha estat dissenyar models \textbf{heurístics propis} basats en regles de decisió expertes (arbres "If-Else" avançats). Aquest acostament primari ha complert un triple propòsit fonamental:
-\begin{itemize}
-    \item \textbf{Validació de la Infraestructura}: Funcionar com a prova de concepte de l'entorn (PoC) per garantir que el nostre orquestrador de servidors asíncrons llegia i enviava decisions sense caigudes de memòria (Memory Leaks de NodeJS) processant milers d'estats per minut.
-    \item \textbf{Depuració de la Lògica Numèrica}: Comprovar físicament que l'accés a les variables d'estat de \textit{poke-env} (HP, climàtologia, efectes secundaris actius) convergia en comportaments teòrics òptims dins de la pista per part del bot de forma pre-programada.
-    \item \textbf{Desenvolupar el Límit de Control Propi (Baseline Suprem)}: Mitjançant l'evolució iterativa d'aquestes heurístiques de codi dur, el projecte ha consolidat un "Límit de Control Expert". En lloc de mesurar futurs agents neuronals contra oponents cecs, l'objectiu últim serà llançar-los contra aquesta heurística madura final, forçant la xarxa neuronal a superar raonament matemàtic tancat creat per disseny pur.
-\end{itemize}
-
-\subsection{Fase 2: Models d'Aprenentatge Profund (Cares al Futur)}
-Una vegada validada l'arquitectura i disposant del *Baseline Expert* propiament dit en el codi amfitrió, la segona gran fase de la recerca (seccions posteriors) serà la substitució d'aquesta codificació dura per arquitectures d'aprenentatge. L'eix científic del TFM assoleix el seu màxim pragmatisme avaluant si algorismes com les Xarxes Q Profundes (DQN) o l'Actor-Crític (PPO) poden descobrir per si sols, i de forma superior, les normes causals que la Fase 1 programava explícitament (Taula de Tipus, STAB, Predicció de canvis).
-
-\subsection{La línia de control nativa (\textit{Poke-env Baselines})}
-
-Amb l'entorn escalable definit i prèviament a l'escriptura de qualsevol heurística complexa o xarxa neuronal, cal fixar globalment empírica de base sobre l'enginyeria robòtica del propi proveïdor. Dins d'un entorn basat en reforç i atzar, s'invalida automàticament qualsevol algoritme personal que rebaixi el percentatge de victòria blindat als \textit{baselines} natius que acompanyen la mateixa llibreria d'inici~\cite{poke_env}:
-
-Per suplir aquesta referència en l'estudi s'han adoptat tres mòduls intrínsecs ja subministrats nativament per \textit{poke-env} que defineixen la línia de control teòrica:
+Pokémon Showdown~\cite{pokemon_showdown} s'executa com un servidor Node.js que processa la lògica del combat de forma determinista donats uns inputs. El flux de comunicació funciona mitjançant \textbf{WebSockets}:
 
 \begin{enumerate}
-    \item \textbf{\textit{RandomPlayer}:} Un estadi base ingenu total que efectua moviments a l'atzar un cop ha estat interrogat de la llista genèrica d'accions legals permeses pel servidor local. Actua exclusivament com una font de distribució gaussiana teòrica del 50\% si jugués exclusivament partides simètriques, assenyalant explícitament els valors màxims de variància atorgats per les probabilitats incrustades de la mateixa mecànica (\textit{Damage Rolls, Critical Hits}, etc.). És l'exponent màxim del comportament estocàstic sense intel·ligència.
-    \item \textbf{\textit{MaxBasePowerPlayer}:} Un prototip mínimament cobdiciós (\textit{Greedy}). Valora objectivament les opcions de fer el màxim dany disponible per acció al seleccionar, ignorant les variacions globals defensives com el coeficient (\textit{STAB}) o la resistència teòrica davant atacs oponents. Resulta com el límit pràctic inferior d'estratègia funcional: la mínima barrera a superar de la IA si es busca demostrar que aquesta percep una mínima visió de causalitats.
-    \item \textbf{\textit{SimpleHeuristicPlayer}:} Aquest model actua com el rival més sofisticat ofert de sèrie per la llibreria o, en termes pràctics, com a "final boss" d'aquesta línia base. Va molt més enllà dels anteriors incorporant heurístiques internes preprogramades: avalua debilitats de tipus, prioritza moviments de canvi (\textit{switch}) quan el seu Pokémon actiu es troba en gran perill davant l'oponent, i maximitza el dany utilitzant criteris raonables de matchups. Representa la línia de maduresa; superar de manera consistent aquest agent certifica que les noves funcions d'avaluació pròpies o models neuronals han assolit una intel·ligència genuïnament superior.
+    \item El servidor envia l'estat observable de la batalla en format text (vida dels Pokémon, moviments disponibles, condicions actives, etc.).
+    \item Cada jugador respon amb una ordre codificada (\texttt{/choose move 1}, \texttt{/choose switch 3}, etc.).
+    \item El servidor resol el torn aplicant les regles oficials (prioritat, velocitat, RNG) i envia el nou estat als jugadors.
 \end{enumerate}
 
-El contrast sistemàtic contra aquests tres \textit{baselines} constitueix el filtre fonamental de la metodologia establerta, a través de la qual qualsevol avanç real vinculat a les nostres heurístiques serà estrictament confrontat en cada iteració.
+L'avantatge clau per a la investigació és que Showdown pot funcionar com a \textbf{servidor local sense interfície gràfica}. Això permet:
+\begin{itemize}
+    \item Executar batalles a gran velocitat (centenars per minut).
+    \item Controlar completament les variables d'entorn (format, generació, equips inicials).
+    \item Automatitzar la recopilació de dades massives per a entrenament d'agents.
+\end{itemize}
 
-\section{Espai d'Estats (State Space) i Accions (Action Space)}
+\subsection{Poke-env com a Interfície Python}
 
-Tot problema d'intel·ligència artificial ha d'estar encapsulat matricialment per poder ser processat. Pel cas dels estudis emmarcats en el combat, definim la connexió formal de Showdown prenent l'espai i el quadre d'accions:
+La llibreria poke-env~\cite{poke_env} tradueix els missatges WebSocket del servidor a objectes Python estructurats. Proporciona:
+
+\begin{itemize}
+    \item \textbf{Classe \texttt{Battle}}: Conté tot l'estat observable ---~Pokémon actius, vida restant, moviments disponibles, condicions de camp, registre d'accions passades~--- com a atributs directament accesibles.
+    \item \textbf{Classe \texttt{Player}}: Classe base per definir agents. El mètode \texttt{choose\_move(battle)} rep l'estat i retorna l'acció seleccionada.
+    \item \textbf{Compatibilitat Gym}: Proporciona interfície compatible amb l'estàndard \textit{OpenAI Gym}~\cite{brockman2016openai}, habilitant l'ús directe d'algorismes de RL com DQN o PPO.
+    \item \textbf{Gestió asíncrona}: Tota la comunicació es gestiona amb \texttt{asyncio} de Python, permetent concurrència nativa.
+\end{itemize}
+
+\subsection{Variables d'Estat Disponibles}
+
+L'objecte \texttt{Battle} que rep l'agent cada torn exposa les següents variables observables:
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabular}{|l|p{10cm}|}
+    \hline
+    \textbf{Variable} & \textbf{Descripció} \\ \hline
+    HP propis & Percentatge i valor absolut de vida de cada Pokémon propi (actius i reserva). \\ \hline
+    HP rivals & Percentatge de vida dels Pokémon rivals observats al camp. \\ \hline
+    Moviments propis & Llista de fins a 4 moviments per Pokémon: nom, tipus, potència, precisió, PP restants. \\ \hline
+    Moviments rivals coneguts & Moviments observats de l'oponent durant la batalla (informació parcial acumulativa). \\ \hline
+    Tipus de Pokémon & Tipus primari i secundari de cada Pokémon al camp. \\ \hline
+    Boosts & Modificadors d'estadístiques actius ($\uparrow$/$\downarrow$ en Atac, Defensa, Velocitat, etc.). \\ \hline
+    Condicions (Status) & Estats alterats actius: Burn, Paralysis, Sleep, Poison, Freeze. \\ \hline
+    Condicions de Camp & Efectes globals: clima (Sol, Pluja, etc.), terrenys, hazards (\textit{Stealth Rock}, etc.). \\ \hline
+    Objectes & Objecte equipat dels Pokémon propis; l'objecte rival queda ocult fins que s'activa. \\ \hline
+    Habilitats & Habilitat passiva de cada Pokémon; la rival es pot deduir pel seu efecte. \\ \hline
+    Team Preview & Composició dels 6 Pokémon rivals (només espècies, sense stats ni objectes). \\ \hline
+    \end{tabular}
+    \caption{Variables d'estat observables per l'agent a cada torn a través de poke-env.}
+    \label{tab:variables_estat}
+\end{table}
+
+\textbf{Informació oculta}: En tot moment, l'agent \textbf{desconeix} les EVs, IVs, Nature, moviments no revelats, objecte i habilitat dels Pokémon rivals, així com l'ordre dels Pokémon que l'oponent manté a la reserva. Això confirma formalment que l'entorn és un POMDP.
+
+\subsection{Infraestructura Paral·lela de Servidors}
+
+L'execució de benchmarks estadísticament significatius (centenars de batalles per parella d'agents) amb un sol servidor resulta massa lenta. Per solucionar-ho, s'ha dissenyat una infraestructura d'orquestració pròpia (situada a \texttt{src/p03\_scripts}) que permet:
+
+\begin{enumerate}
+    \item \textbf{Llançament massiu de servidors}: Aixecar dinàmicament múltiples instàncies de Showdown en ports consecutius (ex.\ 8000, 8001, 8002...), deshabilitant protocols de \textit{login} innecessaris.
+    \item \textbf{Distribució d'agents}: El codi orquestrador Python llança tasques asíncrones massives i distribueix les batalles entre els ports disponibles.
+    \item \textbf{Gestió de memòria}: Neteja manual del Garbage Collector després de cada batch de partides per evitar fuites de memòria dels processos Node.js.
+    \item \textbf{Checkpoints de represa}: Emmagatzematge en fitxers JSON del progrés de cada parella d'agents, permetent reprendre l'execució si s'interromp.
+\end{enumerate}
+
+Aquesta infraestructura permet executar centenars de batalles simultànies, cosa que resulta vital tant per al benchmarking heurístic com per a la futura recopilació d'experiència dels algorismes de RL.
+
+
+% ============================================================
+%  2.2 — COMPLEXITAT
+% ============================================================
+\section{Complexitat del Problema}
+\label{sec:complexitat}
+
+\subsection{Diferencies entre Generacions}
+
+Cada generació de jocs de Pokémon defineix un conjunt diferent de regles, espècies disponibles i mecàniques especials. Això impacta directament en la complexitat del problema:
+
+\begin{itemize}
+    \item \textbf{Nombre de Pokémon legals}: Varia entre $\sim$150 (Generació~I) i $>$1.000 (Generació~IX).
+    \item \textbf{Mecàniques especials}: Mega-Evolucions (Gen~VI--VII), Z-Moves (Gen~VII), Dynamax (Gen~VIII), Teracristal·lització (Gen~IX) afegeixen accions extra i modificadors.
+    \item \textbf{Objectes i habilitats}: La base creix a cada generació, augmentant les combinacions possibles.
+\end{itemize}
+
+Per gestionar aquesta variabilitat, l'arquitectura del projecte s'ha dissenyat per ser flexible: el format i la generació es passen com a paràmetres configurables, permetent entrenar i avaluar agents en qualsevol combinació.
+
+\subsection{Singles (1 vs 1) vs. Doubles (2 vs 2)}
+
+La diferència de complexitat entre formats és considerable:
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|l|c|c|}
+    \hline
+    \textbf{Dimensió} & \textbf{Singles (1v1)} & \textbf{Doubles (2v2)} \\ \hline
+    Pokémon al camp & 1 propi, 1 rival & 2 propis, 2 rivals \\ \hline
+    Accions per torn & $\leq 9$ (4 atacs + 5 switches) & $\leq 9 \times 9 = 81$ combinacions \\ \hline
+    Objectius d'atac & 1 (el rival) & 3 (rival 1, rival 2, aliat) \\ \hline
+    Sinergia & No aplica & Crític (proteccions, atacs spread, suport) \\ \hline
+    Decisions simultànies & 2 (1 per jugador) & 4 (2 per jugador) \\ \hline
+    \end{tabular}
+    \caption{Comparació de la complexitat dels formats Singles i Doubles.}
+    \label{tab:singles_vs_doubles}
+\end{table}
+
+El format de \textbf{Doubles} multiplica exponencialment l'espai de decisions: cada jugador ha de coordinar les accions de dos Pokémon simultàniament, tenint en compte sinergies, atacs d'àrea, proteccions i l'interacció entre els quatre Pokémon al camp. Per aquesta raó, el projecte aborda primer el format Singles com a prova de concepte i després escala al format Doubles.
+
+
+% ============================================================
+%  2.3 — ESPAIS FORMALS
+% ============================================================
+\section{Espai d'Estats i Espai d'Accions}
+\label{sec:espais}
+
+Tot problema de RL ha d'estar encapsulat formalment per poder ser processat per un algorisme.
 
 \subsection{Espai d'Estats (S)}
-El conjunt $S$ agrupa l'observació total d'informació de què disposa el bot en qualsevol torn determinat (encara descrivint un entorn parcialment observable, POMDP). Mitjançant un desglossament informatiu de \textit{poke-env}, l'agent avalua al complet la vida percentual i absoluta restant de tots els Pokémon de camp, tots els modificadors estadístics existents (per exemple, si un aliat rep $\uparrow2$ en Atac Especial), les condicions d'estat (Paràlisi, Cremada), les característiques d'avantatge climàtic sobre la pista de roba, així com l'estat històric infent de l'equip del oponent ja conegut. D'acord amb la profunditat de codificació i memòria de l'agent (en apsectes d'informació oculta sobre \textit{items} deduïts empíricament), el vector global $\mathbf{O}_t \in \mathbb{R}^d$ servirà directament com a component essencial d'entrada a les xarxes d'avaluació heurístiques.
+
+El conjunt $S$ agrupa tota la informació observable per l'agent en un torn donat. Això constitueix un entorn parcialment observable (POMDP), on l'agent només accedeix a una observació $\mathbf{O}_t \in \mathbb{R}^d$ que resumeix:
+
+\begin{itemize}
+    \item Vida (HP) restant de tots els Pokémon visibles (propis i rivals).
+    \item Modificadors d'estadístiques actius (\textit{boosts}).
+    \item Condicions d'estat (status) actives.
+    \item Informació de camp (clima, terreny, hazards).
+    \item Historial acumulat de moviments i tipus observats del rival.
+\end{itemize}
+
+En el format de Singles, el vector d'observació resultant té de l'ordre de $d \sim 50\text{--}100$ dimensions. En Doubles, es duplica aproximadament per la presència de dos Pokémon actius per bàndol.
 
 \subsection{Espai d'Accions (A)}
-L'espai d'accions $A$ conté exclusivament els moviments i substitucions (\textit{switches}) "legals" i dispostes al camp. En un combat de Singles 1vs1 ordinari, això ascendeix fins a un màxim abstracte de 9 accions viables formals (4 atacs diferents pel personatge operatiu, o la retirada forçada si escull substituir per cap de forma els 5 membres inactius restants al seu equip). No obstant això, en l'univers tractat complet de *Dobles VGC*, tenint a la superfície dos personatges propis funcionant davant dos adversaris en diagonal creuada, el nombre teòric es multiplica exponencialment, per incloure atacs a un \textit{target} específic dels 3 en pista, propiciant desenes d'opcions en una matriu $A$ creixent per iteració de paral·lelisme seqüencial directe.
 
-\section{Mètriques d'Avaluació Mètrica}
+L'espai d'accions $A$ conté els moviments i substitucions legals disponibles:
 
-Per dotar de gran suport rigorós a l'estudi algorísmic en una arquitectura tan subjecta a variabilitats matemàtiques de l'RNG aleatori o els punts decisius dels cops crítics aleatoris, qualsevol valor dictaminat basat puntual en jocs independents resulta irremeiablement de resultats analítics estèrils. L'avaluació en mètrica no confia en poques confrontacions.
+\begin{itemize}
+    \item \textbf{Singles}: Fins a 4 atacs + fins a 5 switches = màxim 9 accions discrets per torn.
+    \item \textbf{Doubles}: L'agent ha d'escollir una acció per a \textit{cadascun} dels dos Pokémon al camp. A més, cada atac ha d'especificar l'objectiu (\textit{target}): rival~1, rival~2, o aliat. Això genera un producte cartesià de possibilitats que pot arribar a desenes de combinacions legals per torn.
+\end{itemize}
 
-La mètrica nuclear primària implementada i validada des del codi d'orquestració dictamina el \textbf{Percentatge de Victòries Real (\textit{Win-Rate} global)}, que només pren pes estadístic rellevant operant sota execucions de validació amb un volum molt superior (ex. cicles tancats de $\geq 100$ batalles seguides simultànies asíncrones per a cada confrontament directe Agent vs Agent). Un model en qüestió rellisca com aleatori si la cota inferior estocàstica assenta un 50\% freqüent sobre conjunts clàssics o espill (\textit{Mirror Match}); aconseguir superar estadi d'un $+60\%$ constant en cicles de grans iteracions demostra significativament intel·lectualitat mecànica prenent avantatge, i un domini clar a prop al $>85\%$ descriu habitualment erradicació teòrica sobre la presa de lògiques de decisions completament dominades sobre un agent poc intel·ligent a confrontar.
+Cal notar que l'espai d'accions és \textbf{dinàmic}: varia a cada torn segons els Pokémon vius, els PP restants, si un Pokémon ha estat derrotat i obliga un switch forçós, etc.
+
+
+% ============================================================
+%  2.4 — MÈTRIQUES D'AVALUACIÓ
+% ============================================================
+\section{Mètriques d'Avaluació}
+\label{sec:metriques}
+
+La naturalesa estocàstica del combat Pokémon invalida qualsevol avaluació basada en poques partides: un sol resultat pot estar dominat per l'atzar. Per tant, totes les comparacions entre agents es realitzen sobre sèries massives de batalles ($\geq 100$ per parella).
+
+\subsection{Mètriques Primàries}
+
+\begin{itemize}
+    \item \textbf{Win-Rate (\%)}: Percentatge de victòries de l'agent sobre el total de batalles disputades contra un oponent concret. És la mètrica principal i definitiva del projecte. Referència interpretativa:
+    \begin{itemize}
+        \item $\sim 50\%$: L'agent no millora respecte un rival aleatori simètric.
+        \item $> 60\%$: Avantatge significatiu; l'agent demostra intel·ligència estratègica.
+        \item $> 85\%$: Domini clar; l'agent supera àmpliament l'oponent.
+        \item $100\%$: Intrínsecament impossible en un entorn estocàstic com Pokémon.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Mètriques Secundàries}
+
+Per complementar el Win-Rate i obtenir una visió més granular del comportament dels agents, es recullen mètriques addicionals:
+
+\begin{itemize}
+    \item \textbf{Durada de les partides (torns)}: Un agent eficient tendeix a guanyar en menys torns. Partides molt llargues poden indicar indecisió o incapacitat d'aprofitar avantatges.
+    \item \textbf{Pokémon derrotats (propis)}: Quantes unitats ha perdut l'agent durant la partida. Un nombre baix indica millor gestió defensiva.
+    \item \textbf{Pokémon derrotats (rivals)}: Quantes unitats rivals ha eliminat l'agent. Pot diferenciar entre victòries ajustades i dominants.
+    \item \textbf{Pokémon restants vius}: Tant propis com rivals al final de la partida. Indica el marge de victòria o derrota.
+    \item \textbf{Vida total restant (\%)}: Suma de la vida percentual de tots els Pokémon supervivents (propis i rivals). Aporta una mesura contínua i més granular que el simple recompte de Pokémon vius.
+\end{itemize}
+
+
+% ============================================================
+%  2.5 — FASES DE DESENVOLUPAMENT (NO TOCAR)
+% ============================================================
+\section{Fases de Desenvolupament i Models de Referència}
+\label{sec:fases}
+
+El desplegament d'agents sobre \textit{Showdown} s'ha estructurat metodològicament en dues grans fases consecutives per garantir una monitorització i isolació de variables controlada. 
+
+\subsection{Fase 1: Models de Regles Expertes (Heurístiques)}
+Abans de submergir el codi en hiperparàmetres de \textit{Machine Learning}, la prioritat metodològica ha estat dissenyar models \textbf{heurístics propis} basats en regles de decisió expertes (arbres ``If-Else'' avançats). Aquest acostament primari ha complert un triple propòsit fonamental:
+\begin{itemize}
+    \item \textbf{Validació de la Infraestructura}: Funcionar com a prova de concepte de l'entorn (PoC) per garantir que el nostre orquestrador de servidors asíncrons llegia i enviava decisions sense caigudes de memòria (\textit{Memory Leaks} de Node.js) processant milers d'estats per minut.
+    \item \textbf{Depuració de la Lògica Numèrica}: Comprovar físicament que l'accés a les variables d'estat de \textit{poke-env} (HP, clima, efectes secundaris actius) convergia en comportaments teòrics òptims.
+    \item \textbf{Desenvolupar el Límit de Control Propi (Baseline Suprem)}: Mitjançant l'evolució iterativa d'aquestes heurístiques, el projecte ha consolidat un ``Límit de Control Expert''. L'objectiu últim serà llançar futurs agents neuronals contra aquesta heurística madura, forçant la xarxa neuronal a superar raonament matemàtic tancat creat per disseny expert.
+\end{itemize}
+
+\subsection{Fase 2: Models d'Aprenentatge Profund}
+Una vegada validada l'arquitectura i disposant del \textit{Baseline Expert}, la segona gran fase de la recerca serà la substitució de la codificació dura per arquitectures d'aprenentatge. L'eix científic del TFM assoleix el seu màxim pragmatisme avaluant si algorismes com DQN o PPO poden descobrir per si sols les normes causals que la Fase~1 programava explícitament (Taula de Tipus, STAB, predicció de canvis).
+
+\subsection{Línies de Control (Baselines)}
+
+Amb l'entorn escalable definit, cal fixar les línies base de referència sobre les quals mesurar tot progrés. S'utilitzen dos conjunts de baselines complementaris.
+
+\paragraph{Baselines natius de poke-env.}
+Dins de poke-env~\cite{poke_env} es proporcionen tres agents de referència que funcionen en \textbf{qualsevol generació i format} (Singles i Doubles):
+
+\begin{enumerate}
+    \item \textbf{\textit{RandomPlayer}}: Efectua moviments a l'atzar entre les accions legals. Actua com a referència mínima: qualsevol agent amb un mínim d'intel·ligència hauria de superar-lo àmpliament.
+    \item \textbf{\textit{MaxBasePowerPlayer}}: Un agent cobdiciós (\textit{Greedy}) que escull sempre l'atac amb la potència base més alta, ignorant tipus, STAB i context defensiu. Representa la barrera inferior d'estratègia funcional.
+    \item \textbf{\textit{SimpleHeuristicPlayer}}: El rival més sofisticat ofert per la llibreria. Incorpora heurístiques preprogramades: avalua debilitats de tipus, prioritza canvis (\textit{switches}) quan el seu Pokémon actiu es troba en desavantatge, i maximitza el dany considerant matchups. Superar aquest agent de manera consistent certifica que les noves funcions pròpies han assolit una intel·ligència superior.
+\end{enumerate}
+
+\paragraph{Baselines externs de Pokechamp.}
+Des del repositori Pokechamp~\cite{pokechamp} s'han integrat agents addicionals, principalment orientats al format \textbf{Singles de Generació~9} (\texttt{gen9randombattle}):
+
+\begin{enumerate}
+    \item \textbf{\textit{AbyssalPlayer}}: Agent heurístic avançat que avalua matchups de tipus, estima el dany esperat i decideix substitucions basant-se en l'anàlisi de tot l'equip rival. Incorpora lògica específica de Gen~9 (Teracristal·lització). Funciona com a rèplica millorada del SimpleHeuristicPlayer amb coneixement generacional.
+    \item \textbf{\textit{SafeOneStepPlayer}}: Agent amb estimació de dany a un torn vista (\textit{one-step lookahead}): puntua cada moviment per $\text{potència} \times \text{STAB} \times \text{efectivitat} \times \text{precisió}$ i escull el millor. S'ha reimplementat internament per evitar dependències del simulador local de Pokechamp que causaven bloquejos.
+    \item \textbf{\textit{Pokechamp i PokeLLMon (LLM)}}: Agents basats en Models de Llenguatge (descrits al Capítol~\ref{chap:marc_teoric}) que utilitzen raonament textual per prendre decisions. Requereixen un backend LLM local (detalls d'implementació al Capítol~\ref{chap:implementacio}). Aplicables exclusivament a \textbf{Singles Gen~9}.
+\end{enumerate}
+
+El contrast sistemàtic contra \textbf{ambdós conjunts} de baselines ---~natius i externs~--- constitueix el filtre fonamental de la metodologia, a través del qual qualsevol avanç real serà rigorosament validat.
+

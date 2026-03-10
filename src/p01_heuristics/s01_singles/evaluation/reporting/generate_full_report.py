@@ -34,16 +34,37 @@ DEFAULT_DATA_DIR = Path("data/1_vs_1/benchmarks/pokechamp_parallel")
 # Constants
 # ---------------------------------------------------------------------------
 AGENT_ORDER = [
-    "v1", "v2", "v3", "v4", "v5", "v6",  # (H)
-    "random", "max_power", "simple_heuristic",  # (PE)
-    "abyssal", "one_step", "safe_one_step", "pokechamp", "pokellmon"  # (PC)
+    "v1",
+    "v2",
+    "v3",
+    "v4",
+    "v5",
+    "v6",  # (H)
+    "random",
+    "max_power",
+    "simple_heuristic",  # (PE)
+    "abyssal",
+    "one_step",
+    "safe_one_step",
+    "pokechamp",
+    "pokellmon",  # (PC)
 ]
 OPPONENT_ORDER = [
-    "v1", "v2", "v3", "v4", "v5", "v6",  # (H)
-    "random", "max_power", "simple_heuristic",  # (PE)
-    "abyssal", "one_step", "safe_one_step"  # (PC)
+    "v1",
+    "v2",
+    "v3",
+    "v4",
+    "v5",
+    "v6",  # (H)
+    "random",
+    "max_power",
+    "simple_heuristic",  # (PE)
+    "abyssal",
+    "one_step",
+    "safe_one_step",  # (PC)
 ]
 BASELINES = {"random", "max_power", "simple_heuristic"}
+
 
 def get_display_name(name: str) -> str:
     """Add prefixes to differentiate agent types in reports."""
@@ -124,23 +145,14 @@ def _pivot(df: pd.DataFrame, value: str, agent_order: list[str], opp_order: list
 # Report
 # ---------------------------------------------------------------------------
 def generate_full_report(data_dir: Path, output_dir: Path) -> None:
-    """Generate a six-panel PNG report across all Pokechamp agents.
-
-    Parameters
-    ----------
-    data_dir : Path
-        Directory containing per-matchup CSVs.
-    output_dir : Path
-        Directory where the PNG report is saved.
-    """
+    """Genera informes individuals en format PNG per a cada mètrica."""
     df = load_all_data(data_dir)
     df["win_pct"] = df["won"] * 100.0
 
-    # Apply display names
+    # Aplicar noms de visualització
     df["pokechamp_agent"] = df["pokechamp_agent"].map(get_display_name)
     df["opponent"] = df["opponent"].map(get_display_name)
 
-    # Reorder lists based on display names
     display_agents = [get_display_name(x) for x in AGENT_ORDER]
     display_opps = [get_display_name(x) for x in OPPONENT_ORDER]
     display_baselines = {get_display_name(x) for x in BASELINES}
@@ -148,144 +160,90 @@ def generate_full_report(data_dir: Path, output_dir: Path) -> None:
     agents_present = _reorder(df["pokechamp_agent"], display_agents)
     opps_present = _reorder(df["opponent"], display_opps)
 
+    output_dir.mkdir(parents=True, exist_ok=True)
     sns.set_theme(style="whitegrid", font_scale=1.05)
-    fig = plt.figure(figsize=(22, 18))
-    fig.suptitle(
-        f"Pokechamp Full Benchmark Report — {len(agents_present)} agents × {len(opps_present)} opponents",
-        fontsize=17,
-        fontweight="bold",
-        y=1.005,
-    )
 
-    # ── Panel 1: Win-Rate Heatmap ──────────────────────────────────────────
-    ax1 = fig.add_subplot(3, 2, 1)
+    # --- 1. Win-Rate Heatmap ---
+    plt.figure(figsize=(12, 8))
     wr_pivot = _pivot(df, "won", agents_present, opps_present)
-    sns.heatmap(
-        wr_pivot,
-        annot=True,
-        fmt=".1f",
-        cmap="RdYlGn",
-        vmin=0,
-        vmax=100,
-        linewidths=0.5,
-        cbar_kws={"label": "Win Rate %"},
-        ax=ax1,
-    )
-    ax1.set_title("Win Rate % (Agent × Opponent)")
-    ax1.set_xlabel("Opponent")
-    ax1.set_ylabel("Pokechamp Agent")
-    ax1.tick_params(axis="x", rotation=30)
+    sns.heatmap(wr_pivot, annot=True, fmt=".1f", cmap="RdYlGn", vmin=0, vmax=100, linewidths=0.5)
+    plt.title("Win Rate % (Agent × Opponent)")
+    plt.tight_layout()
+    plt.savefig(output_dir / "01_win_rate_heatmap.png", dpi=200)
+    plt.close()
 
-    # ── Panel 2: Overall Agent Ranking ────────────────────────────────────
-    ax2 = fig.add_subplot(3, 2, 2)
+    # --- 2. Overall Agent Ranking ---
+    plt.figure(figsize=(10, 8))
     ranking = df.groupby("pokechamp_agent")["win_pct"].mean().reindex(agents_present).sort_values(ascending=True)
     colors = sns.color_palette("RdYlGn", len(ranking))
-    bars = ax2.barh(ranking.index, ranking.values, color=colors)
-    ax2.axvline(50, color="gray", linestyle="--", alpha=0.6)
-    ax2.set_title("Overall Win Rate by Agent (avg over all opponents)")
-    ax2.set_xlabel("Avg Win Rate %")
-    ax2.set_xlim(0, 100)
-    for bar, val in zip(bars, ranking.values, strict=False):
-        ax2.text(val + 1, bar.get_y() + bar.get_height() / 2, f"{val:.1f}%", va="center", fontsize=9)
+    bars = plt.barh(ranking.index, ranking.values, color=colors)
+    plt.axvline(50, color="gray", linestyle="--", alpha=0.6)
+    plt.title("Overall Win Rate by Agent")
+    for bar, val in zip(bars, ranking.values):
+        plt.text(val + 1, bar.get_y() + bar.get_height() / 2, f"{val:.1f}%", va="center")
+    plt.tight_layout()
+    plt.savefig(output_dir / "02_agent_ranking.png", dpi=200)
+    plt.close()
 
-    # ── Panel 3: Avg Fainted Us vs Opp heatmap ────────────────────────────
-    ax3 = fig.add_subplot(3, 2, 3)
+    # --- 3. Fainted Difference ---
+    plt.figure(figsize=(12, 8))
     f_opp_pivot = _pivot(df, "fainted_opp", agents_present, opps_present)
     f_us_pivot = _pivot(df, "fainted_us", agents_present, opps_present)
     fainted_diff = f_opp_pivot - f_us_pivot
-    sns.heatmap(
-        fainted_diff,
-        annot=True,
-        fmt=".2f",
-        cmap="RdYlGn",
-        center=0,
-        linewidths=0.5,
-        cbar_kws={"label": "Fainted diff (opp − us)"},
-        ax=ax3,
-    )
-    ax3.set_title("Fainted Difference: Opponent − Agent\n(green = agent faints more opponents)")
-    ax3.set_xlabel("Opponent")
-    ax3.set_ylabel("Pokechamp Agent")
-    ax3.tick_params(axis="x", rotation=30)
+    sns.heatmap(fainted_diff, annot=True, fmt=".2f", cmap="RdYlGn", center=0, linewidths=0.5)
+    plt.title("Fainted Difference (Opponent - Agent)")
+    plt.tight_layout()
+    plt.savefig(output_dir / "03_fainted_diff.png", dpi=200)
+    plt.close()
 
-    # ── Panel 4: Avg Battle Duration Heatmap ─────────────────────────────
-    ax4 = fig.add_subplot(3, 2, 4)
+    # --- 4. Battle Duration ---
+    plt.figure(figsize=(12, 8))
     turns_pivot = _pivot(df, "turns", agents_present, opps_present)
-    sns.heatmap(
-        turns_pivot,
-        annot=True,
-        fmt=".1f",
-        cmap="Blues",
-        linewidths=0.5,
-        cbar_kws={"label": "Avg Turns"},
-        ax=ax4,
-    )
-    ax4.set_title("Avg Battle Duration (Turns)")
-    ax4.set_xlabel("Opponent")
-    ax4.set_ylabel("Pokechamp Agent")
-    ax4.tick_params(axis="x", rotation=30)
+    sns.heatmap(turns_pivot, annot=True, fmt=".1f", cmap="Blues", linewidths=0.5)
+    plt.title("Avg Battle Duration (Turns)")
+    plt.tight_layout()
+    plt.savefig(output_dir / "04_battle_duration.png", dpi=200)
+    plt.close()
 
-    # ── Panel 5: Baseline vs Heuristic Comparison ─────────────────────────
-    ax5 = fig.add_subplot(3, 2, 5)
+    # --- 5. Baseline vs Heuristic ---
+    plt.figure(figsize=(12, 6))
     baseline_df = df[df["opponent"].isin(display_baselines)].copy()
     heuristic_df = df[~df["opponent"].isin(display_baselines)].copy()
     baseline_wr = baseline_df.groupby("pokechamp_agent")["win_pct"].mean().reindex(agents_present).fillna(0)
     heuristic_wr = heuristic_df.groupby("pokechamp_agent")["win_pct"].mean().reindex(agents_present).fillna(0)
     x = np.arange(len(agents_present))
     width = 0.35
-    ax5.bar(x - width / 2, baseline_wr.values, width, label="vs Baselines", color="#3498db", alpha=0.85)
-    ax5.bar(x + width / 2, heuristic_wr.values, width, label="vs Heuristics (v1–v6)", color="#e67e22", alpha=0.85)
-    ax5.set_xticks(x)
-    ax5.set_xticklabels(agents_present, rotation=20, ha="right")
-    ax5.axhline(50, color="gray", linestyle="--", alpha=0.5)
-    ax5.set_title("Win Rate: vs Baselines vs vs Heuristics")
-    ax5.set_ylabel("Win Rate %")
-    ax5.set_ylim(0, 100)
-    ax5.legend()
+    plt.bar(x - width / 2, baseline_wr.values, width, label="vs Baselines", color="#3498db")
+    plt.bar(x + width / 2, heuristic_wr.values, width, label="vs Heuristics", color="#e67e22")
+    plt.xticks(x, agents_present, rotation=20, ha="right")
+    plt.title("Win Rate: Baselines vs Heuristics")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(output_dir / "05_comparison_baselines.png", dpi=200)
+    plt.close()
 
-    # ── Panel 6: Avg Turns vs Avg Win Rate Scatter ────────────────────────
-    ax6 = fig.add_subplot(3, 2, 6)
+    # --- 6. Efficiency Scatter ---
+    plt.figure(figsize=(10, 8))
     agent_summary = (
         df.groupby("pokechamp_agent")
         .agg(avg_turns=("turns", "mean"), avg_win=("win_pct", "mean"))
         .reindex(agents_present)
         .reset_index()
     )
-    scatter_palette = sns.color_palette("tab10", len(agent_summary))
-    for (_, row), color in zip(agent_summary.iterrows(), scatter_palette, strict=False):
-        ax6.scatter(row["avg_turns"], row["avg_win"], s=250, color=color, zorder=3, label=row["pokechamp_agent"])
-        ax6.annotate(
-            row["pokechamp_agent"],
-            (row["avg_turns"], row["avg_win"]),
-            textcoords="offset points",
-            xytext=(7, 5),
-            fontsize=9,
+    for _, row in agent_summary.iterrows():
+        plt.scatter(row["avg_turns"], row["avg_win"], s=200, label=row["pokechamp_agent"])
+        plt.annotate(
+            row["pokechamp_agent"], (row["avg_turns"], row["avg_win"]), xytext=(5, 5), textcoords="offset points"
         )
-    ax6.axhline(50, color="gray", linestyle="--", alpha=0.5)
-    ax6.set_title("Efficiency: Avg Battle Length vs Win Rate")
-    ax6.set_xlabel("Avg Turns per Battle")
-    ax6.set_ylabel("Avg Win Rate %")
-    ax6.legend(fontsize=8, loc="upper right")
-
+    plt.axhline(50, color="gray", linestyle="--", alpha=0.5)
+    plt.title("Efficiency: Battle Length vs Win Rate")
+    plt.xlabel("Avg Turns per Battle")
+    plt.ylabel("Avg Win Rate %")
     plt.tight_layout()
-    output_dir.mkdir(parents=True, exist_ok=True)
-    report_path = output_dir / "pokechamp_full_report.png"
-    plt.savefig(report_path, dpi=200, bbox_inches="tight")
+    plt.savefig(output_dir / "06_efficiency_scatter.png", dpi=200)
     plt.close()
-    print(f"✅ Full report saved to: {report_path}")
 
-    # ── Terminal summary ──────────────────────────────────────────────────
-    print("\n🏆 AGENT RANKING (avg win rate over all opponents):")
-    ranked = df.groupby("pokechamp_agent")["win_pct"].mean().sort_values(ascending=False)
-    for i, (agent, wr) in enumerate(ranked.items(), 1):
-        bar = "█" * int(wr / 5)
-        print(f"  {i}. {agent:<18} {wr:5.1f}%  {bar}")
-
-    print(f"\n📊 OVERALL STATS ({len(df):,} battles):")
-    print(f"  Global win rate:   {df['won'].mean() * 100:.1f}%")
-    print(f"  Avg turns:         {df['turns'].mean():.1f}")
-    print(f"  Avg fainted (us):  {df['fainted_us'].mean():.2f}")
-    print(f"  Avg fainted (opp): {df['fainted_opp'].mean():.2f}")
+    print(f"✅ S'han guardat 6 informes individuals a: {output_dir}")
 
 
 # ---------------------------------------------------------------------------
