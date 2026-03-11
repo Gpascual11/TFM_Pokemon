@@ -1,4 +1,4 @@
-# p02_rl_models: Reinforcement Learning Pipeline
+# p04_rl_models: Reinforcement Learning Pipeline
 
 This directory contains the full Reinforcement Learning pipeline. The goal is to train a neural network that learns high-level strategy and tactical adaptations to beat expert heuristics.
 
@@ -41,7 +41,7 @@ Pokémon Showdown (Node.js) is single-threaded. To prevent the simulator from bo
 To support this many instances, we have "gutted" the standard Showdown configuration:
 *   **Workers**: Set `network: 1` and `simulator: 1` per server instance.
 *   **Services**: Disabled all non-battle features (`verifier`, `friends`, `artemis`, `repl`) to prevent `ECONNRESET` and `EPIPE` crashes.
-*   **Race Conditions**: Modified the launch script (`src/p03_scripts/p03_launch_custom_servers.sh`) to initialize the first server fully before starting others, preventing race conditions on shared config files (`chatrooms.json`).
+*   **Race Conditions**: Modified the launch script (`src/p05_scripts/p05_launch_custom_servers.sh`) to initialize the first server fully before starting others, preventing race conditions on shared config files (`chatrooms.json`).
 
 ### 3. Environment & Execution
 We now strictly use **`uv`** for dependency management to ensure correct CUDA (cu124) support.
@@ -50,7 +50,7 @@ We now strictly use **`uv`** for dependency management to ensure correct CUDA (c
 > **Module-Style Execution**: Always run training as a module from the project root to handle relative imports.
 > ```bash
 > # Recommended Launch Command (10 servers)
-> uv run python -m src.p02_rl_models.s02_training.train_p1_base --timesteps 1000000 --ports 8000 8001 8002 8003 8004 8005 8006 8007 8008 8009
+> uv run python -m src.p04_rl_models.s02_training.train_p1_base --timesteps 1000000 --ports 8000 8001 8002 8003 8004 8005 8006 8007 8008 8009
 > ```
 
 ---
@@ -58,6 +58,6 @@ We now strictly use **`uv`** for dependency management to ensure correct CUDA (c
 ## Guide Links
 
 Please see the detailed guide files for step-by-step instructions:
-- [Training Guide](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/p02_rl_models/s02_training/p02_s02_training_guide.md) – How to manage phases and checkpoints.
-- [Evaluation Guide](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/p02_rl_models/s03_evaluation/p02_s03_evaluation_guide.md) – Benchmarking and visual reports.
+- [Training Guide](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/p04_rl_models/s02_training/p02_s02_training_guide.md) – How to manage phases and checkpoints.
+- [Evaluation Guide](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/p04_rl_models/s03_evaluation/p02_s03_evaluation_guide.md) – Benchmarking and visual reports.
 - [Setup Guide](file:///home/sirp/Documents/MUDS/TFM_Pokemon/SETUP.md) – Full environment recreation.

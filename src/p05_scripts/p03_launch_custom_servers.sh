@@ -1,8 +1,8 @@
 #!/bin/bash
 # ─────────────────────────────────────────────────────────────────────────────
 #  Launch multiple Pokémon Showdown servers dynamically
-#  Usage:  ./src/p03_scripts/p03_launch_custom_servers.sh <count>
-#  Example:  ./src/p03_scripts/p03_launch_custom_servers.sh 4
+#  Usage:  ./src/p05_scripts/p05_launch_custom_servers.sh <count>
+#  Example:  ./src/p05_scripts/p05_launch_custom_servers.sh 4
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -e

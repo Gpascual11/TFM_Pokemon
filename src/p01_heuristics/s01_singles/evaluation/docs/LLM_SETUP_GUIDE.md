@@ -250,7 +250,7 @@ if should_restart:
 2. **Start the Pokémon Showdown server** (in a separate terminal):
 
    ```sh
-   bash src/p03_scripts/p03_launch_custom_servers.sh 1
+   bash src/p05_scripts/p05_launch_custom_servers.sh 1
    ```
 
    Wait until you see `📡 Port 8000: READY`.

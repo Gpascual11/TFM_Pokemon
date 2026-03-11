@@ -1,0 +1,48 @@
+\chapter{Introducció}
+\label{chap:introduccio}
+
+La recerca en Intel·ligència Artificial aplicada a jocs ha evolucionat des de clàssics d'informació perfecta, com els escacs o el Go, fins a videojocs moderns d'alta complexitat i informació parcial. En aquest context, Pokémon ---i en particular el seu format competitiu VGC--- esdevé un banc de proves privilegiat per estudiar agents capaços de prendre decisions sota incertesa, amb dinàmiques estocàstiques i espais d'estat i d'accions combinatoris.
+
+Aquest Treball de Final de Màster se centra en el desenvolupament i avaluació d'agents racionals capaços de competir en batalles de Pokémon utilitzant el simulador de codi obert \textit{Pokémon Showdown}~\cite{pokemon_showdown} i la llibreria \textit{poke-env}~\cite{poke_env}. El problema es modelitza com un Procés de Decisió de Markov Parcialment Observable (POMDP)~\cite{pomdp}, on l'agent només disposa d'una observació parcial de l'estat real i ha de gestionar múltiples fonts d'aleatorietat (dany variable, precisió dels moviments, cops crítics, condicions d'estat).
+
+\section{Objectius i Preguntes de Recerca}
+
+L'objectiu general del TFM és avaluar fins a quin punt és possible construir agents d'IA competitius per a Pokémon, combinant heurístiques de tipus expert amb algorismes de Deep Reinforcement Learning (DRL). A partir d'aquest objectiu general, es plantegen els objectius específics següents:
+
+\begin{itemize}
+    \item Dissenyar i implementar una infraestructura escalable de simulació basada en \textit{Pokémon Showdown} i \textit{poke-env}, capaç d'executar centenars de batalles en paral·lel de manera robusta.
+    \item Desenvolupar una família d'agents heurístics (basats en regles) per al format \textit{Singles} (1 vs 1) que capturin coneixement expert sobre Taula de Tipus, STAB, velocitat, prioritat i gestió de riscos.
+    \item Construir un pipeline complet de Reinforcement Learning per entrenar agents neuronals sobre l'entorn de \textit{poke-env}, incloent la vectorització de l'estat, el disseny de la recompensa i l'\textit{action masking}.
+    \item Integrar i orquestrar baselines externs (agents natius de \textit{poke-env} i agents heurístics/LLM de Pokechamp~\cite{pokechamp}) per disposar d'un marc comparatiu sòlid.
+    \item Avaluar quantitativament el rendiment dels agents propis respecte aquestes línies base, analitzant tant la taxa de victòries (Win-Rate) com mètriques secundàries de qualitat de joc.
+\end{itemize}
+
+De forma operacional, això es pot resumir en la pregunta central:
+\begin{quote}
+    \textit{Pot un agent de Reinforcement Learning, entrenat sobre un estat vectoritzat de Pokémon i amb accions discretitzades, superar de manera consistent heurístiques expertes dissenyades a mà i baselines estàndard de la literatura?}
+\end{quote}
+
+\section{Contribucions del Treball}
+
+Les contribucions principals d'aquest TFM es poden agrupar en tres eixos complementaris:
+
+\begin{enumerate}
+    \item \textbf{Infraestructura de simulació i orquestració paral·lela}: S'ha implementat un orquestrador propi capaç de llançar múltiples instàncies locals de \textit{Pokémon Showdown} en ports consecutius, gestionar-les de forma asíncrona amb Python (\texttt{asyncio}) i mantenir checkpoints de progrés. Aquesta infraestructura permet executar centenars de batalles simultànies, controlant fuites de memòria i errors de connexió.
+    \item \textbf{Agents heurístics experts per a Singles}: S'ha desenvolupat una família d'heurístiques internes (v1--v6) que integren càlcul de dany amb Taula de Tipus, STAB, categoria física/especial, condicions de camp, boosts d'estadístiques, prioritat i regles de substitució defensiva. Aquest conjunt d'agents defineix un ``límit de control expert'' contra el qual mesurar futurs models neuronals.
+    \item \textbf{Pipeline de Reinforcement Learning amb action masking}: S'ha implementat un entorn compatible amb Gymnasium que vectoritza l'estat de la batalla en un vector numèric de 238 dimensions i defineix un espai d'accions discret amb màscara d'accions il·legals. Sobre aquest entorn s'ha entrenat un agent \textit{MaskablePPO}~\cite{sb3_contrib}, amb reward shaping específic per al domini Pokémon i un currículum progressiu d'oponents.
+\end{enumerate}
+
+A més, el treball integra de forma sistemàtica baselines natius de \textit{poke-env} (RandomPlayer, MaxBasePowerPlayer, SimpleHeuristicPlayer) i agents del repositori Pokechamp (Abyssal, SafeOneStep, Pokechamp i PokeLLMon) com a rivals controlats. Aquests agents externs no constitueixen una contribució pròpia, però sí un element central del marc experimental.
+
+\section{Estructura de la Memòria}
+
+La resta del document s'organitza de la manera següent:
+
+\begin{itemize}
+    \item El \textbf{Capítol~\ref{chap:marc_teoric}} presenta el marc teòric i de context: evolució de la IA en jocs, mecàniques de Pokémon i VGC, formalització en termes de MDP/POMDP, tècniques de Reinforcement Learning i agents existents com Pokechamp.
+    \item El \textbf{Capítol~\ref{chap:metodologia}} descriu la metodologia experimental: l'entorn de simulació, la definició formal dels espais d'estats i accions, les mètriques d'avaluació (amb especial èmfasi en el Win-Rate) i el disseny del conjunt d'experiments.
+    \item El \textbf{Capítol~\ref{chap:implementacio}} detalla la implementació pràctica dels agents: arquitectura de software, evolució de les heurístiques, integració d'agents externs i construcció del pipeline de Reinforcement Learning.
+    \item El \textbf{Capítol~\ref{chap:resultats}} (Resultats) presenta els experiments realitzats i discuteix quantitativament el rendiment dels diferents agents.
+    \item Finalment, el treball es tanca amb un capítol de conclusions i línies de treball futur, on es resumeixen els principals resultats i es proposen extensions com l'aprenentatge basat en datasets de partides competitives.
+\end{itemize}
+

@@ -89,7 +89,7 @@ export GEMINI_API_KEY="YOUR_GEMINI_KEY"
 
 # Terminal A: Showdown server
 cd ~/TFM_Pokemon
-bash src/p03_scripts/p03_launch_custom_servers.sh 1
+bash src/p05_scripts/p05_launch_custom_servers.sh 1
 
 # Terminal B: benchmark
 cd ~/TFM_Pokemon
@@ -142,7 +142,7 @@ ollama pull qwen3:8b
 ```bash
 # Terminal A: Showdown server
 cd ~/TFM_Pokemon
-bash src/p03_scripts/p03_launch_custom_servers.sh 1
+bash src/p05_scripts/p05_launch_custom_servers.sh 1
 
 # Terminal B: LLM benchmark with local Qwen 3 8B
 cd ~/TFM_Pokemon
@@ -189,7 +189,7 @@ To see live progress for single games without the full benchmark, this project i
 ```bash
 # Terminal A
 cd ~/TFM_Pokemon
-bash src/p03_scripts/p03_launch_custom_servers.sh 1
+bash src/p05_scripts/p05_launch_custom_servers.sh 1
 
 # Terminal B
 cd ~/TFM_Pokemon

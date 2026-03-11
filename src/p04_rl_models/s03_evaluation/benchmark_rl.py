@@ -41,7 +41,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 from sb3_contrib import MaskablePPO
 
-from p02_rl_models.s01_env.pokemon_env import PokemonMaskedEnv, PokemonMaskedEnvWrapper
+from p04_rl_models.s01_env.pokemon_env import PokemonMaskedEnv, PokemonMaskedEnvWrapper
 from p01_heuristics.s01_singles.agents import (
     HeuristicV1,
     HeuristicV2,
@@ -180,7 +180,7 @@ def restart_servers(n_ports: int = 4):
         subprocess.run(["pkill", "-f", "pokemon-showdown"], check=False)
         time.sleep(2)
         subprocess.Popen(
-            ["bash", "src/p03_scripts/p03_launch_custom_servers.sh", str(n_ports)],
+            ["bash", "src/p05_scripts/p05_launch_custom_servers.sh", str(n_ports)],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -204,7 +204,7 @@ def main():
     )
 
     data_dir = Path("/home/gerardpf/TFM/data/models_22_02_26")
-    output_dir = Path("/home/gerardpf/TFM/src/p02_rl_models/s03_evaluation/results")
+    output_dir = Path("/home/gerardpf/TFM/src/p04_rl_models/s03_evaluation/results")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     model_paths = {

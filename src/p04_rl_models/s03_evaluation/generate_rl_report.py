@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 def generate_visual_report(
-    csv_path="src/p02_rl_models/s03_evaluation/results/benchmark_rl_summary.csv",
+    csv_path="src/p04_rl_models/s03_evaluation/results/benchmark_rl_summary.csv",
 ):
     # 1. Load Data
     try:
@@ -78,7 +78,7 @@ def generate_visual_report(
     plt.ylabel("Win Rate %")
 
     plt.tight_layout()
-    report_file = Path("src/p02_rl_models/s03_evaluation/results/rl_model_report.png")
+    report_file = Path("src/p04_rl_models/s03_evaluation/results/rl_model_report.png")
     plt.savefig(report_file, dpi=300)
     print(f"✅ Analysis report saved as: {report_file}")
 

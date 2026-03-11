@@ -164,7 +164,7 @@ La naturalesa estocàstica del combat Pokémon invalida qualsevol avaluació bas
 \subsection{Mètriques Primàries}
 
 \begin{itemize}
-    \item \textbf{Win-Rate (\%)}: Percentatge de victòries de l'agent sobre el total de batalles disputades contra un oponent concret. És la mètrica principal i definitiva del projecte. Referència interpretativa:
+    \item \textbf{Win-Rate (\%)}: Percentatge de victòries de l'agent sobre el total de batalles disputades contra un oponent concret. És la \textbf{mètrica principal i definitiva} del projecte a l'hora de jutjar si un agent és superior a un altre; totes les altres mesures s'interpreten com a suport qualitatiu a aquesta.
     \begin{itemize}
         \item $\sim 50\%$: L'agent no millora respecte un rival aleatori simètric.
         \item $> 60\%$: Avantatge significatiu; l'agent demostra intel·ligència estratègica.
@@ -185,9 +185,48 @@ Per complementar el Win-Rate i obtenir una visió més granular del comportament
     \item \textbf{Vida total restant (\%)}: Suma de la vida percentual de tots els Pokémon supervivents (propis i rivals). Aporta una mesura contínua i més granular que el simple recompte de Pokémon vius.
 \end{itemize}
 
+% ============================================================
+%  2.5 — DISSENY DELS EXPERIMENTS
+% ============================================================
+\section{Disseny dels Experiments}
+\label{sec:disseny_experiments}
+
+Amb l'entorn de simulació i les mètriques definides, cal especificar com s'utilitzen per avaluar els diferents agents. Sense entrar encara en els resultats numèrics (Capítol~\ref{chap:resultats}), aquesta secció descriu l'esquema general del disseny experimental.
+
+\subsection{Tipus de Matchups}
+
+Els experiments es basen en sèries de batalles entre parelles d'agents $(A, B)$, on cada agent pot ser:
+\begin{itemize}
+    \item Un agent heurístic propi (versions v1--v6 per Singles).
+    \item Un agent de Reinforcement Learning entrenat amb el pipeline descrit al Capítol~\ref{chap:implementacio}.
+    \item Un baseline natiu de \textit{poke-env} (RandomPlayer, MaxBasePowerPlayer, SimpleHeuristicPlayer).
+    \item Un agent extern del repositori Pokechamp (Abyssal, SafeOneStep, Pokechamp, PokeLLMon), quan el format i generació són compatibles.
+\end{itemize}
+
+Per a cada parella $(A, B)$ es defineixen \textbf{sèries de com a mínim 100 batalles}, amb equips inicials aleatoris dins del format triat (p.\ ex.\ \texttt{gen9randombattle} per a Singles). L'ordre de sortida (qui comença com a jugador 1 o 2) es balanceja perquè l'avantatge inicial no es barregi amb la qualitat de l'agent.
+
+\subsection{Formats i Condicions}
+
+Tot i que el projecte està dissenyat per donar suport a múltiples generacions i formats, els experiments d'aquest TFM se centren principalment en:
+\begin{itemize}
+    \item \textbf{Singles (1 vs 1)} com a banc de proves principal per a heurístiques i RL.
+    \item La generació i el format de Random Battles adequats per a la integració amb Pokechamp (Gen~9 Singles), quan s'inclouen aquests agents externs.
+\end{itemize}
+
+Les condicions d'entorn (clima, hazards, objectes, habilitats) són les definides pel simulador oficial de \textit{Showdown} per al format escollit; el TFM no modifica les regles del joc, sinó que s'hi adapta.
+
+\subsection{Agregació de Resultats}
+
+Per a cada sèrie de batalles es calcula:
+\begin{itemize}
+    \item El \textbf{Win-Rate} de cada agent, que és la mètrica principal utilitzada per comparar-los.
+    \item Les mitjanes i distribucions de les mètriques secundàries descrites a la Secció~\ref{sec:metriques}, que es faran servir al Capítol~\ref{chap:resultats} per interpretar qualitativament el comportament dels agents (eficiència temporal, agressivitat, solidesa defensiva, etc.).
+\end{itemize}
+
+Aquest disseny experimental garanteix que qualsevol diferència de rendiment observada en els resultats sigui estadísticament fiable i no deguda a la variabilitat inherent de poques partides.
 
 % ============================================================
-%  2.5 — FASES DE DESENVOLUPAMENT (NO TOCAR)
+%  2.6 — FASES DE DESENVOLUPAMENT
 % ============================================================
 \section{Fases de Desenvolupament i Models de Referència}
 \label{sec:fases}
@@ -227,5 +266,5 @@ Des del repositori Pokechamp~\cite{pokechamp} s'han integrat agents addicionals,
     \item \textbf{\textit{Pokechamp i PokeLLMon (LLM)}}: Agents basats en Models de Llenguatge (descrits al Capítol~\ref{chap:marc_teoric}) que utilitzen raonament textual per prendre decisions. Requereixen un backend LLM local (detalls d'implementació al Capítol~\ref{chap:implementacio}). Aplicables exclusivament a \textbf{Singles Gen~9}.
 \end{enumerate}
 
-El contrast sistemàtic contra \textbf{ambdós conjunts} de baselines ---~natius i externs~--- constitueix el filtre fonamental de la metodologia, a través del qual qualsevol avanç real serà rigorosament validat.
+El contrast sistemàtic contra \textbf{ambdós conjunts} de baselines ---~natius i externs~--- constitueix el filtre fonamental de la metodologia, a través del qual qualsevol avanç real serà rigorosament validat. Els capítols d'Implementació (Cap.~\ref{chap:implementacio}) i de Resultats (Cap.~\ref{chap:resultats}) despleguen com s'han implementat aquests agents i quins avantatges o limitacions mostren respecte els models proposats en aquest TFM.
 

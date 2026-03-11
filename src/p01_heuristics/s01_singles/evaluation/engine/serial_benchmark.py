@@ -130,7 +130,7 @@ def restart_servers(n_ports: int) -> None:
         subprocess.run(["pkill", "-f", "pokemon-showdown"], check=False)
         time.sleep(2)
         subprocess.Popen(
-            ["bash", "src/p03_scripts/p03_launch_custom_servers.sh", str(n_ports)],
+            ["bash", "src/p05_scripts/p05_launch_custom_servers.sh", str(n_ports)],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )

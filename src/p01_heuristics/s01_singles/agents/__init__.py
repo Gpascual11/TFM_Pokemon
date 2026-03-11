@@ -19,15 +19,22 @@ def get_agent_class(name: str) -> type:
         ValueError: If the name is not recognized.
     """
     
-    # Internal Heuristics (v1-v6)
+    # Internal Heuristics (v1-v6), Search (v7), and ML (ml_baseline)
     if name.startswith("v"):
         try:
+            if name == "v7_minimax":
+                module = __import__(f"p02_search.s01_singles.agents.internal.v7_minimax", fromlist=["HeuristicV7Minimax"])
+                return getattr(module, "HeuristicV7Minimax")
             version = int(name[1:])
             if 1 <= version <= 6:
                 module = __import__(f"p01_heuristics.s01_singles.agents.internal.v{version}", fromlist=[f"HeuristicV{version}"])
                 return getattr(module, f"HeuristicV{version}")
         except ValueError:
             pass
+            
+    if name == "ml_baseline":
+        module = __import__(f"p03_ml_baseline.s04_agent.ml_baseline", fromlist=["MLBaselineAgent"])
+        return getattr(module, "MLBaselineAgent")
 
     # Baselines
     if name == "random":

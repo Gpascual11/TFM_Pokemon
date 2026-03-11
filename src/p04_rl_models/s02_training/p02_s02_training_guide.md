@@ -14,14 +14,14 @@ This directory contains the scripts for training the MaskablePPO model through i
 ## How to Run
 
 ### Step 1: Start the simulator
-Ensure you have the Pokémon Showdown server running (locally or in a container). You can use the helpers in `p03_scripts/`.
+Ensure you have the Pokémon Showdown server running (locally or in a container). You can use the helpers in `p05_scripts/`.
 
 ### Step 2: Run a training phase
 All scripts support `--timesteps` and `--ports`.
 
 ```bash
 # Example: Run Phase 1 for 1 Million steps across 4 parallel server ports
-python src/p02_rl_models/s02_training/train_p1_base.py --timesteps 1000000 --ports 8000 8001 8002 8003
+python src/p04_rl_models/s02_training/train_p1_base.py --timesteps 1000000 --ports 8000 8001 8002 8003
 ```
 
 ### Resuming

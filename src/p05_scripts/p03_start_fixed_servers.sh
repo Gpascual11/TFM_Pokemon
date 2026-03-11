@@ -1,7 +1,7 @@
 #!/bin/bash
 # ──────────────────────────────────────────────
 #  Start 6 Pokémon Showdown servers (ports 8000–8005)
-#  Usage:  ./src/p03_scripts/p03_start_fixed_servers.sh
+#  Usage:  ./src/p05_scripts/p05_start_fixed_servers.sh
 #  Stop:   Ctrl+C  (kills all 6 servers)
 # ──────────────────────────────────────────────
 

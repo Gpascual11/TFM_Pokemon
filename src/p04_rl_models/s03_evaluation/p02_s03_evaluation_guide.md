@@ -21,21 +21,21 @@ A visualization script that parses the `results/*.csv` data and produces a 4-pan
 
 To run a basic benchmark:
 ```bash
-python src/p02_rl_models/s03_evaluation/run_benchmarks.py
+python src/p04_rl_models/s03_evaluation/run_benchmarks.py
 ```
 
 To run the full 4-server parallel gauntlet:
 ```bash
-python src/p02_rl_models/s03_evaluation/benchmark_rl.py --games 1000
+python src/p04_rl_models/s03_evaluation/benchmark_rl.py --games 1000
 ```
 
 To generate victory heatmaps:
 ```bash
-python src/p02_rl_models/s03_evaluation/generate_rl_report.py
+python src/p04_rl_models/s03_evaluation/generate_rl_report.py
 ```
 
 ---
 
 ## Results Location
-- **Raw Data**: `src/p02_rl_models/s03_evaluation/results/benchmark_rl_summary.csv`
-- **Visual Report**: `src/p02_rl_models/s03_evaluation/results/rl_model_report.png`
+- **Raw Data**: `src/p04_rl_models/s03_evaluation/results/benchmark_rl_summary.csv`
+- **Visual Report**: `src/p04_rl_models/s03_evaluation/results/rl_model_report.png`
