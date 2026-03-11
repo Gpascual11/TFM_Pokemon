@@ -10,6 +10,7 @@ dependencies = [
     "nbconvert>=7.17.0",
     "pandas>=3.0.0",
     "poke-env>=0.11.0",
+    "polars>=1.38.1",
     "scikit-learn>=1.8.0",
     "scipy>=1.17.0",
     "seaborn>=0.13.2",
