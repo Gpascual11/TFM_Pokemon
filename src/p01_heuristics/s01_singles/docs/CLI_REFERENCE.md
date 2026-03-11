@@ -13,7 +13,7 @@ uv run python <script> [args...]
 You need at least one local Showdown server before running battles.
 
 ```bash
-bash src/p03_scripts/p03_launch_custom_servers.sh 1
+bash src/p05_scripts/p05_launch_custom_servers.sh 1
 ```
 
 This starts port `8000` (then `8001`, `8002`, … if you pass a larger number).

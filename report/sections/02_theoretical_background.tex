@@ -386,7 +386,14 @@ El repositori inclou diversos agents amb aproximacions diferents:
 
 Els \textbf{LLMs} (\textit{Large Language Models}) són xarxes neuronals de gran escala entrenades sobre corpus massius de text que exhibeixen capacitats de raonament, generació de codi i anàlisi estratègica. En el context de Pokémon, permeten a l'agent ``llegir'' l'estat de la batalla en text natural i ``raonar'' sobre quina acció prendria un jugador expert. La seva capacitat per processar informació parcial i fer inferències el fa un mètode prometedor per abordar POMDPs.
 
-Pokechamp serveix en aquest TFM com a font de \textit{baselines} addicionals ---~tant heurístics com basats en LLM~--- contra els quals comparar el rendiment dels agents desenvolupats, complementant els agents natius de poke-env. Els detalls d'implementació i configuració dels LLMs s'exposen al Capítol~\ref{chap:implementacio}.
+En aquest TFM, els agents de Pokechamp no constitueixen una contribució pròpia sinó que es fan servir com a \textit{baselines} externs ---~tant heurístics com basats en LLM~--- contra els quals comparar el rendiment dels agents desenvolupats, complementant els agents natius de poke-env. Els detalls d'integració i configuració dels LLMs s'exposen al Capítol~\ref{chap:implementacio}, on es descriu com aquests agents s'insereixen en el pipeline experimental general.
+
+\section{Síntesi i Connexió amb el Treball}
+\label{sec:marc_teoric_sintesi}
+
+Els conceptes introduïts en aquest capítol ---~informació perfecta vs.\ imperfecta, POMDPs, estocasticitat, mecàniques específiques de Pokémon i VGC, i tècniques d'IA clàssiques i modernes~--- estableixen el marc formal en què se situa aquest TFM. En particular, la naturalesa POMDP i altament estocàstica del combat Pokémon motiva l'ús d'arquitectures capaces d'operar sobre observacions parcials (vectorització de l'estat) i d'algorismes robustos com PPO per a l'aprenentatge per reforç.
+
+Sobre aquesta base teòrica s'articula la metodologia experimental descrita al Capítol~\ref{chap:metodologia}, on es defineixen els espais d'estats i accions que implementen de manera concreta els MDP/POMDP descrits, així com les mètriques que permeten quantificar la intel·ligència dels agents. Finalment, el Capítol~\ref{chap:implementacio} tradueix aquests conceptes en codi executable: orquestració de servidors, heurístiques inspirades en la Taula de Tipus i en la gestió de riscos, i un pipeline de Reinforcement Learning coherent amb el marc establert aquí.
 
 
 % ============================================================

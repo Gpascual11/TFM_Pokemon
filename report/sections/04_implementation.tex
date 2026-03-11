@@ -1,7 +1,22 @@
 \chapter{Implementació d'Agents: De les Fases Heurístiques a l'Aprenentatge Profund}
 \label{chap:implementacio}
 
-D'acord amb la metodologia evolutiva exposada al capítol anterior, aquest apartat detalla l'arquitectura de software construïda per donar vida als agents racionals dins del simulador \textit{Pokémon Showdown}. Es cobreixen la infraestructura d'orquestració, l'evolució de les heurístiques, la integració d'agents externs i LLMs, i la implementació del pipeline de Reinforcement Learning.
+D'acord amb la metodologia evolutiva exposada al capítol anterior, aquest apartat detalla l'arquitectura de software construïda per donar vida als agents racionals dins del simulador \textit{Pokémon Showdown}. Es cobreixen la infraestructura d'orquestració, l'evolució de les heurístiques, la integració d'agents externs i LLMs, i la implementació del pipeline de Reinforcement Learning. En primer lloc es presenta una visió global de les contribucions de software pròpies, i posteriorment s'entra en el detall de cada mòdul.
+
+\section{Contribucions de Software del Projecte}
+
+Abans de descriure el funcionament intern de cada component, es resumeixen les principals peces de software desenvolupades específicament en el marc d'aquest TFM:
+
+\begin{itemize}
+    \item \textbf{Orquestrador paral·lel de servidors Showdown}: Scripts a \texttt{src/p03\_scripts/} per llançar múltiples instàncies locals de Showdown, distribuir batalles de forma asíncrona i gestionar \textit{checkpoints} i reinicis controlats.
+    \item \textbf{Família d'heurístiques internes per Singles}: Agents a \texttt{src/p01\_heuristics/s01\_singles/agents/internal/} (v1--v6) que implementen estratègies cada vegada més sofisticades basades en Taula de Tipus, STAB, status, boosts, prioritat i regles de \textit{switching} defensiu.
+    \item \textbf{Heurístiques preliminars per Dobles VGC}: Arquitectura \textit{Score-then-Combine} per al format 2 vs 2, situada a \texttt{src/p01\_heuristics/s02\_doubles/}, actualment en fase de finalització.
+    \item \textbf{Reimplementació de SafeOneStepPlayer}: Versió pròpia de l'agent \textit{OneStepPlayer} de Pokechamp, que elimina dependències de simuladors locals i opera exclusivament sobre l'API de \textit{poke-env}.
+    \item \textbf{Pipeline complet de Reinforcement Learning}: Mòduls a \texttt{src/p02\_rl\_models/} que inclouen el \texttt{StateVectorizer}, l'entorn \texttt{PokemonMaskedEnv} amb \textit{action masking}, la funció de recompensa i la configuració de \textit{MaskablePPO}.
+    \item \textbf{Infraestructura de \textit{logging} i benchmarking}: Escriptures sistemàtiques de resultats numèrics i, en el cas dels agents LLM, logs de raonament textual per a anàlisi posterior.
+\end{itemize}
+
+Aquests components es combinen amb llibreries i agents existents (poke-env, Pokechamp, sb3-contrib) que es fan servir com a fonaments sobre els quals construir i avaluar les contribucions pròpies.
 
 \section{Orquestració Operacional i Entorn Paral·lelitzat}
 
@@ -17,9 +32,9 @@ El motor d'aquest projecte recau en un mòdul orquestrador propi, situat a \text
 
 \section{Fase 1.1: Desenvolupament d'Heurístiques per Singles (1vs1)}
 
-Abans de desplegar models d'aprenentatge, el projecte exigeix validar la infraestructura dins d'un espai d'accions reduït. El format \textbf{Singles} (1vs1) serveix com a arena de desenvolupament: l'agent interactua contra un sol oponent visible, amb un màxim de 9 accions per torn (4 atacs + 5 substitucions).
+Abans de desplegar models d'aprenentatge, el projecte exigeix validar la infraestructura dins d'un espai d'accions reduït. El format \textbf{Singles} (1vs1) serveix com a arena de desenvolupament: l'agent interactua contra un sol oponent visible, amb un màxim de 9 accions per torn (4 atacs + 5 substitucions). El resultat final d'aquesta fase és un agent heurístic intern ``expert'' que actua com a línia de control pròpia.
 
-Mitjançant sis cicles evolutius de codi, s'han consolidat heurístiques progressivament més sofisticades sota \texttt{src/p01\_heuristics/s01\_singles/agents/internal/}:
+Mitjançant sis cicles evolutius de codi, s'han consolidat heurístiques progressivament més sofisticades sota \texttt{src/p01\_heuristics/s01\_singles/agents/internal/}. A continuació es resumeix aquesta evolució, entenent-la com un procés iteratiu de millora gradual:
 
 \begin{itemize}
     \item \textbf{Heurística v1 (Naïve Aggressive)}: Selecciona el moviment amb la potència base més alta, ignorant completament tipus, STAB i substitucions.
@@ -29,6 +44,8 @@ Mitjançant sis cicles evolutius de codi, s'han consolidat heurístiques progres
     \item \textbf{Heurística v5 (Boost-Aware)}: Estén v4 comptant les modificacions d'estadístiques en combat (\textit{boosts}): considera els $+/-$ d'Atac, Defensa i Velocitat en la fórmula de dany, i afegeix regles de seguretat (substitucions preventives quan la vida pròpia és baixa).
     \item \textbf{Heurística v6 (Priority Master)}: Integra totes les regles anteriors i afegeix un multiplicador de $\times 1.2$ als moviments de prioritat (\textit{Quick Attack}, \textit{Shadow Sneak}, etc.), permetent assegurar KOs contra oponents amb poca vida abans de rebre un atac.
 \end{itemize}
+
+La versió v6 constitueix la culminació d'aquesta família d'heurístiques i és la que es fa servir com a \textbf{baseline expert propi} en els experiments descrits al Capítol~\ref{chap:metodologia}.
 
 
 \section{Fase 1.2: Integració d'Agents Externs (Pokechamp)}
@@ -95,11 +112,11 @@ Tot repte d'IA queda incomplet si no aborda el format oficial de competició: \t
 \section{Fase 2: Implementació del Pipeline de Reinforcement Learning}
 \label{sec:rl_impl}
 
-Amb les heurístiques com a baselines experts, la segona gran fase del projecte ha consistit a construir un pipeline complet de Reinforcement Learning per entrenar agents neuronals, implementat a \texttt{src/p02\_rl\_models/}.
+Amb les heurístiques com a baselines experts, la segona gran fase del projecte ha consistit a construir un pipeline complet de Reinforcement Learning per entrenar agents neuronals, implementat a \texttt{src/p02\_rl\_models/}. Aquest pipeline materialitza, en codi, els conceptes de POMDP i PPO introduïts al Capítol~\ref{chap:marc_teoric}: l'agent opera sobre observacions vectoritzades parcials de l'estat i actualitza una política estocàstica restringida per \textit{clipping}.
 
 \subsection{Vectorització de l'Estat (\texttt{StateVectorizer})}
 
-Les xarxes neuronals necessiten dades numèriques com a entrada. El mòdul \texttt{vectorizer.py} converteix l'objecte complex \texttt{Battle} de poke-env en un \textbf{vector float32 de 238 dimensions}, normalitzat a l'interval $[0, 1]$ per estabilitzar l'entrenament. El vector codifica:
+Les xarxes neuronals necessiten dades numèriques com a entrada. El mòdul \texttt{vectorizer.py} converteix l'objecte complex \texttt{Battle} de poke-env en un \textbf{vector float32 de 238 dimensions}, normalitzat a l'interval $[0, 1]$ per estabilitzar l'entrenament. Aquest vector actua com a observació parcial $\mathbf{o}_t$ del POMDP descrit al Capítol~\ref{chap:marc_teoric}, capturant tota la informació rellevant que l'agent pot percebre a cada torn:
 
 \begin{table}[H]
     \centering
@@ -127,7 +144,7 @@ L'entorn \texttt{PokemonMaskedEnv} hereta de la classe \texttt{SinglesEnv} de po
     \item \textbf{Accions 4--9}: Substitucions (un per cada posició del banc).
 \end{itemize}
 
-Per evitar que l'agent intenti accions il·legals (atacar amb un moviment sense PP, substituir per un Pokémon debilitat), s'utilitza \textbf{Action Masking}: cada torn, un vector binari indica quines de les 10 accions són legals. L'algorisme \texttt{MaskablePPO}~\cite{sb3_contrib} utilitza aquesta màscara per assignar probabilitat zero a les accions invàlides.
+Per evitar que l'agent intenti accions il·legals (atacar amb un moviment sense PP, substituir per un Pokémon debilitat), s'utilitza \textbf{Action Masking}: cada torn, un vector binari indica quines de les 10 accions són legals. L'algorisme \texttt{MaskablePPO}~\cite{sb3_contrib} utilitza aquesta màscara per assignar probabilitat zero a les accions invàlides, reduint l'espai efectiu de cerca i estabilitzant l'aprenentatge en un entorn amb moltes accions contextualment prohibides.
 
 \subsection{Reward Shaping (Disseny de la Recompensa)}
 \label{subsec:reward}
@@ -176,9 +193,9 @@ L'entrenament s'executa en una màquina amb una \textbf{GPU RTX 2080} (8~GB VRAM
 \section{Treball Futur: Aprenentatge Basat en Datasets de Partides}
 \label{sec:dataset_training}
 
-Més enllà del Reinforcement Learning pur, una línia de treball futur prometedora consisteix a explotar \textbf{datasets de partides existents} per entrenar agents mitjançant tècniques d'\textit{Imitation Learning} o \textit{Behavioral Cloning}.
+Més enllà del Reinforcement Learning pur implementat en aquest TFM, una línia de treball futur prometedora consisteix a explotar \textbf{datasets de partides existents} per entrenar agents mitjançant tècniques d'\textit{Imitation Learning} o \textit{Behavioral Cloning}. Aquesta secció descriu una proposta que \textbf{no s'ha implementat} en el marc d'aquest treball, però que es considera una extensió natural de l'arquitectura actual.
 
-El repositori Pokechamp~\cite{pokechamp} inclou internament un conjunt de replays de partides competitives que registren seqüències completes d'estats i accions. La idea és:
+El repositori Pokechamp~\cite{pokechamp} inclou internament un conjunt de replays de partides competitives que registren seqüències completes d'estats i accions. La idea seria:
 
 \begin{enumerate}
     \item \textbf{Extracció}: Parsejar els replays per obtenir parelles $(s_t, a_t)$ d'estat-acció de jugadors experts.
@@ -186,4 +203,4 @@ El repositori Pokechamp~\cite{pokechamp} inclou internament un conjunt de replay
     \item \textbf{Fine-tuning amb RL}: Utilitzar el model pre-entrenat com a punt de partida per a les fases de RL, combinant el coneixement humà amb l'aprenentatge autònom.
 \end{enumerate}
 
-Aquesta aproximació podria accelerar significativament la convergència del RL: en lloc de descobrir des de zero que ``un atac de tipus Aigua és efectiu contra un Pokémon de Foc'', l'agent partiria d'un \textit{prior} expert, i el RL només hauria de refinar les decisions en situacions ambigües o no representades al dataset.
+Aquesta aproximació podria accelerar significativament la convergència del RL: en lloc de descobrir des de zero que ``un atac de tipus Aigua és efectiu contra un Pokémon de Foc'', l'agent partiria d'un \textit{prior} expert, i el RL només hauria de refinar les decisions en situacions ambigües o no representades al dataset. Les possibles línies concretes per desenvolupar aquesta idea es discuteixen de nou al capítol de conclusions i treball futur.

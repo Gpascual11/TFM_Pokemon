@@ -66,7 +66,7 @@ async def restart_servers_async(n_ports: int) -> None:
         subprocess.run(["pkill", "-f", "pokemon-showdown"], check=False)
         await asyncio.sleep(2)
         subprocess.Popen(
-            ["bash", "src/p03_scripts/p03_launch_custom_servers.sh", str(n_ports)],
+            ["bash", "src/p05_scripts/p05_launch_custom_servers.sh", str(n_ports)],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             cwd=str(_ROOT),
@@ -299,7 +299,7 @@ async def main_async():
     if args.ports <= 0:
         parser.error("--ports must be a positive integer (>= 1)")
 
-    out_dir = Path(args.out)
+    out_dir = Path(args.out).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialize Port Queue

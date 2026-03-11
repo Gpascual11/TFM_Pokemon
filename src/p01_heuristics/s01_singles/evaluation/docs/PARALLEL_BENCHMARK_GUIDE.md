@@ -28,7 +28,7 @@ When you run a tournament, the `benchmark.py` script executes the following hand
     - If it exists, it reads the row count.
     - If `row_count < target_n`, it calculates precisely how many battles are left to play.
     - If `row_count >= target_n`, it skips that matchup entirely.
-3. **Server Startup**: It calls `src/p03_scripts/p03_launch_custom_servers.sh` to spawn `N` separate Node.js processes for Pokémon Showdown on consecutive ports.
+3. **Server Startup**: It calls `src/p05_scripts/p05_launch_custom_servers.sh` to spawn `N` separate Node.js processes for Pokémon Showdown on consecutive ports.
 4. **Port-Aware Delegation**: It initializes an `asyncio.Queue` containing all available ports. It then starts workers:
     - A worker is popped from the queue.
     - It is assigned a port and a batch of battles.

@@ -149,7 +149,9 @@ async def _run_streaming(player, opponent, total_n: int, agent_name: str, opp_na
         "fainted_us", "remaining_pokemon_us", "total_hp_us",
         "fainted_opp", "remaining_pokemon_opp", "total_hp_opp"
     ]
-    
+
+    out_csv.parent.mkdir(parents=True, exist_ok=True)
+
     if not out_csv.exists():
         with open(out_csv, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)

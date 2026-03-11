@@ -1,0 +1,6 @@
+battle_id,heuristic,opponent,won,turns,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp
+battle-gen9randombattle-204485,v7_minimax,v6,0,14,6,0,0.0,4,1,0.91
+battle-gen9randombattle-204486,v7_minimax,v6,0,16,6,0,0.0,4,1,0.23
+battle-gen9randombattle-204487,v7_minimax,v6,1,21,2,4,3.198,6,0,0.0
+battle-gen9randombattle-204485,v7_minimax,v6,1,15,3,3,2.764,6,0,0.0
+battle-gen9randombattle-204486,v7_minimax,v6,1,17,3,3,3.0,6,0,0.0
