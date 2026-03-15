@@ -1,0 +1,11 @@
+battle_id,heuristic,opponent,won,turns,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp
+battle-gen9ou-204643,ml_advanced,random,0,67,6,0,0.0,1,5,5.0
+battle-gen9ou-204687,ml_advanced,random,1,52,3,3,1.997,6,0,0.0
+battle-gen9ou-204688,ml_advanced,random,0,70,6,0,0.0,4,2,1.08
+battle-gen9ou-204689,ml_advanced,random,0,33,6,0,0.0,5,1,0.22
+battle-gen9ou-204690,ml_advanced,random,1,53,4,2,1.179,6,0,0.0
+battle-gen9ou-204729,ml_advanced,random,1,158,5,1,0.952,6,0,0.0
+battle-gen9ou-204730,ml_advanced,random,0,61,6,0,0.0,5,1,0.82
+battle-gen9ou-204731,ml_advanced,random,1,32,2,4,2.587,6,0,0.0
+battle-gen9ou-204732,ml_advanced,random,0,32,6,0,0.0,5,1,0.38
+battle-gen9ou-204733,ml_advanced,random,1,102,1,5,4.396,6,0,0.0
