@@ -12,7 +12,7 @@ replays/
 
 pokemon-showdown/
 node_modules/
-data/huggingface_cache/
+data/models/dataset/huggingface_cache/
 
 # LaTeX temporary files
 # Core latex/pdflatex aux files
