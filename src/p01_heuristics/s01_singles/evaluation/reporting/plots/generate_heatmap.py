@@ -13,7 +13,13 @@ import seaborn as sns
 
 from .styling import apply_premium_style, finalize_plot, get_display_name, RD_YL_GN_PREMIUM
 
-def generate_heatmap(data_dir: Path, output_path: Path, title: str = "Win-Rate Correlation Matrix"):
+def generate_heatmap(
+    data_dir: Path, 
+    output_path: Path, 
+    title: str = "Win-Rate Correlation Matrix",
+    filter_agents: list[str] | None = None,
+    filter_opponents: list[str] | None = None
+):
     """Analyzes results and generates a comparative win-rate heatmap."""
     apply_premium_style()
     
@@ -47,10 +53,20 @@ def generate_heatmap(data_dir: Path, output_path: Path, title: str = "Win-Rate C
     stats = df.groupby(["agent", "opponent"])["won"].mean().reset_index()
     
     # Priority order for axes
-    ORDER = ["v1", "v2", "v3", "v4", "v5", "v6", "random", "max_power", "simple_heuristic", "abyssal", "one_step", "safe_one_step"]
+    ORDER = ["v1", "v2", "v3", "v4", "v5", "v6", "v7", "random", "max_power", "simple_heuristic", "abyssal", "one_step", "safe_one_step"]
     
     agents = sorted(df["agent"].unique(), key=lambda x: ORDER.index(x) if x in ORDER else 999)
     opponents = sorted(df["opponent"].unique(), key=lambda x: ORDER.index(x) if x in ORDER else 999)
+
+    # Apply filters if provided
+    if filter_agents:
+        agents = [a for a in agents if a in filter_agents]
+    if filter_opponents:
+        opponents = [o for o in opponents if o in filter_opponents]
+
+    if not agents or not opponents:
+        print("⚠️  Filtering resulted in an empty matrix.")
+        return
     
     matrix = pd.DataFrame(index=agents, columns=opponents)
     for a in agents:
@@ -59,7 +75,8 @@ def generate_heatmap(data_dir: Path, output_path: Path, title: str = "Win-Rate C
             if not match.empty:
                 matrix.loc[a, o] = match["won"].iloc[0] * 100
             elif a == o:
-                matrix.loc[a, o] = 50.0
+                # Prioritize real data if it somehow exists, otherwise 50%
+                matrix.loc[a, o] = 50.0 if match.empty else match["won"].iloc[0] * 100
             else:
                 rev = stats[(stats["agent"] == o) & (stats["opponent"] == a)]
                 if not rev.empty:
@@ -90,9 +107,17 @@ def main():
     parser.add_argument("--data-dir", type=str, required=True, help="Path to CSV files")
     parser.add_argument("--output", type=str, default="heatmap.png", help="Output PNG path")
     parser.add_argument("--title", type=str, default="Matchup Win Rates", help="Plot title")
-    args = parser.parse_args()
+    parser.add_argument("--agents", nargs="+", help="Only include these agents in the heatmap")
+    parser.add_argument("--opponents", nargs="+", help="Only include these opponents in the heatmap")
+    args = parser.parse_class_args() if hasattr(parser, "parse_class_args") else parser.parse_args()
     
-    generate_heatmap(Path(args.data_dir), Path(args.output), args.title)
+    generate_heatmap(
+        Path(args.data_dir), 
+        Path(args.output), 
+        args.title,
+        filter_agents=args.agents,
+        filter_opponents=args.opponents
+    )
 
 if __name__ == "__main__":
     main()
