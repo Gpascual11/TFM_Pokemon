@@ -35,6 +35,9 @@ def get_agent_class(name: str) -> type:
     if name == "ml_baseline":
         module = __import__(f"p03_ml_baseline.s04_agent.ml_baseline", fromlist=["MLBaselineAgent"])
         return getattr(module, "MLBaselineAgent")
+    if name == "ml_advanced":
+        module = __import__(f"p03_ml_baseline.s04_agent.ml_advanced", fromlist=["MLAdvancedAgent"])
+        return getattr(module, "MLAdvancedAgent")
 
     # Baselines
     if name == "random":
