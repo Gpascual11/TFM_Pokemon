@@ -22,14 +22,16 @@ This system is built on the core principle of **Subprocess Isolation**:
 
 When you run a tournament, the `benchmark.py` script executes the following handshake:
 
-1. **Matchup Generation**: It uses the `AgentFactory` to resolve labels into classes. It then builds a Cartesian product of all requested `--agents` and `--opponents`.
+1. **Matchup Generation**: It uses the `AgentFactory` to resolve labels into classes. It then builds a Cartesian product of all requested `--agents` and `--opponents`, **including self-matchups** (e.g., `v6 vs v6`).
 2. **Missing Data Analysis (Self-Healing)**:
     - For every matchup (e.g., `v1 vs random`), it checks if `data/1_vs_1/benchmarks/unified/v1_vs_random.csv` exists (legacy: `data/1_vs_1/benchmarks_unified/...` or `data/benchmarks_unified/...`).
     - If it exists, it reads the row count.
     - If `row_count < target_n`, it calculates precisely how many battles are left to play.
     - If `row_count >= target_n`, it skips that matchup entirely.
 3. **Server Startup**: It calls `src/p05_scripts/p05_launch_custom_servers.sh` to spawn `N` separate Node.js processes for Pokémon Showdown on consecutive ports.
-4. **Port-Aware Delegation**: It initializes an `asyncio.Queue` containing all available ports. It then starts workers:
+4. **Optimized Restarts**: The `--restart-every K` counter only increments when at least one battle is actually executed. Skipped matchups during resume do not trigger server restarts.
+5. **Self-Healing Retry Loop**: If a worker batch fails or times out, the orchestrator recalculates the missing games and re-queues them. It will continue looping until the target number of games is reached or no progress is being made.
+6. **Port-Aware Delegation**: It initializes an `asyncio.Queue` containing all available ports. It then starts workers:
     - A worker is popped from the queue.
     - It is assigned a port and a batch of battles.
     - When the worker finishes, the port is returned to the queue for the next batch.

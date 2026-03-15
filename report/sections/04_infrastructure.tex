@@ -1,0 +1,69 @@
+\chapter{Entorn de Desenvolupament i Infraestructura de Computació}
+\label{chap:infraestructura}
+
+El desenvolupament d'un projecte de recerca basat en \textit{Deep Reinforcement Learning} i simulació massiva d'entorns de joc exigeix una infraestructura tecnològica robusta i evolutiva. Aquest capítol detalla la configuració del sistema de treball, des de les etapes inicials de desenvolupament local fins a la consolidació d'un entorn de computació remot d'alt rendiment, justificant les decisions tècniques preses en cada fase.
+
+\section{Evolució Cronològica de l'Arquitectura}
+
+L'entorn de treball ha passat per dues fases principals, marcades per la necessitat d'incrementar la potència de càlcul i la capacitat de gestió de memòria.
+
+\subsection{Fase 1: Desenvolupament Local i Prototipatge (Node Client)}
+
+Inicialment, el projecte es va prototipar en un ordinador portàtil d'alta gamma. Malgrat les seves prestacions, el format portàtil presentava limitacions en la gestió tèrmica i la quantitat de memòria volàtil (RAM).
+
+\begin{itemize}
+    \item \textbf{Especificacions Tècniques}: Processador Intel\textsuperscript{\textregistered} Core\textsuperscript{\texttrademark} Ultra 7 155H (22 fils d'execució) i 16 GB de memòria RAM.
+    \item \textbf{Gestió de l'Emmagatzematge (Bind Mounts)}: Amb un disc principal d'1 TB, es va decidir separar físicament les dades de l'execució. Es va utilitzar un segon disc NVMe d'1 TB dedicat exclusivament a la carpeta \texttt{data/}. Per evitar problemes de visibilitat amb Git que solen ocórrer amb els enllaços simbòlics, es va configurar un \textbf{bind mount} a nivell de sistema operatiu, permetent que el sistema de fitxers tractés el disc de dades com una carpeta local nativa dins del repositori.
+    \item \textbf{Optimització de Codi i RAM}: Amb només 16 GB de RAM, l'execució de múltiples instàncies de \textit{Pokémon Showdown} (Node.js) i l'orquestrador Python requeria un control rigorós. Moltes de les rutines de neteja manual del \textit{Garbage Collector} (GC) de Python i els reinicis controlats de servidors detallats al Capítol~\ref{chap:implementacio} es van dissenyar originalment per sobreviure en aquest entorn limitat.
+\end{itemize}
+
+\subsection{Fase 2: Consolidació en Servidor de Torre (Node Remot)}
+
+Un cop la infraestructura de simulació va ser estable, es va migrar l'execució principal a una estació de treball de sobretaula (\textit{workstation}), configurada com a servidor de càlcul.
+
+\begin{itemize}
+    \item \textbf{Especificacions Tècniques}: Processador AMD Ryzen\textsuperscript{\texttrademark} 7 5700X3D (16 nuclis d'alt rendiment), 32 GB de memòria RAM DDR4 i una GPU NVIDIA RTX 2080 (8 GB VRAM).
+    \item \textbf{Avantatges de Maquinari}: L'arquitectura de torre permet una dissipació tèrmica superior mitjançant refrigeració activa i dissipadors de grans dimensions, eliminant el risc de \textit{thermal throttling} present al portàtil. A més, disposa de font d'alimentació dedicada i un Sistema d'Alimentació Ininterrompuda (SAI) per garantir la continuïtat de les simulacions davant talls elèctrics.
+    \item \textbf{Integració de Recursos}: A diferència del portàtil, en aquest node tot el sistema (SO, execució i dades) coexisteix en una unitat NVMe d'alt rendiment, simplificant l'estructura de rutes i maximitzant l'amplada de banda d'I/O.
+\end{itemize}
+
+\section{Gestió de Dependències i Entorn Python: uv}
+
+Per mantenir la consistència entre ambdós nodes i evitar la instal·lació innecessària de binaris pesants (com els \textit{drivers} de CUDA) al portàtil, s'utilitza el gestor de paquets \textbf{uv} amb una configuració de dependències segmentada.
+
+Al fitxer \texttt{pyproject.toml}, s'han definit grups de dependències opcionals (\textit{extras}):
+\begin{itemize}
+    \item \textbf{rl}: Llibreries base de Reinforcement Learning (Gymnasium, Stable-Baselines3).
+    \item \textbf{gpu}: Versions específiques de PyTorch compilades amb suport per a CUDA, \textit{torchaudio} i \textit{torchvision}.
+    \item \textbf{pokechamp}: Mòduls d'integració amb LLMs (Ollama, OpenAI, Transformers).
+\end{itemize}
+
+L'ús de \texttt{uv} permet utilitzar índexs diferenciats per a la instal·lació: mentres que el portàtil utilitza l'índex CPU de PyTorch per estalviar espai i recursos, el servidor utilitza l'índex \texttt{cu124}. Aquesta estratègia garanteix que les versions de les llibreries siguin idèntiques ($\text{v0.11.0}$ de \textit{poke-env}, etc.), assegurant la reproductibilitat de l'experimentació independentment del maquinari.
+
+\section{Seguretat i Connectivitat Remota}
+
+La interacció amb el servidor es realitza de forma totalment remota des del portàtil mitjançant una combinació de tecnologies de xarxa mesh i IDEs moderns.
+
+\begin{itemize}
+    \item \textbf{Tailscale SSH}: S'ha configurat una xarxa privada virtual (\textit{overlay network}) basada en WireGuard que permet la connexió punt a punt entre els nodes. Tailscale SSH substitueix la gestió manual de claus per un model d'identitat centralitzat, eliminant la necessitat d'obrir ports al tallafocs (perillós en SSH convencional) i permetent superar el NAT sense configuració addicional.
+    \item \textbf{Antigravity IDE i Remote-SSH}: S'utilitza l'extensió \textit{Remote-SSH} per programar directament sobre el sistema de fitxers del servidor. Aquest flux de treball és superior al mètode de \textit{git push/pull} constant, ja que permet provar canvis en temps real sense generar commits innecessaris i sense fragmentar la integritat del codi Font.
+    \item \textbf{Persistència amb tmux}: Totes les execucions de llarga durada es llancen dins de sessions de \textbf{tmux}. Això garanteix que, si la connexió de xarxa entre el portàtil i el servidor s'interromp, els processos d'entrenament continuïn executant-se sense afectació.
+\end{itemize}
+
+\section{Metodologia i Control de Versions}
+
+L'organització del projecte segueix principis de desenvolupament àgil i gestió estructurada:
+
+\begin{itemize}
+    \item \textbf{Git i GitHub}: S'utilitza Git per al control de versions a nivell local i GitHub com a repositori centralitzat. Això no només facilita la sincronització de scripts entre el portàtil i el servidor, sinó que actua com a xarxa de seguretat per a l'historial del projecte.
+    \item \textbf{Gestió d'Objectius (Kanban)}: S'utilitza la plataforma \textbf{Trello} organitzada en un tauler Kanban (To Do, Doing, Done). Aquesta metodologia ha estat fonamental per segmentar el desenvolupament de les sis versions d'heurístiques, la implementació del pipeline de RL i la redacció d'aquesta memòria en unitats de treball gestionables.
+\end{itemize}
+
+\section{Qualitat de Codi i Eines de Suport}
+
+Finalment, el projecte integra eines d'anàlisi estàtica per assegurar la robustesa del programari:
+\begin{itemize}
+    \item \textbf{Ruff}: Utilitzat com a linter i formatejador unidireccional d'alta velocitat.
+    \item \textbf{Ty}: Checker de tipus estàtic per a Python que detecta inconsistències lògiques abans de l'execució.
+    \item \textbf{LaTeX Workshop}: Entorn de producció d'aquest document, integrat en el mateix IDE de desenvolupament per a una transició fluida entre la ciència de dades i la redacció acadèmica.
+\end{itemize}

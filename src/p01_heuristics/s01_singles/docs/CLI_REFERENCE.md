@@ -22,7 +22,7 @@ This starts port `8000` (then `8001`, `8002`, … if you pass a larger number).
 
 ## 2. Parallel benchmark (recommended): `evaluation/engine/benchmark.py`
 
-Runs a full matchup matrix and writes one CSV per matchup:
+Runs a full matchup matrix (including self-play) and writes one CSV per matchup:
 `data/1_vs_1/benchmarks/unified/{agent}_vs_{opponent}.csv`.
 
 ### Common runs
@@ -55,7 +55,7 @@ uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 20 \
 - **`--ports N`**: number of worker ports (and processes) to use.
 - **`--start-port P`**: first port (ports are `P..P+N-1`).
 - **`--concurrency M`**: max concurrent battles per worker.
-- **`--restart-every K`**: restart Showdown servers every K matchups (0 disables).
+- **`--restart-every K`**: Restart Showdown servers every K **active** matchups (skipped matchups do not count). Use `0` to disable restarts.
 - **`--out DIR`**: output directory for matchup CSVs.
 - **`--battle-format FORMAT`**: e.g. `gen9randombattle`.
 - **LLM-only (pokechamp/pokellmon/llm_vgc)**:
@@ -144,8 +144,17 @@ uv run python src/p01_heuristics/s01_singles/evaluation/engine/serial_benchmark.
 Unified heatmap (from `benchmarks/unified`):
 
 ```bash
-uv run python src/p01_heuristics/s01_singles/evaluation/reporting/heatmaps.py
+uv run python -m src.p01_heuristics.s01_singles.evaluation.reporting.plots.generate_heatmap \
+  --data-dir data/1_vs_1/benchmarks/unified \
+  --output heatmap.png \
+  --agents v6 v5 random \
+  --opponents v6 v5 random
 ```
+
+Key features:
+- **Diagonal Data**: Uses real battle results for self-matchups if they exist.
+- **Filtering**: Use `--agents` and `--opponents` to create targeted comparison plots.
+
 
 Pokechamp per-agent report (expects legacy `pokechamp_{agent}_vs_*.csv` under `data/1_vs_1/benchmarks/pokechamp`, not the unified benchmark output):
 

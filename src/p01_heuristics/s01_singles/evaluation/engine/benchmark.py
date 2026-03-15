@@ -139,7 +139,19 @@ async def run_worker_batch(
 
     proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
-    stdout, stderr = await proc.communicate()
+    try:
+        # 5 minute timeout per batch (more responsive)
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
+    except asyncio.TimeoutError:
+        print(f"      ⚠️  {batch_info} -> Port {port} TIMEOUT after 5 minutes. Cleaning up...", flush=True)
+        try:
+            proc.terminate()
+            await asyncio.sleep(1) # Give it a second to terminate
+            if proc.returncode is None:
+                proc.kill()
+        except OSError:
+            pass
+        return 0
 
     total_done = 0
     if proc.returncode == 0:
@@ -166,7 +178,7 @@ async def run_matchup(
     player_prompt_algo: str,
     temperature: float,
     log_dir: str,
-) -> int:
+) -> tuple[int, int]:
     """Orchestrates a specific matchup between two agents.
 
     This function handles the 'Resume & Complete' logic: it checks existing CSVs
@@ -181,85 +193,97 @@ async def run_matchup(
         out_dir (Path): Where results are stored.
 
     Returns:
-        int: Total number of games now recorded in the CSV (including previous ones).
+        tuple[int, int]: (Total games now recorded, New games performed in this call).
     """
     out_csv = out_dir / f"{agent}_vs_{opponent}.csv"
 
-    already_done = 0
-    if out_csv.exists():
-        try:
-            df = pd.read_csv(out_csv)
-            already_done = len(df)
-        except Exception:
-            already_done = 0
-
-    n_to_run = target_battles - already_done
-    if n_to_run <= 0:
-        print(f"⏩ Matchup {agent} vs {opponent} already finished ({already_done}/{target_battles}). skipping.")
-        return target_battles
-
-    print(f"⚔️  Executing {agent} vs {opponent}: {n_to_run} missing games (Total Target: {target_battles})...")
-
-    n_ports = port_queue.qsize()
-    # If we have 4 servers, we split the n_to_run into 4 chunks
-    battles_per_worker = (n_to_run + n_ports - 1) // n_ports
-
-    tasks = []
-    remaining = n_to_run
-
-    # Define a helper to manage port acquisition/release
-    async def task_wrapper(n, b_idx):
-        port = await port_queue.get()
-        # Use a unique temporary file for this specific worker batch
-        tmp_csv = out_dir / f"_tmp_{agent}_{opponent}_p{port}_b{b_idx}.csv"
-        try:
-            done = await run_worker_batch(
-                agent,
-                opponent,
-                n,
-                port,
-                concurrency,
-                tmp_csv,
-                f"[{agent} vs {opponent}] Batch {b_idx + 1}",
-                battle_format=battle_format,
-                player_backend=player_backend,
-                player_prompt_algo=player_prompt_algo,
-                temperature=temperature,
-                log_dir=log_dir,
-            )
-            return done, tmp_csv
-        finally:
-            await port_queue.put(port)
-
-    batch_idx = 0
-    while remaining > 0:
-        this_n = min(battles_per_worker, remaining)
-        tasks.append(task_wrapper(this_n, batch_idx))
-        remaining -= this_n
-        batch_idx += 1
-
-    results = await asyncio.gather(*tasks)
-
-    # Merge all tmp files into the final CSV
-    frames = []
-    total_new = 0
-    for done, tmp_csv in results:
-        if done > 0 and tmp_csv.exists():
-            frames.append(pd.read_csv(tmp_csv))
-            tmp_csv.unlink()  # Delete tmp file after reading
-            total_new += done
-
-    if frames:
-        # Append new results to the main CSV
-        new_df = pd.concat(frames, ignore_index=True)
+    total_new_overall = 0
+    
+    # Retry Loop: Continue until we reach the target or stop making progress
+    while True:
+        already_done = 0
         if out_csv.exists():
-            existing_df = pd.read_csv(out_csv)
-            final_df = pd.concat([existing_df, new_df], ignore_index=True)
-        else:
-            final_df = new_df
-        final_df.to_csv(out_csv, index=False)
+            try:
+                df = pd.read_csv(out_csv)
+                already_done = len(df)
+            except Exception:
+                already_done = 0
 
-    return already_done + total_new
+        n_to_run = target_battles - already_done
+        if n_to_run <= 0:
+            if total_new_overall > 0:
+                print(f"✅ Matchup {agent} vs {opponent} finished ({already_done}/{target_battles}).")
+            return already_done, total_new_overall
+
+        print(f"⚔️  Executing {agent} vs {opponent}: {n_to_run} missing games (Total Target: {target_battles})...")
+
+        n_ports = port_queue.qsize()
+        # Distribute remaining games across available ports
+        battles_per_worker = (n_to_run + n_ports - 1) // n_ports
+
+        tasks = []
+        remaining = n_to_run
+
+        async def task_wrapper(n, b_idx):
+            port = await port_queue.get()
+            # Use a unique temporary file for this specific worker batch
+            tmp_csv = out_dir / f"_tmp_{agent}_{opponent}_p{port}_b{b_idx}.csv"
+            
+            # Ensure fresh start: delete tmp CSV if it exists from a previous attempt
+            if tmp_csv.exists():
+                tmp_csv.unlink()
+                
+            try:
+                done = await run_worker_batch(
+                    agent, opponent, n, port, concurrency, tmp_csv,
+                    f"[{agent} vs {opponent}] Batch {b_idx + 1}",
+                    battle_format=battle_format, player_backend=player_backend,
+                    player_prompt_algo=player_prompt_algo, temperature=temperature, log_dir=log_dir,
+                )
+                return done, tmp_csv
+            finally:
+                await port_queue.put(port)
+
+        batch_idx = 0
+        while remaining > 0:
+            this_n = min(battles_per_worker, remaining)
+            tasks.append(task_wrapper(this_n, batch_idx))
+            remaining -= this_n
+            batch_idx += 1
+
+        results = await asyncio.gather(*tasks)
+
+        # Merge results from this iteration
+        frames = []
+        new_in_iteration = 0
+        for done, tmp_csv in results:
+            if done > 0 and tmp_csv.exists():
+                try:
+                    frames.append(pd.read_csv(tmp_csv))
+                    new_in_iteration += done
+                except Exception as e:
+                    print(f"      ⚠️  Error reading tmp CSV: {e}")
+            
+            # CRITICAL: Always delete tmp file after processing (even if it failed or timed out)
+            if tmp_csv.exists():
+                tmp_csv.unlink()
+
+        if frames:
+            new_df = pd.concat(frames, ignore_index=True)
+            if out_csv.exists():
+                existing_df = pd.read_csv(out_csv)
+                final_df = pd.concat([existing_df, new_df], ignore_index=True)
+            else:
+                final_df = new_df
+            final_df.to_csv(out_csv, index=False)
+            total_new_overall += new_in_iteration
+        
+        # Safety: If no progress was made in this iteration, break to avoid infinite loop
+        if new_in_iteration == 0:
+            print(f"      ⚠️  No progress made in this iteration for {agent} vs {opponent}. Stopping.")
+            break
+
+    return already_done + total_new_overall, total_new_overall
 
 
 # ---------------------------------------------------------------------------
@@ -300,6 +324,10 @@ async def main_async():
         parser.error("--ports must be a positive integer (>= 1)")
 
     out_dir = Path(args.out).resolve()
+    # If the user is using the default directory, append the battle format to it
+    if args.out == str(DEFAULT_DATA_DIR):
+        out_dir = out_dir.parent / f"unified_{args.battle_format}"
+    
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Initialize Port Queue
@@ -321,14 +349,12 @@ async def main_async():
     matchup_count = 0
     for agent in agents:
         for opp in opponents:
-            if agent == opp:
-                continue
 
             # Periodic Restart
             if args.restart_every > 0 and matchup_count > 0 and matchup_count % args.restart_every == 0:
                 await restart_servers_async(args.ports)
 
-            total_done = await run_matchup(
+            total_done, new_games = await run_matchup(
                 agent,
                 opp,
                 args.n_battles,
@@ -341,7 +367,9 @@ async def main_async():
                 args.temperature,
                 args.log_dir,
             )
-            matchup_count += 1
+            print(f"✅ Matchup {agent} vs {opp} complete: {total_done} games recorded.")
+            if new_games > 0:
+                matchup_count += 1
 
             # Load results for summary
             csv_path = out_dir / f"{agent}_vs_{opp}.csv"

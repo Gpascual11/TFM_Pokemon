@@ -7,7 +7,7 @@ from sklearn.linear_model import LogisticRegression
 
 # Define paths for Data input and Plot output
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../"))
-BENCHMARKS_DIR = os.path.join(PROJECT_ROOT, "data/1_vs_1/benchmarks/pokechamp")
+BENCHMARKS_DIR = os.path.join(PROJECT_ROOT, "data/1_vs_1/benchmarks/unified")
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "src/p01_heuristics/s01_singles/evaluation/results")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -61,16 +61,19 @@ def main():
     for f in csv_files:
         try:
             df = pd.read_csv(f)
-            # The benchmark CSV structure matches:
-            # battle_id,pokechamp_agent,opponent,won,turns,...
-            # Here 'pokechamp_agent' is model A, 'opponent' is model B, 'won' == 1 if A won
-            
+            # Standardize columns for names
+            col_map = {
+                "pokechamp_agent": "agent",
+                "heuristic": "agent"
+            }
+            df = df.rename(columns=col_map)
+
             # Skip empty valid dataframes
-            if df.empty or 'won' not in df.columns or 'pokechamp_agent' not in df.columns or 'opponent' not in df.columns:
+            if df.empty or 'won' not in df.columns or 'agent' not in df.columns or 'opponent' not in df.columns:
                 continue
                 
             matchup_df = pd.DataFrame({
-                'model_a': df['pokechamp_agent'],
+                'model_a': df['agent'],
                 'model_b': df['opponent'],
                 'winner': df['won'].apply(lambda w: 'model_a' if w == 1 else 'model_b') # ignoring ties for simple benchmark processing unless recorded otherwise
             })
