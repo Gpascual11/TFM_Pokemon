@@ -6,15 +6,31 @@ Targets the 'unified' dataset folder.
 
 from __future__ import annotations
 
-import argparse
+import sys
 from pathlib import Path
 
+# ---------------------------------------------------------------------------
+# Package bootstrap
+# ---------------------------------------------------------------------------
+_DIR = Path(__file__).parent.resolve()
+_REPORTING = _DIR.parent
+_EVAL = _REPORTING.parent
+_SINGLES = _EVAL.parent
+_SRC = _SINGLES.parent.parent
+_ROOT = _SRC.parent
+
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from .styling import (
+from p01_heuristics.s01_singles.evaluation.reporting.plots.styling import (
     apply_premium_style, 
     finalize_plot, 
     get_display_name, 
@@ -282,9 +298,12 @@ def generate_full_report(data_dir: Path, output_dir: Path) -> None:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=str, default=str(DEFAULT_DATA_DIR))
+    parser.add_argument("output_dir_pos", nargs="?", help="Optional positional output directory")
     parser.add_argument("--output-dir", type=str, default="src/p01_heuristics/s01_singles/evaluation/results/pokechamp_reports")
     args = parser.parse_args()
-    generate_full_report(Path(args.data_dir), Path(args.output_dir))
+    
+    output_dir = args.output_dir_pos if args.output_dir_pos else args.output_dir
+    generate_full_report(Path(args.data_dir), Path(output_dir))
 
 if __name__ == "__main__":
     main()
