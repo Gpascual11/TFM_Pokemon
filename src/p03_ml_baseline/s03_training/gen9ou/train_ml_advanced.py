@@ -33,8 +33,8 @@ from sklearn.metrics import accuracy_score, classification_report, roc_auc_score
 from sklearn.model_selection import GroupShuffleSplit
 
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "src", "p03_ml_baseline", "s03_training", "models")
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "src", "p03_ml_baseline", "s03_training", "models", "gen9ou")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Path to the advanced, unrolled dataset produced by the EDA pipeline

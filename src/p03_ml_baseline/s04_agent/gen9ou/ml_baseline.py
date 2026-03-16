@@ -23,8 +23,8 @@ class MLBaselineAgent(BaseHeuristic1v1):
         self.model = xgb.XGBClassifier()
         
         # Resolve the path to the trained JSON model
-        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../"))
-        model_path = os.path.join(project_root, "src/p03_ml_baseline/s03_training/models/ml_baseline.json")
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
+        model_path = os.path.join(project_root, "src/p03_ml_baseline/s03_training/models/gen9ou/ml_baseline.json")
         
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Trained ML model not found at {model_path}. Please run train_ml_baseline.py first.")

@@ -4,8 +4,8 @@ import pandas as pd
 from datasets import load_dataset
 import sys
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "src", "p03_ml_baseline/s03_training/models")
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "src", "p03_ml_baseline/s03_training/models/gen9random")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Important: ensure we point HuggingFace to the 1TB drive
@@ -14,11 +14,11 @@ os.environ["HF_HOME"] = hf_cache_dir
 os.environ["HF_DATASETS_CACHE"] = hf_cache_dir
 
 # Import the dataset loader from pokechamp
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../pokechamp/scripts/training")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../pokechamp/scripts/training")))
 try:
     from dataset import load_filtered_dataset
 except ImportError:
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../pokechamp/scripts/training")))
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../../pokechamp/scripts/training")))
     from dataset import load_filtered_dataset
 
 def extract_features_from_battles(dataset, max_battles=5000):
@@ -92,13 +92,13 @@ def extract_features_from_battles(dataset, max_battles=5000):
     return df
 
 def main():
-    print("Loading Gen 9 OU Dataset from HuggingFace...")
+    print("Loading Gen 9 Random Battle Dataset from HuggingFace...")
     dataset = load_filtered_dataset(
         min_month="March2024",
         max_month="March2024",
         elo_ranges=["1800+"],
         split="train",
-        gamemode="gen9ou" 
+        gamemode="gen9randombattle" 
     )
     
     df = extract_features_from_battles(dataset, max_battles=10000)

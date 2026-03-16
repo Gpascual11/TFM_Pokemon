@@ -39,8 +39,8 @@ class MLAdvancedAgent(BaseHeuristic1v1):
         # so that both components agree on where models live, regardless of
         # whether the project is executed from the repo root or installed
         # as a package.
-        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-        models_dir = os.path.join(project_root, "src", "p03_ml_baseline", "s03_training", "models")
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
+        models_dir = os.path.join(project_root, "src", "p03_ml_baseline", "s03_training", "models", "gen9ou")
 
         feature_path = os.path.join(models_dir, "xgboost_advanced_features.pkl")
         model_path = os.path.join(models_dir, "xgboost_advanced_model.json")

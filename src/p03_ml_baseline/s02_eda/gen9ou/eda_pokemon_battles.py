@@ -6,19 +6,19 @@ import seaborn as sns
 from datasets import load_dataset
 # Import the dataset loader from pokechamp
 import sys
-# The current file is in src/p03_ml_baseline/s02_eda/eda_pokemon_battles.py
+# The current file is in src/p03_ml_baseline/s02_eda/gen9ou/eda_pokemon_battles.py
 # We need to reach pokechamp/scripts/training/
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../pokechamp/scripts/training")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../pokechamp/scripts/training")))
 try:
     from dataset import load_filtered_dataset
 except ImportError:
     # Try one level higher just in case
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../pokechamp/scripts/training")))
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../pokechamp/scripts/training")))
     from dataset import load_filtered_dataset
 
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "src/p03_ml_baseline/s02_eda/plots")
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "src/p03_ml_baseline/s02_eda/plots/gen9ou")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def parse_battle_logs(dataset, max_battles=1000):

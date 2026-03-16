@@ -7,8 +7,8 @@ import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "src/p03_ml_baseline/s03_training/models")
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "src/p03_ml_baseline/s03_training/models/gen9random")
 
 def main():
     print("Loading extracted ML features...")
