@@ -5,15 +5,31 @@ Loads all per-matchup CSVs for a given Pokechamp agent and produces a multi-pane
 
 from __future__ import annotations
 
-import argparse
+import sys
 from pathlib import Path
 
+# ---------------------------------------------------------------------------
+# Package bootstrap
+# ---------------------------------------------------------------------------
+_DIR = Path(__file__).parent.resolve()
+_REPORTING = _DIR.parent
+_EVAL = _REPORTING.parent
+_SINGLES = _EVAL.parent
+_SRC = _SINGLES.parent.parent
+_ROOT = _SRC.parent
+
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from .styling import apply_premium_style, finalize_plot, get_display_name, RD_YL_GN_PREMIUM, COLORS, get_category_color
+from p01_heuristics.s01_singles.evaluation.reporting.plots.styling import apply_premium_style, finalize_plot, get_display_name, RD_YL_GN_PREMIUM, COLORS, get_category_color
 
 DEFAULT_DATA_DIR = Path("data/1_vs_1/benchmarks/unified")
 

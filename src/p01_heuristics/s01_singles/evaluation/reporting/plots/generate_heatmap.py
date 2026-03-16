@@ -4,14 +4,30 @@ Can be pointed at any directory containing battle result CSVs to produce
 a high-fidelity win-rate heatmap for publications.
 """
 
-import argparse
+import sys
 from pathlib import Path
 
+# ---------------------------------------------------------------------------
+# Package bootstrap
+# ---------------------------------------------------------------------------
+_DIR = Path(__file__).parent.resolve()
+_REPORTING = _DIR.parent
+_EVAL = _REPORTING.parent
+_SINGLES = _EVAL.parent
+_SRC = _SINGLES.parent.parent
+_ROOT = _SRC.parent
+
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
+
+import argparse
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-from .styling import apply_premium_style, finalize_plot, get_display_name, RD_YL_GN_PREMIUM
+from p01_heuristics.s01_singles.evaluation.reporting.plots.styling import apply_premium_style, finalize_plot, get_display_name, RD_YL_GN_PREMIUM
 
 def generate_heatmap(
     data_dir: Path, 
