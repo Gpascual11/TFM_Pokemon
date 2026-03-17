@@ -169,6 +169,8 @@ async def _run_streaming(player, opponent, total_n: int, agent_name: str, opp_na
         "fainted_opp",
         "remaining_pokemon_opp",
         "total_hp_opp",
+        "team_us",
+        "team_opp",
     ]
 
     out_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -212,6 +214,7 @@ async def _run_streaming(player, opponent, total_n: int, agent_name: str, opp_na
                         "fainted_us": fainted,
                         "remaining_pokemon_us": len(b.team) - fainted,
                         "total_hp_us": round(sum(m.current_hp_fraction for m in b.team.values() if not m.fainted), 3),
+                        "team_us": "|".join(sorted({str(m.species) for m in b.team.values()})),
                     }
                 )
             if b.opponent_team:
@@ -223,6 +226,7 @@ async def _run_streaming(player, opponent, total_n: int, agent_name: str, opp_na
                         "total_hp_opp": round(
                             sum(m.current_hp_fraction for m in b.opponent_team.values() if not m.fainted), 3
                         ),
+                        "team_opp": "|".join(sorted({str(m.species) for m in b.opponent_team.values()})),
                     }
                 )
             rows.append(row)

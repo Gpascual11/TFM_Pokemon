@@ -15,8 +15,8 @@ Logic:
 from poke_env.player.battle_order import SingleBattleOrder
 from poke_env.battle.move import Move
 
-from ..core.base import BaseHeuristic2v2
-from ..core.common import calculate_base_damage, get_status_name
+from ...core.base import BaseHeuristic2v2
+from ...core.common import calculate_base_damage, get_status_name
 
 
 _OPP1 = 1

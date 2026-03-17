@@ -7,9 +7,9 @@ metrics for up to 4 Pokémon per side and exporting results to CSV format.
 from __future__ import annotations
 
 import asyncio
+import gc
 import logging
 import uuid
-import gc
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +50,7 @@ class BattleManager:
         data_dir: str | Path = "data",
         opponent: str = "random",
         run_id: str | None = None,
+        battle_format: str = "gen9randomdoublesbattle",
     ) -> None:
         self.version = version
         self.server_url = server_url
@@ -59,6 +60,7 @@ class BattleManager:
         self.data_dir = Path(data_dir)
         self.opponent = opponent
         self.run_id = run_id or str(uuid.uuid4())[:8]
+        self.battle_format = battle_format
 
     def run(self) -> Path:
         """Execute the full simulation (blocking)."""
@@ -69,14 +71,15 @@ class BattleManager:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         csv_path = (
             self.data_dir
-            / f"2_vs_2_{self.version}_vs_{self.opponent}_{self.run_id}.csv"
+            / f"{self.version}_vs_{self.opponent}_{self.run_id}.csv"
         )
 
-        config = ServerConfiguration(self.server_url, None)
+        config = ServerConfiguration(self.server_url, "https://play.pokemonsoftshowdown.com/action.php")
         common_kwargs: dict[str, Any] = {
-            "battle_format": "gen9randomdoublesbattle",
+            "battle_format": self.battle_format,
             "server_configuration": config,
             "max_concurrent_battles": self.concurrent_battles,
+            "strict_battle_tracking": False,
         }
 
         tag = self.run_id.replace("_", "")
