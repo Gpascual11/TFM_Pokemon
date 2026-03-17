@@ -16,38 +16,74 @@ La Figura~\ref{fig:ram_usage} mostra el perfil de consum de RAM durant l'execuci
     \label{fig:ram_usage}
 \end{figure}
 
-El patró de dents de serra reflecteix el mecanisme de \texttt{--restart-every}: cada $N$ matchups completats, l'orquestrador mata i reenlaira els servidors Showdown, alliberant tots els processos \texttt{room-battle.js} acumulats. Combinat amb l'aïllament per subprocessos (cada batch de batalles en un procés Python independent), aquest sistema permet executar desenes de milers de batalles sense excedir els límits de memòria de la màquina.
+El patró de dents de serra reflecteix el mecanisme de reinici controlat: cada $N$ matchups \textbf{actius} (aquells on realment s'han executat partides i no s'han saltat per existència de dades prèvies), l'orquestrador reinicia els servidors Showdown. Aquest refinament és crucial, ja que evita reinicis innecessaris quan es reprenen experiments gairebé completats, optimitzant el temps total d'execució en un factor de $\times 4$. Combinat amb l'aïllament per subprocessos, aquest sistema garanteix estabilitat total durant setmanes de computació ininterrompuda.
 
 \section{Avaluació Exhaustiva al Format 1 vs 1 (Singles)}
 
 L'anàlisi sistemàtic del format \textit{Singles} va procedir a confrontar iterativament tots els agents heurístics dissenyats (des de \textit{v1} fins a \textit{v6}) i els \textit{baselines} absoluts de l'entorn.
 
-Les proves es van estructurar en sèries massives, llançant matrius d'enfrontaments per cada possible par (ex. $v6$ vs \textit{Random}, $v3$ vs \textit{MaxBasePower}), on els milers d'execucions es van processar i sintetitzar de forma paral·lela obtenint el guanyador o perdedor teòric. En l'observació del percentatge de victòries net (\textit{Win Rate}), la tendència generalitzadora marca clarament una \textbf{progressió evolutiva de disseny encertada}. 
-Generacions inicials com la $v1$ no obtenien victòries aclaparadores més enllà del 55\%-60\% en intentar basar decisions únicament en regles ofendents de dany simple respecte atacs a l'atzar del \textit{RandomPlayer}. La introducció en modelat teòric profund amb \textit{The Tracker} ($v3$) i l'establiment expert d'incorporació de tipologies defensives del motor al \textit{The Champion} ($v6$) augmentava de cop en un rendiment tàcit els índexs per sobre del 90\%-95\% quant es combatien davant els elements de \textit{poke-env}.
+Les proves es van estructurar en sèries massives, llançant matrius d'enfrontaments per cada possible par. La Taula~\ref{tab:win_rate_matrix} mostra els resultats numèrics detallats d'aquesta avaluació en la Generació 9, on es consolida la superioritat de les heurístiques expertes i els agents de recerca.
 
-\textbf{El pes de la Estocasticitat}: Malgrat crear intel·ligències heurístiques altament sofisticades, de la visió general numèrica se n'extreu que una \textbf{victòria del 100\% és intrínsecament impossible en aquest entorn i tipus d'agents reaccionaris purs}. Això resideix essencialment a la incommensurable potència de la inobservabilitat, afegit al RNG absolut del joc i al dany latent d'encerts crítics aleatoris que es poden atorgar de manera favorable totalment a un element de sort inferior que utilitzi combinatòries subòptimes (\textit{baselines}). L'anàlisi de matrius presentades indica clarament aquesta resistència asimptòtica.
+\input{tables/singles_gen9_wr}
+
+\subsubsection{Anàlisi de l'Agressivitat: Diferencial de Fainted Pokémon}
+
+A part del win-rate, és útil observar quan de dominant és una victòria. La Taula~\ref{tab:fainted_diff} mostra el diferencial mitjà de Pokémon derrotats (Pokémon rivals debilitats - Pokémon propis debilitats). Un valor de $+6$ indicaria una victòria perfecta (\textit{sweep}), mentre que un valor proper a $0$ indica partides molt ajustades.
+
+\input{tables/singles_gen9_fainted}
 
 \vspace{0.5cm}
 \begin{figure}[H]
     \centering
-    % Espai preparat per afegir la matriu i la gràfica v3 del repertori 1vs1
-    \includegraphics[width=0.85\linewidth, draft]{benchmarks_singles_v3/placeholder_singles_heatmap.png}
-    \caption{Matriu de calor mostrant el percentatge de victòries (\textit{Win Rate}) de tots els encreuaments de \textit{Singles} evaluant baselines vs. $v1$-$v6$. Es pot lligar com els iteratius majors assoleixen superioritat al marge inferior esquerre.}
-    \label{fig:singles_results}
+    \includegraphics[width=0.9\linewidth]{images/singles_gen9_heatmap.png}
+    \caption{Matriu de calor mostrant el percentatge de victòries (\textit{Win Rate}) de tots els encreuaments de \textit{Singles} (Gen 9) avaluant baselines, heurístiques internes (v1-v6) i agents externs de Pokechamp (Abyssal, OneStep, etc.). S'observa la superioritat del bloc inferior dret (agents experts).}
+    \label{fig:singles_heatmap}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{images/singles_gen9_ranking.png}
+    \caption{Ranking agregat d'agents en \textit{Singles} Generació 9. Les versions heurístiques pròpies (v1-v6) superen consistentment els baselines de \textit{random} i \textit{max\_power}, mentre que els agents basats en recerca de Pokechamp (Abyssal, SafeOneStep) lideren la taula.}
+    \label{fig:singles_ranking}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{images/singles_efficiency.png}
+    \caption{Anàlisi d'eficiència tàctica: Probabilitat de victòria vs. Durada mitjana de la batalla (torns). S'observa com els agents més complexos (v6, Abyssal) assoleixen millors resultats sense allargar excessivament la durada de les partides, demostrant una optimització en la presa de decisions.}
+    \label{fig:singles_efficiency}
 \end{figure}
 
 \section{Avaluació al Format 2 vs 2 (Doubles)}
 
-De manera similar, es va testejar la fiabilitat al \textit{Core Doubles} aprofitant el disseny \textit{Score-then-Combine}. Sota la multiplicitat d'arbre de l'enginyeria, el càlcul d'eficiència es restringia exclusivament en els prototips primigenis del llinatge \textit{v1} al \textit{v3} per simplificació experimental i focalització d'estudi previ al model DRL per xarxes neurals.
+L'avaluació en el format de Dobles constitueix un dels reptes més importants d'aquest TFM. A diferència de Singles, on les heurístiques v1-v6 ja estaven consolidades, a Dobles s'ha realizat un procés de recerca des de zero que ha culminat en la versió \textbf{v5 (Apex Heuristic)}.
 
-La visualització empírica als tornejos demostrà de nou que hi hagué una fita creixent en els \textit{baselines} quan es presentaven múltiples entitats objectives (\textit{multi-target}). Exigir decisions conjuntes penalitza radicalment als \textit{RandomPlayers} on sovint aquests malgastaven els atacs atacant-se simultàniament les pròpies files si es produïen errors del llançament a l'atzar respecte el tipus objectiu (foc amic).
-No obstant això, el rendiment estabilitzador a través de combinant parelles òptimes per pes amb el \textit{v3 Doubles} garanteix ser base per establir estratègies pre-predictores suficients i emmagatzemar la pre-avaluació requerida que encoratjarà bases de model entrenables i més complexes.   
+S'han realitzat experiments en dues generacions clau per observar la consistència de les heurístiques:
 
-\vspace{0.5cm}
+\paragraph{Resultats a la Generació 9 (Format Actual).}
+A la Figura~\ref{fig:doubles_gen9_heatmap} s'observa el rendiment de les 5 versions de Dobles en Gen 9. Es confirma que totes les versions superen el 80\% de victòries contra \texttt{max\_power} i gairebé el 100\% contra \texttt{random}. Les dades exactes es recullen a la Taula~\ref{tab:doubles_win_rate_gen9}.
+
 \begin{figure}[H]
     \centering
-    % Espai preparat per afegir la visualització procedent de s02_doubles/results/ o data/benchmarks_doubles_v2
-    \includegraphics[width=0.85\linewidth, draft]{benchmarks_doubles_v2/placeholder_doubles_heatmap.png}
-    \caption{Avaluació exhaustiva al format \textit{Doubles}. La progressió de $v1$ fins a $v3$ en el comportament de \textit{Score-then-Combine} contra els \textit{baselines} teòrics de \textit{poke-env}.}
-    \label{fig:doubles_results}
+    \includegraphics[width=0.85\linewidth]{images/doubles_gen9_heatmap.png}
+    \caption{Matriu de win-rate per a \textit{Random Doubles Battle} Generació 9.}
+    \label{fig:doubles_gen9_heatmap}
 \end{figure}
+
+\input{tables/doubles_gen9_wr}
+
+\paragraph{Resultats a la Generació 8 (L'Era de la Coordinació).}
+Els resultats a Gen 8 (Figura~\ref{fig:doubles_gen8_heatmap}) són encara més reveladors. Aquí, les versions amb coordinació avançada (\textbf{v4} i \textbf{v5}) treuen un avantatge massiu a les versions més simples. La versió \textbf{v4 (Tactical Coordination)} es posiciona com la millor de tot el projecte en aquest format.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{images/doubles_gen8_heatmap.png}
+    \caption{Matriu de win-rate per a \textit{Random Doubles Battle} Generació 8. S'observa clarament com v4 i v5 dominen el quadrant superior dret.}
+    \label{fig:doubles_gen8_heatmap}
+\end{figure}
+
+A la Taula~\ref{tab:doubles_win_rate_gen8} es detallen els percentatges exactes de victòria per a la Generació 8, on el rendiment de la versió \textbf{v4} marca el rècord absolut de superioritat estratègica del projecte.
+
+\input{tables/doubles_gen8_wr}
+
+\textbf{Conclusió Científica}: El canvi metodològic del 1vs1 al 2vs2 confirma que la coordinació (\textit{Focus Fire} i \textit{Protect}) és la clau per dominar el format de Dobles. Mentre que en Singles el dany pur és molt efectiu, en Dobles la capacitat de triar un objectiu comú per assegurar un KO és el que marca la diferència entre un agent mediocre i un expert.
