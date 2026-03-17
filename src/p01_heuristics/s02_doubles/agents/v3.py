@@ -19,7 +19,7 @@ _OPP2 = 2
 _EMPTY = 0
 
 
-class HeuristicV6Doubles(HeuristicV2Doubles):
+class HeuristicV3Doubles(HeuristicV2Doubles):
     """V2 switching + weather/terrain/priority move scoring per slot."""
 
     @property

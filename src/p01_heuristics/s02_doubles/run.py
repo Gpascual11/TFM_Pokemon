@@ -87,19 +87,19 @@ def _build_parser() -> argparse.ArgumentParser:
         default=16,
         help="Max concurrent battles per process (default: 16).",
     )
-    parser.add_argument(
-        "-p",
-        "--ports",
-        type=int,
-        nargs="+",
-        default=[8000],
-        help="Server port(s) (default: 8000).",
-    )
+    parser.add_argument("-p", "--ports", type=int, default=1, help="Number of ports to use (8000+)")
+    parser.add_argument("--start-port", type=int, default=8000, help="Initial port number")
     parser.add_argument(
         "--data-dir",
         type=str,
         default="data/2_vs_2/runs",
         help="Output directory (default: data/2_vs_2/runs).",
+    )
+    parser.add_argument(
+        "--battle-format",
+        type=str,
+        default="gen9randomdoublesbattle",
+        help="Showdown battle format (default: gen9randomdoublesbattle).",
     )
     parser.add_argument(
         "--log-level",
@@ -140,27 +140,30 @@ def main(argv: list[str] | None = None) -> None:
     logging.getLogger("poke_env").setLevel(logging.WARNING)
 
     _print_banner(args)
+    ports = [args.start_port + i for i in range(args.ports)]
 
-    if len(args.ports) == 1:
+    if len(ports) == 1:
         mgr = BattleManager(
             version=args.version,
-            server_url=f"ws://127.0.0.1:{args.ports[0]}/showdown/websocket",
+            server_url=f"ws://127.0.0.1:{ports[0]}/showdown/websocket",
             total_games=args.total_games,
             batch_size=args.batch_size,
             concurrent_battles=args.concurrent_battles,
             data_dir=args.data_dir,
             opponent=args.opponent,
+            battle_format=args.battle_format,
         )
         csv_path = mgr.run()
     else:
         launcher = ProcessLauncher(
             version=args.version,
-            ports=args.ports,
+            ports=ports,
             total_games=args.total_games,
             batch_size=args.batch_size,
             concurrent_battles=args.concurrent_battles,
             data_dir=args.data_dir,
             opponent=args.opponent,
+            battle_format=args.battle_format,
         )
         csv_path = launcher.launch()
 

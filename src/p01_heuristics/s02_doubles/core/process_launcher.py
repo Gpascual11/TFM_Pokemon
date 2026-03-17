@@ -13,8 +13,8 @@ import signal
 import socket
 import sys
 import uuid
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 import pandas as pd
 
@@ -41,6 +41,7 @@ def _worker(
     data_dir: str,
     opponent: str,
     run_id: str,
+    battle_format: str = "gen9randomdoublesbattle",
     worker_index: int = 0,
 ) -> None:
     """Entry point for each child process."""
@@ -80,7 +81,7 @@ def _worker(
         )
         sys.exit(1)
 
-    print(f"✅ [Process {worker_index}] Connected to server on port {port}", flush=True)
+    # print(f"✅ [Port {port}] Connected", flush=True)
 
     mgr = BattleManager(
         version=version,
@@ -91,11 +92,12 @@ def _worker(
         data_dir=data_dir,
         opponent=opponent,
         run_id=f"{run_id}_p{port}",
+        battle_format=battle_format,
     )
 
     try:
-        csv_path = mgr.run()
-        print(f"\n✅ [Process {worker_index}] Finished → {csv_path}", flush=True)
+        mgr.run()
+        print(f"      [{version} vs {opponent}] Port {port}: Completed batch.", flush=True)
     except Exception as exc:
         print(
             f"\n❌ [Process {worker_index}] CRASHED on port {port}: {exc}", flush=True
@@ -134,6 +136,7 @@ class ProcessLauncher:
         concurrent_battles: int = 16,
         data_dir: str | Path = "data",
         opponent: str = "random",
+        battle_format: str = "gen9randomdoublesbattle",
     ) -> None:
         self.version = version
         self.ports = list(ports)
@@ -142,6 +145,7 @@ class ProcessLauncher:
         self.concurrent_battles = concurrent_battles
         self.data_dir = Path(data_dir)
         self.opponent = opponent
+        self.battle_format = battle_format
         self.run_id = str(uuid.uuid4())[:8]
 
     def launch(self) -> Path:
@@ -155,13 +159,11 @@ class ProcessLauncher:
 
     def _preflight_check(self) -> None:
         """Verify all Showdown servers are reachable before spawning."""
-        print("\n🔍 Checking server connectivity…")
+        # Quiet check
         all_ok = True
         for port in self.ports:
-            ok = _check_port("127.0.0.1", port)
-            status = "✅ OK" if ok else "❌ UNREACHABLE"
-            print(f"   Port {port}: {status}")
-            if not ok:
+            if not _check_port("127.0.0.1", port):
+                print(f"   Port {port}: ❌ UNREACHABLE")
                 all_ok = False
 
         if not all_ok:
@@ -173,7 +175,8 @@ class ProcessLauncher:
                 f"Cannot launch: not all Showdown servers are reachable. "
                 f"Checked ports: {self.ports}"
             )
-        print()
+        if not all_ok:
+            pass # Already printed individual port errors
 
     def _spawn_workers(self) -> list:
         """Create and start one child process per port."""
@@ -182,7 +185,7 @@ class ProcessLauncher:
         games_per_port = [base + (1 if i < extra else 0) for i in range(n)]
 
         processes = []
-        for idx, (port, games) in enumerate(zip(self.ports, games_per_port)):
+        for idx, (port, games) in enumerate(zip(self.ports, games_per_port, strict=True)):
             if games == 0:
                 continue
             p = _mp_ctx.Process(
@@ -196,6 +199,7 @@ class ProcessLauncher:
                     "data_dir": str(self.data_dir),
                     "opponent": self.opponent,
                     "run_id": self.run_id,
+                    "battle_format": self.battle_format,
                     "worker_index": idx,
                 },
                 daemon=False,
@@ -241,10 +245,10 @@ class ProcessLauncher:
 
     def _merge_results(self) -> Path:
         """Concatenate all per-process CSVs into one merged file."""
-        pattern = f"2_vs_2_{self.version}_vs_{self.opponent}_{self.run_id}_p*.csv"
+        pattern = f"{self.version}_vs_{self.opponent}_{self.run_id}_p*.csv"
         part_files = sorted(self.data_dir.glob(pattern))
 
-        merged_path = self.data_dir / f"2_vs_2_{self.version}_vs_{self.opponent}.csv"
+        merged_path = self.data_dir / f"{self.version}_vs_{self.opponent}.csv"
 
         if not part_files:
             logger.warning("No per-process CSVs found matching '%s'", pattern)

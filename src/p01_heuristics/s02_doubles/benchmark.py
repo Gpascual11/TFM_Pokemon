@@ -1,76 +1,78 @@
-"""Benchmark Matrix V2 for 2-vs-2 Heuristics.
-
-Calculates win rates, average turns, and detailed team metrics for all doubles matchups.
-Includes automatic server management and checkpoint/resume support.
-"""
-
-import argparse
-import asyncio
-import json
-import gc
-import subprocess
-import time
-import pandas as pd
+import sys
 from pathlib import Path
-from tabulate import tabulate
 
 # Dynamic path resolution to find core modules
-import os
-import sys
-
 _this_dir = Path(__file__).parent.resolve()
 _src_dir = _this_dir.parent.parent  # src
+_root_dir = _src_dir.parent
 if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 
-# Absolute imports from the package
+import argparse
+import gc
+import subprocess
+import time
+
+import pandas as pd
 from p01_heuristics.s02_doubles.core.factory import HeuristicFactory
-from p01_heuristics.s02_doubles.core.battle_manager import BattleManager
 from p01_heuristics.s02_doubles.core.process_launcher import ProcessLauncher
+from tabulate import tabulate
+
+DEFAULT_DATA_DIR = "data/2_vs_2/benchmarks/unified"
 
 
-def run_matchup(
-    v_a: str, v_b: str, games: int, ports: list[int], data_dir: Path
-) -> dict:
-    """Run a specific matchup and return its summary metrics."""
-    print(f"\n⚔️  MATCHUP: {v_a} vs {v_b} ({games} games)...")
+def get_csv_games(csv_path: Path) -> int:
+    """Helper to count games in an existing CSV."""
+    if not csv_path.exists():
+        return 0
+    try:
+        df = pd.read_csv(csv_path)
+        return len(df)
+    except:
+        return 0
 
-    # Run the simulation
-    launcher = ProcessLauncher(
-        version=v_a,
-        opponent=v_b,
-        total_games=games,
-        ports=ports,
-        data_dir=str(data_dir),
-        batch_size=250,  # Safe batch size for memory
-    )
-    csv_path = launcher.launch()
+def run_matchup(v_a: str, v_b: str, games: int, ports: list[int], data_dir: Path, battle_format: str) -> tuple[dict, int]:
+    """Run a specific matchup and return its summary metrics and games actually launched."""
+    # Check if we need more games
+    csv_path = data_dir / f"{v_a}_vs_{v_b}.csv"
+    existing = get_csv_games(csv_path)
+    
+    games_ran = 0
+    if existing >= games:
+        print(f"      [doubles] {v_a} vs {v_b}: Found {existing} games. No new battles needed.")
+    else:
+        to_run = games - existing
+        print(f"      [doubles] {v_a} vs {v_b}: Starting {to_run} more games (Total: {games})...")
+        
+        launcher = ProcessLauncher(
+            version=v_a,
+            opponent=v_b,
+            total_games=to_run,
+            ports=ports,
+            data_dir=str(data_dir),
+            batch_size=250,
+            battle_format=battle_format,
+        )
+        launcher.launch()
+        games_ran = to_run
 
-    # Calculate metrics from the merged CSV
+    # Final tally
     df = pd.read_csv(csv_path)
-
     metrics = {
         "win_rate": (df["won"].sum() / len(df)) * 100,
         "avg_turns": df["turns"].mean(),
-        "avg_fainted_opp": df["fainted_opp"].mean()
-        if "fainted_opp" in df.columns
-        else 0.0,
-        "avg_hp_remaining": df["total_hp_us"].mean()
-        if "total_hp_us" in df.columns
-        else 0.0,
+        "avg_fainted_opp": df["fainted_opp"].mean() if "fainted_opp" in df.columns else 0.0,
+        "avg_hp_remaining": df["total_hp_us"].mean() if "total_hp_us" in df.columns else 0.0,
         "total_games": int(len(df)),
     }
-
-    # Clean up large objects and trigger GC
     del df
     gc.collect()
-
-    return metrics
+    return metrics, games_ran
 
 
 def restart_servers(n_ports: int):
     """Kills existing servers and starts fresh ones."""
-    print(f"\n♻️  RESTARTING SHOWDOWN SERVERS (Clearing Node.js RAM)...")
+    print("\n♻️  RESTARTING SHOWDOWN SERVERS (Clearing Node.js RAM)...")
     try:
         subprocess.run(["pkill", "-f", "pokemon-showdown"], check=False)
         time.sleep(2)
@@ -78,30 +80,29 @@ def restart_servers(n_ports: int):
             ["bash", "src/p05_scripts/p05_launch_custom_servers.sh", str(n_ports)],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            cwd=str(_root_dir),
         )
-        print("⏳ Waiting 10 seconds for servers to initialize...")
-        time.sleep(10)
+        print("⏳ Waiting 20 seconds for servers to initialize...")
+        time.sleep(20)
     except Exception as e:
         print(f"❌ Failed to restart servers: {e}")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Extended Doubles Benchmark Matrix V2."
-    )
+    parser = argparse.ArgumentParser(description="Extended Doubles Benchmark Matrix V2.")
     parser.add_argument("total_games", type=int, help="Total games per matchup.")
+    parser.add_argument("--ports", type=int, default=4, help="Number of ports to use (8000+)")
+    parser.add_argument("--start-port", type=int, default=8000, help="Initial port number")
     parser.add_argument(
-        "--ports",
-        type=int,
-        nargs="+",
-        default=[8000, 8001, 8002, 8003],
-        help="Server ports.",
+        "--battle-format",
+        type=str,
+        default="gen9randomdoublesbattle",
+        help="Showdown battle format (e.g. gen9randomdoublesbattle).",
     )
-    parser.add_argument("--resume", action="store_true", help="Resume from checkpoint.")
     parser.add_argument(
         "--data-dir",
         type=str,
-        default="data/2_vs_2/benchmarks/unified",
+        default=DEFAULT_DATA_DIR,
         help="Data directory for per-matchup CSVs.",
     )
     parser.add_argument(
@@ -113,86 +114,45 @@ def main():
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir)
+    # If using the default directory, make it format-specific
+    if args.data_dir == DEFAULT_DATA_DIR:
+        data_dir = data_dir.parent / f"unified_{args.battle_format}"
+
     data_dir.mkdir(parents=True, exist_ok=True)
-    checkpoint_file = data_dir / "checkpoint_v2.json"
 
     # Define Participants
     versions = HeuristicFactory.available_versions()
     rows_v = versions
     cols_v = versions + ["random", "max_power", "simple_heuristic"]
 
-    # Initialize or Load Checkpoint
-    checkpoint_data = {}
-    if args.resume and checkpoint_file.exists():
-        print(f"🔄 Resuming from checkpoint: {checkpoint_file}")
-        with open(checkpoint_file, "r") as f:
-            checkpoint_data = json.load(f)
+    print(f"🚀 Starting Doubles Benchmark: {len(rows_v) * len(cols_v)} matchups total.")
+    print(f"🔹 Output directory: {data_dir}")
 
-    print(f"🚀 Starting Doubles Benchmark Matrix V2")
-    print(f"🔹 Folder: {data_dir}")
-    print(f"📈 Total Matchups: {len(rows_v) * len(cols_v)}")
-
-    restart_servers(len(args.ports))
+    ports = [args.start_port + i for i in range(args.ports)]
+    restart_servers(len(ports))
 
     matchup_count = 0
+    active_since_restart = 0
     results_list = []
 
     for v_a in rows_v:
         for v_b in cols_v:
-            match_key = f"{v_a}_vs_{v_b}"
+            # Print a clean header for the matchup
+            print(f"\n⚔️  [{matchup_count+1}/{len(rows_v)*len(cols_v)}] Executing {v_a} vs {v_b}...")
 
-            if matchup_count > 0 and matchup_count % 5 == 0:
-                restart_servers(len(args.ports))
-
-            # Skip logic
-            if args.resume:
-                if match_key in checkpoint_data:
-                    print(f"⏩ Skipping {v_a} vs {v_b} (found in checkpoint)")
-                    results_list.append(
-                        {"version": v_a, "opponent": v_b, **checkpoint_data[match_key]}
-                    )
-                    matchup_count += 1
-                    continue
-
-                # Check for completed file regardless of JSON
-                csv_path = data_dir / f"2_vs_2_{v_a}_vs_{v_b}.csv"
-                if csv_path.exists():
-                    try:
-                        df_check = pd.read_csv(csv_path)
-                        if len(df_check) >= args.total_games:
-                            metrics = {
-                                "win_rate": (df_check["won"].sum() / len(df_check))
-                                * 100,
-                                "avg_turns": df_check["turns"].mean(),
-                                "avg_fainted_opp": df_check["fainted_opp"].mean()
-                                if "fainted_opp" in df_check.columns
-                                else 0.0,
-                                "avg_hp_remaining": df_check["total_hp_us"].mean()
-                                if "total_hp_us" in df_check.columns
-                                else 0.0,
-                                "total_games": int(len(df_check)),
-                            }
-                            print(
-                                f"⏩ Skipping {v_a} vs {v_b} (Found complete CSV: {len(df_check)} games)"
-                            )
-                            checkpoint_data[match_key] = metrics
-                            results_list.append(
-                                {"version": v_a, "opponent": v_b, **metrics}
-                            )
-                            matchup_count += 1
-                            continue
-                    except:
-                        pass
+            # Only restart if we've actually run 5 active matchups since the last restart
+            if active_since_restart >= 5:
+                restart_servers(len(ports))
+                active_since_restart = 0
 
             # Run Matchup
-            metrics = run_matchup(v_a, v_b, args.total_games, args.ports, data_dir)
-            checkpoint_data[match_key] = metrics
+            metrics, games_ran = run_matchup(v_a, v_b, args.total_games, ports, data_dir, args.battle_format)
             results_list.append({"version": v_a, "opponent": v_b, **metrics})
+            
+            if games_ran > 0:
+                active_since_restart += 1
+                
             matchup_count += 1
-
-            # Save checkpoint
-            with open(checkpoint_file, "w") as f:
-                json.dump(checkpoint_data, f, indent=4)
 
     # Final Export
     if results_list:
@@ -204,9 +164,7 @@ def main():
         print("\n" + "=" * 80)
         print("🏆 DOUBLES WIN RATE MATRIX (%)")
         print("=" * 80)
-        pivot_wr = final_df.pivot(
-            index="version", columns="opponent", values="win_rate"
-        )
+        pivot_wr = final_df.pivot(index="version", columns="opponent", values="win_rate")
         print(tabulate(pivot_wr, headers="keys", tablefmt="psql", floatfmt=".1f"))
         print("=" * 80)
 
