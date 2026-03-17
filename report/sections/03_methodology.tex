@@ -32,9 +32,18 @@ La llibreria poke-env~\cite{poke_env} tradueix els missatges WebSocket del servi
 
 \begin{itemize}
     \item \textbf{Classe \texttt{Battle}}: Conté tot l'estat observable ---~Pokémon actius, vida restant, moviments disponibles, condicions de camp, registre d'accions passades~--- com a atributs directament accesibles.
-    \item \textbf{Classe \texttt{Player}}: Classe base per definir agents. El mètode \texttt{choose\_move(battle)} rep l'estat i retorna l'acció seleccionada.
+    \item \textbf{Classe \texttt{Player}}: Classe base per definir agents. El mètode \texttt{choose_move(battle)} rep l'estat i retorna l'acció seleccionada.
     \item \textbf{Compatibilitat Gym}: Proporciona interfície compatible amb l'estàndard \textit{OpenAI Gym}~\cite{brockman2016openai}, habilitant l'ús directe d'algorismes de RL com DQN o PPO.
     \item \textbf{Gestió asíncrona}: Tota la comunicació es gestiona amb \texttt{asyncio} de Python, permetent concurrència nativa.
+\end{itemize}
+
+\subsection{Discrepàncies Técniques: Poke-env vs Pokechamp}
+
+Durant el desenvolupament, s'ha identificat una dicotomia metodològica entre la versió oficial de \textit{poke-env} i la versió utilitzada pel repositori \textit{Pokechamp}. Aquesta distinció és crítica per a la reproductibilitat:
+
+\begin{itemize}
+    \item \textbf{Compatibilitat d'Atributs}: La versió de \textit{Pokechamp} utilitza una branca antiga de la llibreria que accedeix a atributs de batalla (com \texttt{active_pokemon}) de forma diferent a la versió \texttt{1.3+} oficial. Això ha obligat a crear una capa d'abstracció a \texttt{BattleManager} per garantir que els agents de ambdues procedències puguin coexistir en el mateix benchmark.
+    \item \textbf{Seguiment Estricte (Strict Tracking)}: Mentre que \textit{Pokechamp} ignora certs errors de protocol de Showdown, \textit{poke-env} oficial llança excepcions d'assequibilitat (\textit{Assertions}) quan detecta moviments inesperats. Com s'ha mencionat anteriorment, la decisió metodològica ha estat relaxar aquest seguiment (\texttt{strict_battle_tracking=False}) per permetre la compatibilitat amb la lògica de tercers i assegurar la continuïtat de les simulacions de llarga durada.
 \end{itemize}
 
 \subsection{Variables d'Estat Disponibles}
@@ -65,18 +74,38 @@ L'objecte \texttt{Battle} que rep l'agent cada torn exposa les següents variabl
 
 \textbf{Informació oculta}: En tot moment, l'agent \textbf{desconeix} les EVs, IVs, Nature, moviments no revelats, objecte i habilitat dels Pokémon rivals, així com l'ordre dels Pokémon que l'oponent manté a la reserva. Això confirma formalment que l'entorn és un POMDP.
 
-\subsection{Infraestructura Paral·lela de Servidors}
+\subsection{Infraestructura Paral·lela i Orquestració Distribuïda}
 
-L'execució de benchmarks estadísticament significatius (centenars de batalles per parella d'agents) amb un sol servidor resulta massa lenta. Per solucionar-ho, s'ha dissenyat una infraestructura d'orquestració pròpia (situada a \texttt{src/p03\_scripts}) que permet:
+L'execució de benchmarks estadísticament significatius (milers de partides per parella d'agents) amb un sol servidor resulta inviable per la latència del protocol WebSocket i el consum de CPU de Node.js. Per solucionar-ho, s'ha dissenyat una infraestructura d'orquestració distribuïda (situada a \texttt{src/p01_heuristics/s02_doubles/core/}) que implementa els següents principis metodològics:
 
 \begin{enumerate}
-    \item \textbf{Llançament massiu de servidors}: Aixecar dinàmicament múltiples instàncies de Showdown en ports consecutius (ex.\ 8000, 8001, 8002...), deshabilitant protocols de \textit{login} innecessaris.
-    \item \textbf{Distribució d'agents}: El codi orquestrador Python llança tasques asíncrones massives i distribueix les batalles entre els ports disponibles.
-    \item \textbf{Gestió de memòria}: Neteja manual del Garbage Collector després de cada batch de partides per evitar fuites de memòria dels processos Node.js.
-    \item \textbf{Checkpoints de represa}: Emmagatzematge en fitxers JSON del progrés de cada parella d'agents, permetent reprendre l'execució si s'interromp.
+    \item \textbf{Multiprocessament Simètric}: Es llança una instància independent de Showdown per cada nucli de CPU disponible (o segons el paràmetre \texttt{--ports}). Cada port (8000, 8001...) actua com un node de computació aïllat.
+    \item \textbf{Batches i Concurrència}: Les partides es divideixen en \textit{batches} (paquets de 100-200 partides). Dins de cada batch, s'utilitza la capacitat asíncrona de \textit{poke-env} per gestionar múltiples batalles simultànies (\texttt{max_concurrent_battles}), optimitzant el \textit{throughput} total del sistema.
+    \item \textbf{Cicle de Vida del Servidor (Restart Logic)}: S'ha observat que els servidors Showdown acumulen memòria de forma incremental a causa de la fragmentació del Garbage Collector de Node.js. Per garantir la reproductibilitat i prevenir bloquejos per \textit{Out of Memory} (OOM), s'ha implementat una lògica de reinici automàtic: el servidor es reinicia completament cada N matchups \textit{actius} (on s'han jugat partides noves).
+    \item \textbf{Robustesa davant Estats Invàlids}: En versions modernes de Pokémon (Gen 8 i 9), moviments complexos com \textit{Magic Bounce} o \textit{Copycat} poden generar inconsistències en el seguiment de l'estat. Metodològicament, s'ha optat per desactivar el \texttt{strict_battle_tracking} en els benchmarks massius per evitar la interrupció del workflow davant d'errors menors de la llibreria base, prioritzant la completesa de l'experiment (success rate del 100\%).
 \end{enumerate}
 
-Aquesta infraestructura permet executar centenars de batalles simultànies, cosa que resulta vital tant per al benchmarking heurístic com per a la futura recopilació d'experiència dels algorismes de RL.
+Aquesta infraestructura ha permès augmentar la velocitat d'avaluació en un factor de $\times 4$ respecte a implementacions seqüencials tradicionals, permetent la recopilació de dades massives necessàries per a aquest TFM.
+
+\begin{figure}[h]
+    \centering
+    \begin{tikzpicture}[node distance=2cm, font=\small]
+        \node (main) [rectangle, draw, fill=blue!10, text width=3cm, align=center] {Orquestrador Python \\ (Main Batch Loop)};
+        \node (sub1) [rectangle, draw, fill=green!10, below left of=main, xshift=-1cm, text width=2cm, align=center] {Port 8000 \\ (Worker 1)};
+        \node (sub2) [rectangle, draw, fill=green!10, below left of=main, xshift=1.5cm, text width=2cm, align=center] {Port 8001 \\ (Worker 2)};
+        \node (dots) [below of=main, yshift=0.5cm] {...};
+        \node (subN) [rectangle, draw, fill=green!10, below right of=main, xshift=1cm, text width=2cm, align=center] {Port 800N \\ (Worker N)};
+        
+        \draw [->, thick] (main) -- (sub1);
+        \draw [->, thick] (main) -- (sub2);
+        \draw [->, thick] (main) -- (subN);
+        
+        \node (restart) [circle, draw, fill=red!10, right of=main, xshift=3cm, text width=2cm, align=center] {Restart \\ Logic};
+        \draw [<->, dashed] (main) -- (restart);
+    \end{tikzpicture}
+    \caption{Esquema de la infraestructura distribuïda i paral·lela.}
+    \label{fig:infraestructura}
+\end{figure}
 
 
 % ============================================================
@@ -97,7 +126,16 @@ Cada generació de jocs de Pokémon defineix un conjunt diferent de regles, esp�
 
 Per gestionar aquesta variabilitat, l'arquitectura del projecte s'ha dissenyat per ser flexible: el format i la generació es passen com a paràmetres configurables, permetent entrenar i avaluar agents en qualsevol combinació.
 
-\subsection{Singles (1 vs 1) vs. Doubles (2 vs 2)}
+\subsection{Selecció de Generacions i Verificació de Formats}
+
+El projecte s'ha dissenyat per ser agnòstic a la generació, però l'avaluació real depèn de la disponibilitat de formats al servidor Showdown. Durant la fase d'experimentació, es va dur a terme una auditoria dels formats suportats:
+
+\begin{itemize}
+    \item \textbf{Generacions 8 i 9}: Suporten nativament el format \texttt{Random Doubles Battle}, la qual cosa permet una avaluació directa de les heurístiques contra baselines estàndard.
+    \item \textbf{Generació 7}: Tot i ser una generació d'alt interès competitiu, es va descobrir que el format oficial de \textit{Random Doubles} no està habilitat per defecte en els servidors locals de Showdown (estant limitat a Singles).
+\end{itemize}
+
+Aquesta limitació tècnica va portar a la decisió metodològica de centrar el gruix de l'estudi en les **Generacions 8 i 9**, on les dades són directament comparables amb l'ecosistema competitiu actual.
 
 La diferència de complexitat entre formats és considerable:
 
@@ -129,7 +167,7 @@ Tot problema de RL ha d'estar encapsulat formalment per poder ser processat per 
 
 \subsection{Espai d'Estats (S)}
 
-El conjunt $S$ agrupa tota la informació observable per l'agent en un torn donat. Això constitueix un entorn parcialment observable (POMDP), on l'agent només accedeix a una observació $\mathbf{O}_t \in \mathbb{R}^d$ que resumeix:
+El conjunt $S$ agrupa tota la informació observable per l'agent en un torn donat. Això constitueix un entorn parcialment observable (POMDP), on l'agent només accedeix a una observació $\mathbf{O}\_t \in \mathbb{R}^d$ que resumeix:
 
 \begin{itemize}
     \item Vida (HP) restant de tots els Pokémon visibles (propis i rivals).
@@ -233,16 +271,69 @@ Aquest disseny experimental garanteix que qualsevol diferència de rendiment obs
 
 El desplegament d'agents sobre \textit{Showdown} s'ha estructurat metodològicament en dues grans fases consecutives per garantir una monitorització i isolació de variables controlada. 
 
-\subsection{Fase 1: Models de Regles Expertes (Heurístiques)}
-Abans de submergir el codi en hiperparàmetres de \textit{Machine Learning}, la prioritat metodològica ha estat dissenyar models \textbf{heurístics propis} basats en regles de decisió expertes (arbres ``If-Else'' avançats). Aquest acostament primari ha complert un triple propòsit fonamental:
+\subsection{Fase 1: Disseny de la Lògica de Decisió Heurística}
+
+Abans de procedir amb arquitectures d'aprenentatge automàtic, s'ha dissenyat un sistema d'heurístiques expertes. L'objectiu no és només crear un agent fort, sinó \textbf{formalitzar matemàticament el coneixement clàssic del combat Pokémon} per servir com a base de dades i mètrica de comparació (\textit{Baseline}).
+
+\subsubsection{Metodologia Heurística 1vs1 (Singles)}
+La lògica de decisió s'ha dividit en mòduls incrementals que l'agent avalua a cada torn:
 \begin{itemize}
-    \item \textbf{Validació de la Infraestructura}: Funcionar com a prova de concepte de l'entorn (PoC) per garantir que el nostre orquestrador de servidors asíncrons llegia i enviava decisions sense caigudes de memòria (\textit{Memory Leaks} de Node.js) processant milers d'estats per minut.
-    \item \textbf{Depuració de la Lògica Numèrica}: Comprovar físicament que l'accés a les variables d'estat de \textit{poke-env} (HP, clima, efectes secundaris actius) convergia en comportaments teòrics òptims.
-    \item \textbf{Desenvolupar el Límit de Control Propi (Baseline Suprem)}: Mitjançant l'evolució iterativa d'aquestes heurístiques, el projecte ha consolidat un ``Límit de Control Expert''. L'objectiu últim serà llançar futurs agents neuronals contra aquesta heurística madura, forçant la xarxa neuronal a superar raonament matemàtic tancat creat per disseny expert.
+    \item \textbf{Estadística i Dany}: Càlcul de dany estimat basat en la formula oficial, ponderant Atac/Defensa, bonificació per tipus (STAB) i resistències de l'oponent.
+    \item \textbf{Consciència d'Estat (Utility)}: Assignació de pesos extra a moviments que generen estats alterats (Burn, Paralysis) segons la vulnerabilitat del rival.
+    \item \textbf{Lògica de Pivot (Switching)}: Metodologia per decidir quan un "canvi" és millor que un "atac". Això es formalitza avaluant si el dany rebut en el proper torn serà superior a un llindar crític i si existeix un aliat al banc amb una resistència de tipus favorable.
 \end{itemize}
 
-\subsection{Fase 2: Models d'Aprenentatge Profund}
-Una vegada validada l'arquitectura i disposant del \textit{Baseline Expert}, la segona gran fase de la recerca serà la substitució de la codificació dura per arquitectures d'aprenentatge. L'eix científic del TFM assoleix el seu màxim pragmatisme avaluant si algorismes com DQN o PPO poden descobrir per si sols les normes causals que la Fase~1 programava explícitament (Taula de Tipus, STAB, predicció de canvis).
+\subsubsection{Metodologia Heurística 2vs2 (Doubles)}
+El format de Dobles introdueix el problema de la \textbf{Coordinació Espacial}. No n'hi ha prou amb triar la millor acció per a cada slot individualment; cal que ambdues accions maximitzin la sinergia global. S'ha implementat el patró \textbf{"Score-then-Combine"}:
+
+\begin{figure}[h]
+    \centering
+    \begin{tikzpicture}[node distance=1.5cm, auto]
+        % Nodes
+        \node (start) [rectangle, draw, rounded corners, fill=gray!10] {Inici del Torn};
+        \node (obs) [rectangle, draw, below of=start] {Observació de l'Estat (4 Pokémon)};
+        \node (score1) [rectangle, draw, fill=orange!10, below left of=obs, xshift=-1.5cm, yshift=-1cm, text width=2.5cm, align=center] {Scoring Pokémon 1 (4 atacs + 5 switches)};
+        \node (score2) [rectangle, draw, fill=orange!10, below right of=obs, xshift=1.5cm, yshift=-1cm, text width=2.5cm, align=center] {Scoring Pokémon 2 (4 atacs + 5 switches)};
+        \node (cartesian) [rectangle, draw, fill=purple!10, below of=obs, yshift=-3.5cm, text width=4cm, align=center] {Producte Cartesià de Combinacions (fins a 81)};
+        \node (rules) [rectangle, draw, fill=blue!10, below of=cartesian, text width=5cm, align=center] {Aplicació de Sinergies \\ (Focus Fire, Protect, Residuals)};
+        \node (best) [rectangle, draw, rounded corners, fill=green!10, below of=rules] {Millor Parella d'Accions};
+
+        % Arrows
+        \draw [->] (start) -- (obs);
+        \draw [->] (obs) -| (score1.north);
+        \draw [->] (obs) -| (score2.north);
+        \draw [->] (score1.south) |- (cartesian.west);
+        \draw [->] (score2.south) |- (cartesian.east);
+        \draw [->] (cartesian) -- (rules);
+        \draw [->] (rules) -- (best);
+    \end{tikzpicture}
+    \caption{Flux de decisió del motor \textit{Score-then-Combine} per a format Dobles.}
+    \label{fig:score_then_combine}
+\end{figure}
+
+\begin{enumerate}
+    \item \textbf{Fase de Scoring}: Es puntua cada possible moviment d'atac o canvi per als dos Pokémon per separat.
+    \item \textbf{Fase de Combinació}: L'agent avalua totes les combinacions possibles (fins a 81 en alguns torns) i aplica regles de sinergia:
+    \begin{itemize}
+        \item \textbf{Focus Fire}: Si ambdós Pokémon ataquen el mateix objectiu, reben un bonus si la suma de dany garanteix un KO (evitant el malbaratament d'atacs).
+        \item \textbf{Protecció Selectiva}: Si un Pokémon està en una posició vulnerable (poca vida o desavantatge de tipus), el sistema avalua si "Protegir-se" mentre l'aliat ataca és més rendible que atacar directament.
+        \item \textbf{Mitigació de Residus}: Penalització si ambdós Pokémon ataquen a un rival que moriria amb un sol atac, incentivant que el segon Pokémon ataqui a l'altre oponent.
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Fase 2: Models d'Aprenentatge Profund i Raonament per LLM}
+
+Una vegada validada l'arquitectura i disposant del \textit{Baseline Expert}, la segona gran fase de la recerca se centra en la substitució de la codificació dura per arquitectures d'aprenentatge o raonament.
+
+\subsubsection{Raonament per Models de Llenguatge (LLM)}
+La inclusió de LLMs com \textit{Qwen 8B} respon a una hipòtesi de recerca: pot un model de llenguatge generalista aplicar heurístiques de combat sense haver estat entrenat exclusivament per a Pokémon? Metodològicament, això s'aborda mitjançant:
+\begin{itemize}
+    \item \textbf{Inferència Local amb Ollama}: Per evitar el biaix de latència i el cost de les APIs de tercers, s'utilitza \textit{Ollama} com a backend local. Això permet que el raonament de l'agent sigui privat, cost-zero i altament reproducible.
+    \item \textbf{Chain of Thought (CoT)}: No només es demana l'acció final, sinó que s'incentiva que el model "pensi" en veu alta (Strategy Logs). Això permet una avaluació qualitativa de la metodologia: l'agent ha triat el moviment correcte pel motiu correcte?
+\end{itemize}
+
+\subsubsection{Reinforcement Learning (PPO)}
+L'eix científic del TFM assoleix el seu màxim pragmatisme avaluant si algorismes com PPO poden descobrir per si sols les normes causals que la Fase~1 programava explícitament (Taula de Tipus, STAB, predicció de canvis).
 
 \subsection{Línies de Control (Baselines)}
 
