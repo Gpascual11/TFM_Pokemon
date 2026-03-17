@@ -43,7 +43,7 @@ A part del win-rate, és útil observar quan de dominant és una victòria. La T
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\linewidth]{images/singles_gen9_ranking.png}
-    \caption{Ranking agregat d'agents en \textit{Singles} Generació 9. Les versions heurístiques pròpies (v1-v6) superen consistentment els baselines de \textit{random} i \textit{max\_power}, mentre que els agents basats en recerca de Pokechamp (Abyssal, SafeOneStep) lideren la taula.}
+    \caption{Ranking agregat d'agents en \textit{Singles} Generació 9. Les versions heurístiques pròpies (v1-v6) superen consistentment els baselines de \textit{random} i \textit{maxDUMMY\_UNDERSCOREpower}, mentre que els agents basats en recerca de Pokechamp (Abyssal, SafeOneStep) lideren la taula.}
     \label{fig:singles_ranking}
 \end{figure}
 
@@ -54,6 +54,19 @@ A part del win-rate, és útil observar quan de dominant és una victòria. La T
     \label{fig:singles_efficiency}
 \end{figure}
 
+\subsubsection{Elo Ranking al Format Singles}
+
+Més enllà del win-rate directe, hem calculat el rànquing Elo (basat en el model Bradley-Terry) per situar tots els agents en una escala competitiva unificada. Aquest rànquing reflecteix la força relativa de cada agent considerant la qualitat dels oponents enfrontats.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{images/elo_singles_gen9.png}
+    \caption{Rànquing Elo dels agents en \textit{Singles} Gen 9. S'observa com el grup d'agents experts es manté per sobre dels 1000 punts de baseline.}
+    \label{fig:elo_singles_gen9}
+\end{figure}
+
+\input{tables/elo_singles_gen9}
+
 \section{Avaluació al Format 2 vs 2 (Doubles)}
 
 L'avaluació en el format de Dobles constitueix un dels reptes més importants d'aquest TFM. A diferència de Singles, on les heurístiques v1-v6 ja estaven consolidades, a Dobles s'ha realizat un procés de recerca des de zero que ha culminat en la versió \textbf{v5 (Apex Heuristic)}.
@@ -61,7 +74,7 @@ L'avaluació en el format de Dobles constitueix un dels reptes més importants d
 S'han realitzat experiments en dues generacions clau per observar la consistència de les heurístiques:
 
 \paragraph{Resultats a la Generació 9 (Format Actual).}
-A la Figura~\ref{fig:doubles_gen9_heatmap} s'observa el rendiment de les 5 versions de Dobles en Gen 9. Es confirma que totes les versions superen el 80\% de victòries contra \texttt{max\_power} i gairebé el 100\% contra \texttt{random}. Les dades exactes es recullen a la Taula~\ref{tab:doubles_win_rate_gen9}.
+A la Figura~\ref{fig:doubles_gen9_heatmap} s'observa el rendiment de les 5 versions de Dobles en Gen 9. Es confirma que totes les versions superen el 80\% de victòries contra \texttt{maxDUMMY\_UNDERSCOREpower} i gairebé el 100\% contra \texttt{random}. Les dades exactes es recullen a la Taula~\ref{tab:doubles_win_rate_gen9}.
 
 \begin{figure}[H]
     \centering
@@ -85,5 +98,22 @@ Els resultats a Gen 8 (Figura~\ref{fig:doubles_gen8_heatmap}) són encara més r
 A la Taula~\ref{tab:doubles_win_rate_gen8} es detallen els percentatges exactes de victòria per a la Generació 8, on el rendiment de la versió \textbf{v4} marca el rècord absolut de superioritat estratègica del projecte.
 
 \input{tables/doubles_gen8_wr}
+
+\subsubsection{Comparativa Elo i Consistència Cross-Generacional}
+
+L'anàlisi de l'Elo en Dobles (Taules~\ref{tab:elo_doubles_gen_9} i \ref{tab:elo_doubles_gen_8}) revela la solidesa de l'arquitectura \textit{Score-then-Combine}. 
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.48\linewidth]{images/elo_doubles_gen8.png}
+    \includegraphics[width=0.48\linewidth]{images/elo_doubles_gen9.png}
+    \caption{Comparativa de Rànquing Elo en Dobles: Generació 8 (esquerra) vs Generació 9 (dreta).}
+    \label{fig:elo_doubles_comparison}
+\end{figure}
+
+\input{tables/elo_doubles_gen8}
+\input{tables/elo_doubles_gen9}
+
+S'observa que la versió \textbf{v4} és la més forta a Gen 8, mentre que a Gen 9 les versions \textbf{v3}, \textbf{v4} i \textbf{v5} es mantenen molt properes. Això suggereix que l'heurística de coordinació és fonamental en ambdós metagames, però l'impacte de mecàniques com el Dynamax a la Gen 8 feia que la coordinació tàctica de la v4 fos encara més discriminant que en el format actual.
 
 \textbf{Conclusió Científica}: El canvi metodològic del 1vs1 al 2vs2 confirma que la coordinació (\textit{Focus Fire} i \textit{Protect}) és la clau per dominar el format de Dobles. Mentre que en Singles el dany pur és molt efectiu, en Dobles la capacitat de triar un objectiu comú per assegurar un KO és el que marca la diferència entre un agent mediocre i un expert.
