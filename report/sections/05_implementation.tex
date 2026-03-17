@@ -8,11 +8,11 @@ D'acord amb la metodologia evolutiva exposada al Capítol~\ref{chap:metodologia}
 Abans de descriure el funcionament intern de cada component, es resumeixen les principals peces de software desenvolupades específicament en el marc d'aquest TFM:
 
 \begin{itemize}
-    \item \textbf{Orquestrador paral·lel de servidors Showdown}: Scripts a \texttt{src/p03_scripts/} per llançar múltiples instàncies locals de Showdown, distribuir batalles de forma asíncrona i gestionar \textit{checkpoints} i reinicis controlats.
-    \item \textbf{Família d'heurístiques internes per Singles}: Agents a \texttt{src/p01_heuristics/s01_singles/agents/internal/} (v1--v6) que implementen estratègies cada vegada més sofisticades basades en Taula de Tipus, STAB, status, boosts, prioritat i regles de \textit{switching} defensiu.
-    \item \textbf{Heurístiques preliminars per Dobles VGC}: Arquitectura \textit{Score-then-Combine} per al format 2 vs 2, situada a \texttt{src/p01_heuristics/s02_doubles/}, actualment en fase de finalització.
+    \item \textbf{Orquestrador paral·lel de servidors Showdown}: Scripts a \texttt{src/p03\_scripts/} per llançar múltiples instàncies locals de Showdown, distribuir batalles de forma asíncrona i gestionar \textit{checkpoints} i reinicis controlats.
+    \item \textbf{Família d'heurístiques internes per Singles}: Agents a \texttt{src/p01DUMMY\_UNDERSCOREheuristics/s01\_singles/agents/internal/} (v1--v6) que implementen estratègies cada vegada més sofisticades basades en Taula de Tipus, STAB, status, boosts, prioritat i regles de \textit{switching} defensiu.
+    \item \textbf{Heurístiques preliminars per Dobles VGC}: Arquitectura \textit{Score-then-Combine} per al format 2 vs 2, situada a \texttt{src/p01DUMMY\_UNDERSCOREheuristics/s02DUMMY\_UNDERSCOREdoubles/}, actualment en fase de finalització.
     \item \textbf{Reimplementació de SafeOneStepPlayer}: Versió pròpia de l'agent \textit{OneStepPlayer} de Pokechamp, que elimina dependències de simuladors locals i opera exclusivament sobre l'API de \textit{poke-env}.
-    \item \textbf{Pipeline complet de Reinforcement Learning}: Mòduls a \texttt{src/p02_rl_models/} que inclouen el \texttt{StateVectorizer}, l'entorn \texttt{PokemonMaskedEnv} amb \textit{action masking}, la funció de recompensa i la configuració de \textit{MaskablePPO}.
+    \item \textbf{Pipeline complet de Reinforcement Learning}: Mòduls a \texttt{src/p02\_rl\_models/} que inclouen el \texttt{StateDUMMY\_UNDERSCOREVectorizer}, l'entorn \texttt{PokemonMaskedEnv} amb \textit{action masking}, la funció de recompensa i la configuració de \textit{MaskablePPO}.
     \item \textbf{Infraestructura de \textit{logging} i benchmarking}: Escriptures sistemàtiques de resultats numèrics i, en el cas dels agents LLM, logs de raonament textual per a anàlisi posterior.
 \end{itemize}
 
@@ -20,13 +20,13 @@ Aquests components es combinen amb llibreries i agents existents (poke-env, Poke
 
 \section{Orquestració Operacional i Entorn Paral·lelitzat}
 
-El motor d'aquest projecte recau en un mòdul orquestrador propi, situat a \texttt{src/p03_scripts/}, encarregat de trencar la limitació original d'un sol fil de connexió pròpia de \textit{poke-env}. Fent ús intensiu de l'asincronia de Python (\texttt{asyncio}), els scripts desenvolupats són capaços de:
+El motor d'aquest projecte recau en un mòdul orquestrador propi, situat a \texttt{src/p03\_scripts/}, encarregat de trencar la limitació original d'un sol fil de connexió pròpia de \textit{poke-env}. Fent ús intensiu de l'asincronia de Python (\texttt{asyncio}), els scripts desenvolupats són capaços de:
 
 \begin{enumerate}
     \item \textbf{Llançament massiu de servidors Showdown}: Aixecar dinàmicament múltiples instàncies de Pokémon Showdown en ports consecutius (p. ex.\ 8000, 8001, 8002...), cadascuna com a procés Node.js independent. Es deshabiliten serveis innecessaris (\textit{verifier}, \textit{friends}, \textit{repl}) per reduir consum i prevenir errors de connexió.
     \item \textbf{Distribució d'agents}: L'orquestrador Python distribueix les batalles entre els ports disponibles mitjançant tasques asíncrones massives amb \texttt{asyncio}, permetent que múltiples batalles s'executin simultàniament.
     \item \textbf{Gestió de memòria i robustesa}: Inicialment, els scripts utilitzaven una neteja manual del Garbage Collector de Python. No obstant això, vam detectar que els processos de \textit{Showdown} (Node.js) degradaven el rendiment amb el temps. Vam evolucionar la lògica de \texttt{--restart-every}: d'un reinici basat en el temps, vam passar a un reinici basat en \textit{matchups actius}. Això vol dir que el servidor només es reinicia si realment ha processat batalles noves, optimitzant la càrrega del sistema.
-    \item \textbf{Detecció Automàtica de Progrés}: En les primeres versions, calia especificar el flag \texttt{--resume} per continuar un experiment. Vam millorar-ho implementant una detecció automàtica: el sistema comprova l'existència dels fitxers \texttt{results_*.csv} i \texttt{checkpoint.json} i reprèn la feina sense intervenció humana, reduint el risc d'errors d'usuari.
+    \item \textbf{Detecció Automàtica de Progrés}: En les primeres versions, calia especificar el flag \texttt{--resume} per continuar un experiment. Vam millorar-ho implementant una detecció automàtica: el sistema comprova l'existència dels fitxers \texttt{resultsDUMMY\_UNDERSCORE*.csv} i \texttt{checkpoint.json} i reprèn la feina sense intervenció humana, reduint el risc d'errors d'usuari.
     \item \textbf{Resolució d'Inconsistències de Protocol}: Vam trobar que en Generacions 8 i 9, certes combinacions d'habilitats (com \textit{Magic Bounce}) i moviments (com \textit{Copycat}) feien fallar el seguiment estricte de \textit{poke-env} (\texttt{AssertionError}). En lloc d'aturar el projecte, vam decidir desactivar el \textit{strict tracking} per garantir la finalització dels experiments massius, prioritzant la recol·lecció de dades sobre el debug de la llibreria base.
 \end{enumerate}
 
@@ -35,7 +35,7 @@ El motor d'aquest projecte recau en un mòdul orquestrador propi, situat a \text
 
 Abans de desplegar models d'aprenentatge, el projecte exigeix validar la infraestructura dins d'un espai d'accions reduït. El format \textbf{Singles} (1vs1) serveix com a arena de desenvolupament: l'agent interactua contra un sol oponent visible, amb un màxim de 9 accions per torn (4 atacs + 5 substitucions). El resultat final d'aquesta fase és un agent heurístic intern ``expert'' que actua com a línia de control pròpia.
 
-Mitjançant sis cicles evolutius de codi, s'han consolidat heurístiques progressivament més sofisticades sota \texttt{src/p01_heuristics/s01_singles/agents/internal/}. A continuació es resumeix aquesta evolució, entenent-la com un procés iteratiu de millora gradual:
+Mitjançant sis cicles evolutius de codi, s'han consolidat heurístiques progressivament més sofisticades sota \texttt{src/p01DUMMY\_UNDERSCOREheuristics/s01\_singles/agents/internal/}. A continuació es resumeix aquesta evolució, entenent-la com un procés iteratiu de millora gradual:
 
 \begin{itemize}
     \item \textbf{Heurística v1 (Naïve Aggressive)}: Selecciona el moviment amb la potència base més alta, ignorant completament tipus, STAB i substitucions.
@@ -73,8 +73,8 @@ Per executar els LLMs de forma local sense dependre d'APIs costoses, s'ha config
 
 La configuració al benchmark s'especifica com:
 \begin{verbatim}
-  --player\_backend ollama/qwen3:8b
-  --player\_prompt\_algo io
+  --playerDUMMY\_UNDERSCOREbackend ollama/qwen3:8b
+  --playerDUMMY\_UNDERSCOREpromptDUMMY\_UNDERSCOREalgo io
   --temperature 0.3
 \end{verbatim}
 
@@ -82,7 +82,7 @@ La configuració al benchmark s'especifica com:
 L'agent Pokechamp rep l'estat de la batalla en format text, l'envia al LLM via API HTTP, i interpreta la resposta per generar una ordre de batalla. El flux és:
 \begin{enumerate}
     \item El benchmark llança un \textit{worker subprocess} per cada batch de batalles.
-    \item L'\texttt{AgentFactory} detecta l'identificador (\texttt{pokechamp} o \texttt{pokellmon}) i importa dinàmicament \texttt{get_llm_player} del repositori Pokechamp clonat.
+    \item L'\texttt{AgentFactory} detecta l'identificador (\texttt{pokechamp} o \texttt{pokellmon}) i importa dinàmicament \texttt{get\_llm\_player} del repositori Pokechamp clonat.
     \item L'agent tradueix l'estat de batalla a un \textit{prompt} textual i l'envia a Ollama.
     \item El LLM genera un raonament (\textit{Chain of Thought}) i una acció seleccionada.
     \item L'acció es tradueix a una ordre de Showdown.
@@ -92,12 +92,12 @@ L'agent Pokechamp rep l'estat de la batalla en format text, l'envia al LLM via A
 A diferència de les heurístiques, els agents LLM generen fitxers de \textit{``Thinking''} que expliquen el raonament darrere de cada decisió. Aquests logs es guarden a \texttt{evaluation/results/LLM/} i permeten analitzar la qualitat del raonament estratègic del model (anàlisi de tipo matchups, predicció de moviments rivals, gestió de recursos, etc.).
 
 \paragraph{Aïllament de processos.}
-El principal repte tècnic va ser la gestió de memòria: el fil de fons \texttt{POKE_LOOP} de Pokechamp manté referències als objectes de la batalla fins i tot després de \texttt{del} + \texttt{gc.collect()}, acumulant memòria de forma il·limitada. La solució va ser l'\textbf{aïllament per subprocessos}: cada batch de batalles s'executa en un procés Python independent (\texttt{worker.py}), i quan el procés acaba, el sistema operatiu reclama \textit{tota} la memòria.
+El principal repte tècnic va ser la gestió de memòria: el fil de fons \texttt{POKEDUMMY\_UNDERSCORELOOP} de Pokechamp manté referències als objectes de la batalla fins i tot després de \texttt{del} + \texttt{gc.collect()}, acumulant memòria de forma il·limitada. La solució va ser l'\textbf{aïllament per subprocessos}: cada batch de batalles s'executa en un procés Python independent (\texttt{\texttt{worker.py}}), i quan el procés acaba, el sistema operatiu reclama \textit{tota} la memòria.
 
 
 \section{Fase 1.2b: L'Ascens al Competitiu Real (Dobles VGC)}
 
-Tot repte d'IA queda incomplet si no aborda el format oficial de competició: \textbf{Dobles 2 vs 2}. La base d'heurístiques dissenyada per Singles resulta invàlida perquè la classe de poke-env per Dobles requereix retornar tuples d'accions coordinades per als dos Pokémon al camp. Dins de \texttt{src/p01_heuristics/s02_doubles/} s'ha reestructurat l'arquitectura al patró \textit{Score-then-Combine}:
+Tot repte d'IA queda incomplet si no aborda el format oficial de competició: \textbf{Dobles 2 vs 2}. La base d'heurístiques dissenyada per Singles resulta invàlida perquè la classe de poke-env per Dobles requereix retornar tuples d'accions coordinades per als dos Pokémon al camp. Dins de \texttt{src/p01DUMMY\_UNDERSCOREheuristics/s02DUMMY\_UNDERSCOREdoubles/} s'ha reestructurat l'arquitectura al patró \textit{Score-then-Combine}:
 
 \subsection{Evolució i Refinament de les Heurístiques de Dobles}
 
@@ -110,7 +110,7 @@ El desenvolupament de les heurístiques de Dobles ha estat un procés d'aprenent
     \item \textbf{v5 (Apex Strategy)} (Abans v8): La versió final que combina coordinació, gestió d'estats i proteccions selectives.
 \end{itemize}
 
-Aquest procés de "refactorització nominal" ens va permetre estandarditzar els benchmarks i millorar la llegibilitat dels resultats finals presentats al Capítol~\ref{chap:resultats}. A més, vam estandarditzar els fitxers de sortida: vam passar de noms complexos com \texttt{results_2_vs_2_*.csv} a \texttt{win_rates_*.csv}, facilitant l'automatització dels scripts de visualització amb \textit{Pandas}.
+Aquest procés de "refactorització nominal" ens va permetre estandarditzar els benchmarks i millorar la llegibilitat dels resultats finals presentats al Capítol~\ref{chap:resultats}. A més, vam estandarditzar els fitxers de sortida: vam passar de noms complexos com \texttt{resultsDUMMY\_UNDERSCORE2\_vs\_2\_*.csv} a \texttt{win\_rates\_*.csv}, facilitant l'automatització dels scripts de visualització amb \textit{Pandas}.
 
 
 \section{Pipeline de Processament de Dades i Analítica}
@@ -125,7 +125,7 @@ Dada la gran quantitat de batalles executades (centenars de milers), s'ha dissen
         \node (pandas) [rectangle, draw, below of=raw, fill=yellow!5] {Data Cleaning (Pandas)};
         \node (matrix) [rectangle, draw, left of=pandas, xshift=-2cm, fill=green!5] {Win-Rate Matrix};
         
-        \draw [->] (battle) -- node[above]{$a_t, r_t$} (raw);
+        \draw [->] (battle) -- node[above]{$a\_t, r\_t$} (raw);
         \draw [->] (raw) -- (pandas);
         \draw [->] (pandas) -- (matrix);
     \end{tikzpicture}
@@ -135,16 +135,16 @@ Dada la gran quantitat de batalles executades (centenars de milers), s'ha dissen
 
 El procés consta de tres etapes:
 \begin{enumerate}
-    \item \textbf{Recol·lecció asíncrona}: Durant el benchmark, cada parella d'agents escriu una fila al fitxer \texttt{results_*.csv} immediatament després d'acabar cada batalla. Això evita la pèrdua de dades si s'interromp el procés.
+    \item \textbf{Recol·lecció asíncrona}: Durant el benchmark, cada parella d'agents escriu una fila al fitxer \texttt{resultsDUMMY\_UNDERSCORE*.csv} immediatament després d'acabar cada batalla. Això evita la pèrdua de dades si s'interromp el procés.
     \item \textbf{Normalització nominal}: Els scripts de post-processament tradueixen els noms interns dels agents (ex. \texttt{HeuristicV4Doubles}) a noms amigables per al report (ex. \texttt{v4 (Focus)}).
-\item \textbf{Agregació estadística}: Mitjançant \textit{Pandas}~\cite{pandas}, es calculen les mitjanes de victòries, desviacions i intervals de confiança, generant els fitxers \texttt{matrix_*.csv} que alimenten les taules del TFM.
+\item \textbf{Agregació estadística}: Mitjançant \textit{Pandas}~\cite{pandas}, es calculen les mitjanes de victòries, desviacions i intervals de confiança, generant els fitxers \texttt{matrixDUMMY\_UNDERSCORE*.csv} que alimenten les taules del TFM.
 \end{enumerate}
 \section{Fase 2: Implementació del Pipeline de Reinforcement Learning}
 \label{sec:rl_impl}
 
-Amb les heurístiques com a baselines experts, la segona gran fase del projecte ha consistit a construir un pipeline complet de Reinforcement Learning per entrenar agents neuronals, implementat a \texttt{src/p02_rl_models/}. Aquest pipeline materialitza, en codi, els conceptes de POMDP i PPO introduïts al Capítol~\ref{chap:marc_teoric}: l'agent opera sobre observacions vectoritzades parcials de l'estat i actualitza una política estocàstica restringida per \textit{clipping}.
+Amb les heurístiques com a baselines experts, la segona gran fase del projecte ha consistit a construir un pipeline complet de Reinforcement Learning per entrenar agents neuronals, implementat a \texttt{src/p02\_rl\_models/}. Aquest pipeline materialitza, en codi, els conceptes de POMDP i PPO introduïts al Capítol~\ref{chap:marc_teoric}: l'agent opera sobre observacions vectoritzades parcials de l'estat i actualitza una política estocàstica restringida per \textit{clipping}.
 
-\subsection{Vectorització de l'Estat (\texttt{StateVectorizer})}
+\subsection{Vectorització de l'Estat (\texttt{StateDUMMY\_UNDERSCOREVectorizer})}
 
 Les xarxes neuronals necessiten dades numèriques com a entrada. El mòdul \texttt{vectorizer.py} converteix l'objecte complex \texttt{Battle} de poke-env en un \textbf{vector float32 de 238 dimensions}, normalitzat a l'interval $[0, 1]$ per estabilitzar l'entrenament. Aquest vector actua com a observació parcial $\mathbf{o}\_t$ del POMDP descrit al Capítol~\ref{chap:marc_teoric}, capturant tota la informació rellevant que l'agent pot percebre a cada torn:
 
@@ -162,7 +162,7 @@ Les xarxes neuronals necessiten dades numèriques com a entrada. El mòdul \text
     Clima i camp & $\sim$20 & Weather i Field com a multi-hot encoding. \\ \hline
     Condicions laterals & $2 \times 24$ & Hazards, pantalles, etc.\ per bàndol (normalitzats). \\ \hline
     \end{tabular}
-    \caption{Estructura del vector d'observació de 238 dimensions generat pel \texttt{StateVectorizer}.}
+    \caption{Estructura del vector d'observació de 238 dimensions generat pel \texttt{StateDUMMY\_UNDERSCOREVectorizer}.}
     \label{tab:vectorizer}
 \end{table}
 
@@ -223,9 +223,9 @@ En cada fase, es carrega el checkpoint de la fase anterior i es continua l'entre
 
 \subsection{Arquitectura del Model i Infraestructura GPU}
 
-L'agent utilitza \textbf{MaskablePPO} de la llibreria \texttt{sb3-contrib}~\cite{sb3_contrib} amb els següents hiperparàmetres:
+L'agent utilitza \textbf{MaskablePPO} de la llibreria \texttt{sb3--contrib}~\cite{sb3_contrib} amb els següents hiperparàmetres:
 \begin{itemize}
-    \item \textbf{Xarxa}: MLP amb 2 capes ocultes de 256 neurones cadascuna (\texttt{net_arch=[256, 256]}).
+    \item \textbf{Xarxa}: MLP amb 2 capes ocultes de 256 neurones cadascuna (\texttt{netDUMMY\_UNDERSCOREarch=[256, 256]}).
     \item \textbf{Learning rate}: $3 \times 10^{-4}$.
     \item \textbf{Steps per batch}: 2048.
     \item \textbf{Entropy coefficient}: 0.01 (incentiva l'exploració en les primeres fases).
@@ -244,11 +244,22 @@ L'entrenament s'executa en una màquina amb una \textbf{GPU RTX 2080} (8~GB VRAM
 Més enllà del Reinforcement Learning pur implementat en aquest TFM, una línia de treball futur prometedora consisteix a explotar \textbf{datasets de partides existents} per entrenar agents mitjançant tècniques d'\textit{Imitation Learning} o \textit{Behavioral Cloning}. Aquesta secció descriu una proposta que \textbf{no s'ha implementat} en el marc d'aquest treball, però que es considera una extensió natural de l'arquitectura actual.
 
 El repositori Pokechamp~\cite{pokechamp} inclou internament un conjunt de replays de partides competitives que registren seqüències completes d'estats i accions. La idea seria:
-
 \begin{enumerate}
-    \item \textbf{Extracció}: Parsejar els replays per obtenir parelles $(s\_t, a\_t)$ d'estat-acció de jugadors experts.
-    \item \textbf{Supervisió}: Entrenar una xarxa neuronal per predir l'acció experta $a\_t$ donat l'estat vectoritzat $\mathbf{o}\_t$ (usant el \texttt{StateVectorizer} ja implementat i la loss de cross-entropy).
+    \item \textbf{Extracció}: Parsejar els replays per obtenir parelles ($s\_t, a\_t$) d'estat-acció de jugadors experts.
+    \item \textbf{Supervisió}: Entrenar una xarxa neuronal per predir l'acció experta $a\_t$ donat l'estat vectoritzat $\mathbf{o}\_t$ (usant el \texttt{StateDUMMY\_UNDERSCOREVectorizer} ja implementat i la loss de cross-entropy).
     \item \textbf{Fine-tuning amb RL}: Utilitzar el model pre-entrenat com a punt de partida per a les fases de RL, combinant el coneixement humà amb l'aprenentatge autònom.
 \end{enumerate}
 
-Aquesta aproximació podria accelerar significativament la convergència del RL: en lloc de descobrir des de zero que ``un atac de tipus Aigua és efectiu contra un Pokémon de Foc'', l'agent partiria d'un \textit{prior} expert, i el RL només hauria de refinar les decisions en situacions ambigües o no representades al dataset. Les possibles línies concretes per desenvolupar aquesta idea es discuteixen de nou al capítol de conclusions i treball futur.
+Aquesta aproximació podria accelerar significativament la convergència del RL: en lloc de descobrir des de zero que ``un atac de tipus Aigua és efectiu contra un Pokémon de Foc'', l'agent partiria d'un \textit{prior} expert, i el RL només hauria de refinar les decisions en situacions ambigües o no representades al dataset. 
+
+\subsection{Full de Ruta Immediat: Behavioral Cloning}
+\label{subsec:roadmap_bc}
+
+Com a pas següent al RL pur, s'ha començat a preparar l'entorn per a l'\textbf{Imitation Learning}. L'objectiu és utilitzar els replays de jugadors humans d'alt nivell (disponibles a les bases de dades de Showdown) per pre-entrenar la política de l'agent. 
+
+La implementació requerirà:
+\begin{enumerate}
+    \item Un script de \textit{scraping} per descarregar milers de replays en format JSON.
+    \item L'adaptació del \texttt{StateDUMMY\_UNDERSCOREVectorizer} per processar estats històrics a partir dels logs de text.
+    \item L'entrenament d'una xarxa de política usant una pèrdua de \textit{Cross-Entropy} per minimitzar la diferència entre l'acció de l'humà i l'agent.
+\end{enumerate}

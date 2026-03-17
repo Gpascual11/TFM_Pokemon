@@ -32,7 +32,7 @@ La llibreria poke-env~\cite{poke_env} tradueix els missatges WebSocket del servi
 
 \begin{itemize}
     \item \textbf{Classe \texttt{Battle}}: Conté tot l'estat observable ---~Pokémon actius, vida restant, moviments disponibles, condicions de camp, registre d'accions passades~--- com a atributs directament accesibles.
-    \item \textbf{Classe \texttt{Player}}: Classe base per definir agents. El mètode \texttt{choose_move(battle)} rep l'estat i retorna l'acció seleccionada.
+    \item \textbf{Classe \texttt{Player}}: Classe base per definir agents. El mètode \texttt{chooseDUMMY\_UNDERSCOREmove(battle)} rep l'estat i retorna l'acció seleccionada.
     \item \textbf{Compatibilitat Gym}: Proporciona interfície compatible amb l'estàndard \textit{OpenAI Gym}~\cite{brockman2016openai}, habilitant l'ús directe d'algorismes de RL com DQN o PPO.
     \item \textbf{Gestió asíncrona}: Tota la comunicació es gestiona amb \texttt{asyncio} de Python, permetent concurrència nativa.
 \end{itemize}
@@ -42,8 +42,8 @@ La llibreria poke-env~\cite{poke_env} tradueix els missatges WebSocket del servi
 Durant el desenvolupament, s'ha identificat una dicotomia metodològica entre la versió oficial de \textit{poke-env} i la versió utilitzada pel repositori \textit{Pokechamp}. Aquesta distinció és crítica per a la reproductibilitat:
 
 \begin{itemize}
-    \item \textbf{Compatibilitat d'Atributs}: La versió de \textit{Pokechamp} utilitza una branca antiga de la llibreria que accedeix a atributs de batalla (com \texttt{active_pokemon}) de forma diferent a la versió \texttt{1.3+} oficial. Això ha obligat a crear una capa d'abstracció a \texttt{BattleManager} per garantir que els agents de ambdues procedències puguin coexistir en el mateix benchmark.
-    \item \textbf{Seguiment Estricte (Strict Tracking)}: Mentre que \textit{Pokechamp} ignora certs errors de protocol de Showdown, \textit{poke-env} oficial llança excepcions d'assequibilitat (\textit{Assertions}) quan detecta moviments inesperats. Com s'ha mencionat anteriorment, la decisió metodològica ha estat relaxar aquest seguiment (\texttt{strict_battle_tracking=False}) per permetre la compatibilitat amb la lògica de tercers i assegurar la continuïtat de les simulacions de llarga durada.
+    \item \textbf{Compatibilitat d'Atributs}: La versió de \textit{Pokechamp} utilitza una branca antiga de la llibreria que accedeix a atributs de batalla (com \texttt{activeDUMMY\_UNDERSCOREpokemon}) de forma diferent a la versió \texttt{1.3+} oficial. Això ha obligat a crear una capa d'abstracció a \texttt{BattleManager} per garantir que els agents de ambdues procedències puguin coexistir en el mateix benchmark.
+    \item \textbf{Seguiment Estricte (Strict Tracking)}: Mentre que \textit{Pokechamp} ignora certs errors de protocol de Showdown, \textit{poke-env} oficial llança excepcions d'assequibilitat (\textit{Assertions}) quan detecta moviments inesperats. Com s'ha mencionat anteriorment, la decisió metodològica ha estat relaxar aquest seguiment (\texttt{strictDUMMY\_UNDERSCOREbattleDUMMY\_UNDERSCOREtracking=False}) per permetre la compatibilitat amb la lògica de tercers i assegurar la continuïtat de les simulacions de llarga durada.
 \end{itemize}
 
 \subsection{Variables d'Estat Disponibles}
@@ -76,13 +76,13 @@ L'objecte \texttt{Battle} que rep l'agent cada torn exposa les següents variabl
 
 \subsection{Infraestructura Paral·lela i Orquestració Distribuïda}
 
-L'execució de benchmarks estadísticament significatius (milers de partides per parella d'agents) amb un sol servidor resulta inviable per la latència del protocol WebSocket i el consum de CPU de Node.js. Per solucionar-ho, s'ha dissenyat una infraestructura d'orquestració distribuïda (situada a \texttt{src/p01_heuristics/s02_doubles/core/}) que implementa els següents principis metodològics:
+L'execució de benchmarks estadísticament significatius (milers de partides per parella d'agents) amb un sol servidor resulta inviable per la latència del protocol WebSocket i el consum de CPU de Node.js. Per solucionar-ho, s'ha dissenyat una infraestructura d'orquestració distribuïda (situada a \texttt{src/p01DUMMY\_UNDERSCOREheuristics/s02DUMMY\_UNDERSCOREdoubles/core/}) que implementa els següents principis metodològics:
 
 \begin{enumerate}
     \item \textbf{Multiprocessament Simètric}: Es llança una instància independent de Showdown per cada nucli de CPU disponible (o segons el paràmetre \texttt{--ports}). Cada port (8000, 8001...) actua com un node de computació aïllat.
-    \item \textbf{Batches i Concurrència}: Les partides es divideixen en \textit{batches} (paquets de 100-200 partides). Dins de cada batch, s'utilitza la capacitat asíncrona de \textit{poke-env} per gestionar múltiples batalles simultànies (\texttt{max_concurrent_battles}), optimitzant el \textit{throughput} total del sistema.
+    \item \textbf{Batches i Concurrència}: Les partides es divideixen en \textit{batches} (paquets de 100-200 partides). Dins de cada batch, s'utilitza la capacitat asíncrona de \textit{poke-env} per gestionar múltiples batalles simultànies (\texttt{maxDUMMY\_UNDERSCOREconcurrentDUMMY\_UNDERSCOREbattles}), optimitzant el \textit{throughput} total del sistema.
     \item \textbf{Cicle de Vida del Servidor (Restart Logic)}: S'ha observat que els servidors Showdown acumulen memòria de forma incremental a causa de la fragmentació del Garbage Collector de Node.js. Per garantir la reproductibilitat i prevenir bloquejos per \textit{Out of Memory} (OOM), s'ha implementat una lògica de reinici automàtic: el servidor es reinicia completament cada N matchups \textit{actius} (on s'han jugat partides noves).
-    \item \textbf{Robustesa davant Estats Invàlids}: En versions modernes de Pokémon (Gen 8 i 9), moviments complexos com \textit{Magic Bounce} o \textit{Copycat} poden generar inconsistències en el seguiment de l'estat. Metodològicament, s'ha optat per desactivar el \texttt{strict_battle_tracking} en els benchmarks massius per evitar la interrupció del workflow davant d'errors menors de la llibreria base, prioritzant la completesa de l'experiment (success rate del 100\%).
+    \item \textbf{Robustesa davant Estats Invàlids}: En versions modernes de Pokémon (Gen 8 i 9), moviments complexos com \textit{Magic Bounce} o \textit{Copycat} poden generar inconsistències en el seguiment de l'estat. Metodològicament, s'ha optat per desactivar el \texttt{strictDUMMY\_UNDERSCOREbattleDUMMY\_UNDERSCOREtracking} en els benchmarks massius per evitar la interrupció del workflow davant d'errors menors de la llibreria base, prioritzant la completesa de l'experiment (success rate del 100\%).
 \end{enumerate}
 
 Aquesta infraestructura ha permès augmentar la velocitat d'avaluació en un factor de $\times 4$ respecte a implementacions seqüencials tradicionals, permetent la recopilació de dades massives necessàries per a aquest TFM.
@@ -167,7 +167,7 @@ Tot problema de RL ha d'estar encapsulat formalment per poder ser processat per 
 
 \subsection{Espai d'Estats (S)}
 
-El conjunt $S$ agrupa tota la informació observable per l'agent en un torn donat. Això constitueix un entorn parcialment observable (POMDP), on l'agent només accedeix a una observació $\mathbf{O}\_t \in \mathbb{R}^d$ que resumeix:
+El conjunt $S$ agrupa tota la informació observable per l'agent en un torn donat. Això constitueix un entorn parcialment observable (POMDP), on l'agent només accedeix a una observació $\mathbf{O}DUMMY\_UNDERSCOREt \in \mathbb{R}^d$ que resumeix:
 
 \begin{itemize}
     \item Vida (HP) restant de tots els Pokémon visibles (propis i rivals).
@@ -262,6 +262,13 @@ Per a cada sèrie de batalles es calcula:
 \end{itemize}
 
 Aquest disseny experimental garanteix que qualsevol diferència de rendiment observada en els resultats sigui estadísticament fiable i no deguda a la variabilitat inherent de poques partides.
+
+\subsection{Propera Fase: Anàlisi de la Distribució de Pokémon}
+\label{subsec:next_phase_dist}
+
+Un dels reptes immediats un cop finalitzada l'avaluació massiva és l'anàlisi de les dades recollides. Tot i que els equips a \textit{Random Battles} són generats aleatòriament pel servidor Showdown, aquests segueixen distribucions de probabilitat internes. 
+
+Està previst realitzar un estudi estadístic sobre el \textit{usage-rate} i el \textit{win-rate} individual de cada espècie de Pokémon dins d'aquests formats aleatoris. Aquesta anàlisi permetrà identificar si certs Pokémon tenen un impacte desproporcionat en la victòria independentment de l'agent que els controli, proporcionant una base per a una futura "normalització" dels resultats segons la qualitat de l'equip rebut.
 
 % ============================================================
 %  2.6 — FASES DE DESENVOLUPAMENT
