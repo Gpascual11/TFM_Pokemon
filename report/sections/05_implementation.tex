@@ -30,6 +30,67 @@ El motor d'aquest projecte recau en un mòdul orquestrador propi, situat a \text
     \item \textbf{Resolució d'Inconsistències de Protocol}: Vam trobar que en Generacions 8 i 9, certes combinacions d'habilitats (com \textit{Magic Bounce}) i moviments (com \textit{Copycat}) feien fallar el seguiment estricte de \textit{poke-env} (\texttt{AssertionError}). En lloc d'aturar el projecte, vam decidir desactivar el \textit{strict tracking} per garantir la finalització dels experiments massius, prioritzant la recol·lecció de dades sobre el debug de la llibreria base.
 \end{enumerate}
 
+\subsection{Funcionament Intern Detallat (Execution Flow)}
+
+Per tal de comprendre la robustesa del sistema, cal analitzar el flux d'execució pas a pas tant en el format Singles com en Doubles, ja que utilitzen arquitectures de paral·lelisme lleugerament diferents.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[node distance=1.3cm, auto, font=\footnotesize]
+        % Nodes
+        \node (start) [rectangle, draw, rounded corners, fill=blue!5] {benchmark.py (Main)};
+        \node (matchup) [rectangle, draw, below of=start] {Iteració Matchup (Agent vs Oponent)};
+        \node (check) [diamond, draw, below of=matchup, yshift=-0.5cm] {Partides existents?};
+        \node (run) [rectangle, draw, below of=check, yshift=-0.5cm, fill=green!5] {Llançament Processos Worker};
+        \node (port) [rectangle, draw, right of=run, xshift=3cm, fill=orange!5] {Gestió de Ports (Showdown)};
+        \node (games) [rectangle, draw, below of=run, fill=green!10] {poke-env Battle Loop};
+        \node (stats) [rectangle, draw, below of=games, fill=yellow!5] {StatsBattle (Custom Tracking)};
+        \node (csv) [rectangle, draw, below of=stats, fill=gray!10] {Escriptura CSV Parcial};
+        \node (merge) [rectangle, draw, below of=csv, fill=purple!10] {Consolidació de Resultats};
+        
+        % Lines
+        \draw [->] (start) -- (matchup);
+        \draw [->] (matchup) -- (check);
+        \draw [->] (check) -- node[left]{No} (run);
+        \draw [->] (check.east) -- ++(1,0) |- node[near start, right]{Sí (Saltar)} (matchup.east);
+        \draw [<->, dashed] (run) -- (port);
+        \draw [->] (run) -- (games);
+        \draw [->] (games) -- (stats);
+        \draw [->] (stats) -- (csv);
+        \draw [->] (csv) -- (merge);
+        \draw [->] (merge.west) -- ++(-1.5,0) |- (matchup.west);
+    \end{tikzpicture}
+    \caption{Diagrama de flux de l'execució d'un benchmark complet.}
+    \label{fig:flux_benchmark}
+\end{figure}
+
+\subsubsection{Workflow de Singles (1vs1)}
+
+L'arquitectura de Singles es basa en un model de \textbf{Subprocessos per Matchup}:
+
+\begin{enumerate}
+    \item \textbf{Inicialització}: \texttt{benchmark.py} crea una cua asíncrona (\texttt{asyncio.Queue}) amb els ports configurats. 
+    \item \textbf{Càlcul de Delta}: \texttt{run\_matchup()} analitza el CSV destí per comptar les línies vàlides. Si es requereixen 10.000 partides i n’hi ha 2.000, calcula un \textit{delta} d’execució.
+    \item \textbf{Invocació del Worker}: Es crida a \texttt{worker.py} mitjançant \texttt{subprocess.exec}. Això garanteix que tota la RAM consumida per la llibreria \textit{poke-env} i els agents (especialment els LLM) s'alliberi al SO en acabar el procés.
+    \item \textbf{Instrumentation (StatsBattle)}: El worker aplica un parche dinàmic al mètode \texttt{Player.\_create\_battle}. En lloc de la classe base, injecta \texttt{StatsBattle}, una classe pròpia que:
+    \begin{itemize}
+        \item Intercepta els missatges WebSocket \texttt{|-crit|}, \texttt{|-miss|} i \texttt{|-supereffective|} per comptar la sort o RNG.
+        \item Detecta si un canvi és voluntari o forçat (per debilitació).
+        \item Serialitza l'historial de moviments fets per cada Pokémon.
+    \end{itemize}
+    \item \textbf{Retorn}: El worker finalitza amb un codi d'èxit o error, i l'orquestrador allibera el port per al següent batch de partides.
+\end{enumerate}
+
+\subsubsection{Workflow de Doubles (2vs2)}
+
+El format Doubles utilitza una arquitectura de \textbf{Multiprocessament Simètric per Port}:
+
+\begin{enumerate}
+    \item \textbf{ProcessLauncher}: En lloc de batches seqüencials, el llançador divideix el total de partides entre el nombre de ports. Si s'han de jugar 1.000 partides en 4 ports, crea 4 processos worker de 250 partides cadascun.
+    \item \textbf{BattleManager}: Dins de cada worker, un objecte \texttt{BattleManager} gestiona el bucle de batalles. Aprofita l'asincronia nativa de \texttt{poke-env} per tenir múltiples batalles obertes contra el mateix port Showdown simultàniament (\textit{interleaving}).
+    \item \textbf{Merger}: En acabar els processos paral·lels, el llançador busca els fitxers temporals per port (\texttt{agent\_vs\_opp\_p8000.csv}, etc.), els fusiona en un únic fitxer mestre i elimina els residuals per mantenir el sistema de fitxers net.
+\end{enumerate}
+
 
 \section{Fase 1.1: Desenvolupament d'Heurístiques per Singles (1vs1)}
 

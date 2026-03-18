@@ -87,6 +87,16 @@ L'execució de benchmarks estadísticament significatius (milers de partides per
 
 Aquesta infraestructura ha permès augmentar la velocitat d'avaluació en un factor de $\times 4$ respecte a implementacions seqüencials tradicionals, permetent la recopilació de dades massives necessàries per a aquest TFM.
 
+\subsection{Disseny de la Matriu d'Avaluació (Benchmark Matrix)}
+
+Per tal de garantir una comparació justa i exhaustiva entre els diversos agents, s'ha implementat una metodologia d'\textbf{avaluació per matriu}. Un run del benchmark no avalua un sol agent, sinó que processa una matriu creuada de $N$ heurístiques pròpies contra $M$ baselines o oponents externs.
+
+\begin{itemize}
+    \item \textbf{Càlcul de partides faltants}: El sistema és intel·ligent i comprova l'existència de dades prèvies. Si d'un matchup de 10.000 partides ja se n'han jugat 2.000, el benchmark només llançarà les 8.000 restants.
+    \item \textbf{Balanceig de Jugadors}: Per eliminar el biaix del "Jugador 1" (que pot tenir certs avantatges marginals en determinades mecàniques de Showdown), les partides es distribueixen perquè cada agent ocupi la posició inicial de forma equitativa.
+    \item \textbf{Consistència de Formats}: S'obliga a que tots els oponents del benchmark utilitzin exactament el mateix format (p. ex. \texttt{gen9randombattle}) i el mateix set de dades estàtiques (Pokémon, moviments, habilitats).
+\end{itemize}
+
 \begin{figure}[h]
     \centering
     \begin{tikzpicture}[node distance=2cm, font=\small]
