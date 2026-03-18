@@ -15,9 +15,11 @@ Key Features:
 
 import argparse
 import asyncio
+import datetime
 import logging
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -44,7 +46,7 @@ from p01_heuristics.s01_singles.core.factory import HeuristicFactory
 DEFAULT_N = 100
 DEFAULT_PORT = 8000
 DEFAULT_CONCURRENT_MATCHUPS = 2
-DEFAULT_DATA_DIR = _ROOT / "data" / "1_vs_1" / "benchmarks" / "unified"
+DEFAULT_DATA_DIR = _ROOT / "data" / "1_vs_1" / "benchmarks" / "gens_10k_teams"
 
 logger = logging.getLogger(__name__)
 
@@ -141,12 +143,12 @@ async def run_worker_batch(
 
     try:
         # 5 minute timeout per batch (more responsive)
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=300)
-    except asyncio.TimeoutError:
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=200)
+    except TimeoutError:
         print(f"      ⚠️  {batch_info} -> Port {port} TIMEOUT after 5 minutes. Cleaning up...", flush=True)
         try:
             proc.terminate()
-            await asyncio.sleep(1) # Give it a second to terminate
+            await asyncio.sleep(1)  # Give it a second to terminate
             if proc.returncode is None:
                 proc.kill()
         except OSError:
@@ -198,7 +200,7 @@ async def run_matchup(
     out_csv = out_dir / f"{agent}_vs_{opponent}.csv"
 
     total_new_overall = 0
-    
+
     # Retry Loop: Continue until we reach the target or stop making progress
     while True:
         already_done = 0
@@ -228,17 +230,25 @@ async def run_matchup(
             port = await port_queue.get()
             # Use a unique temporary file for this specific worker batch
             tmp_csv = out_dir / f"_tmp_{agent}_{opponent}_p{port}_b{b_idx}.csv"
-            
+
             # Ensure fresh start: delete tmp CSV if it exists from a previous attempt
             if tmp_csv.exists():
                 tmp_csv.unlink()
-                
+
             try:
                 done = await run_worker_batch(
-                    agent, opponent, n, port, concurrency, tmp_csv,
+                    agent,
+                    opponent,
+                    n,
+                    port,
+                    concurrency,
+                    tmp_csv,
                     f"[{agent} vs {opponent}] Batch {b_idx + 1}",
-                    battle_format=battle_format, player_backend=player_backend,
-                    player_prompt_algo=player_prompt_algo, temperature=temperature, log_dir=log_dir,
+                    battle_format=battle_format,
+                    player_backend=player_backend,
+                    player_prompt_algo=player_prompt_algo,
+                    temperature=temperature,
+                    log_dir=log_dir,
                 )
                 return done, tmp_csv
             finally:
@@ -259,11 +269,13 @@ async def run_matchup(
         for done, tmp_csv in results:
             if done > 0 and tmp_csv.exists():
                 try:
+                    # Clear out_dir if we're writing to it for the first time
+                    # No, actually benchmark resuming is fine.
                     frames.append(pd.read_csv(tmp_csv))
                     new_in_iteration += done
                 except Exception as e:
-                    print(f"      ⚠️  Error reading tmp CSV: {e}")
-            
+                    print(f"      ⚠️  Error reading tmp CSV {tmp_csv}: {e}")
+
             # CRITICAL: Always delete tmp file after processing (even if it failed or timed out)
             if tmp_csv.exists():
                 tmp_csv.unlink()
@@ -277,7 +289,7 @@ async def run_matchup(
                 final_df = new_df
             final_df.to_csv(out_csv, index=False)
             total_new_overall += new_in_iteration
-        
+
         # Safety: If no progress was made in this iteration, break to avoid infinite loop
         if new_in_iteration == 0:
             print(f"      ⚠️  No progress made in this iteration for {agent} vs {opponent}. Stopping.")
@@ -324,9 +336,9 @@ async def main_async():
         parser.error("--ports must be a positive integer (>= 1)")
 
     out_dir = Path(args.out).resolve()
-    # If the user is using the default directory, append the battle format to it
+    # If using the default top-level directory, sub-folder by battle format for better organization
     if args.out == str(DEFAULT_DATA_DIR):
-        out_dir = out_dir.parent / f"unified_{args.battle_format}"
+        out_dir = out_dir / args.battle_format
     
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -346,14 +358,16 @@ async def main_async():
     await restart_servers_async(args.ports)
 
     stats = []
+    performance_log = []
+    perf_csv = out_dir / "matchup_performance.csv"
     matchup_count = 0
     for agent in agents:
         for opp in opponents:
-
             # Periodic Restart
             if args.restart_every > 0 and matchup_count > 0 and matchup_count % args.restart_every == 0:
                 await restart_servers_async(args.ports)
 
+            start_time = time.time()
             total_done, new_games = await run_matchup(
                 agent,
                 opp,
@@ -367,9 +381,28 @@ async def main_async():
                 args.temperature,
                 args.log_dir,
             )
+            end_time = time.time()
+            duration = end_time - start_time
             print(f"✅ Matchup {agent} vs {opp} complete: {total_done} games recorded.")
+
             if new_games > 0:
                 matchup_count += 1
+                perf_entry = {
+                    "agent": agent,
+                    "opponent": opp,
+                    "new_games": new_games,
+                    "duration_seconds": round(duration, 2),
+                    "sec_per_game": round(duration / new_games, 3) if new_games > 0 else 0,
+                    "timestamp": datetime.datetime.now().isoformat(),
+                }
+                performance_log.append(perf_entry)
+                # Append to performance CSV (preserving old runs)
+                pd.DataFrame([perf_entry]).to_csv(
+                    perf_csv, 
+                    mode='a', 
+                    header=not perf_csv.exists(), 
+                    index=False
+                )
 
             # Load results for summary
             csv_path = out_dir / f"{agent}_vs_{opp}.csv"
@@ -378,12 +411,20 @@ async def main_async():
                     df = pd.read_csv(csv_path)
                     if len(df) > 0:
                         wr = df["won"].mean() * 100
+
+                        # Find matching performance entry for this specific run
+                        spg = "N/A"
+                        for p in performance_log:
+                            if p["agent"] == agent and p["opponent"] == opp:
+                                spg = f"{p['sec_per_game']:.2f}"
+
                         stats.append(
                             {
                                 "Agent": agent,
                                 "Opponent": opp,
                                 "WR%": f"{wr:.1f}",
                                 "Games": f"{len(df)}/{args.n_battles}",
+                                "Sec/Game": spg,
                             }
                         )
                 except Exception:

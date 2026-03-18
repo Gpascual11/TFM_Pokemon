@@ -10,6 +10,7 @@ any leaks from LLM background threads) upon exit.
 import argparse
 import asyncio
 import csv
+import datetime
 import gc
 import os
 import random
@@ -38,6 +39,104 @@ if _POKECHAMP.exists() and str(_POKECHAMP) not in sys.path:
     sys.path.insert(0, str(_POKECHAMP))
 
 from poke_env import AccountConfiguration, ServerConfiguration
+import poke_env.environment.battle
+from poke_env.environment.battle import Battle
+from poke_env.player.player import Player
+from poke_env.data import GenData
+
+class StatsBattle(Battle):
+    """A Battle subclass that tracks advanced metrics for research analysis."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.voluntary_switches_us = 0
+        self.forced_switches_us = 0
+        self.voluntary_switches_opp = 0
+        self.forced_switches_opp = 0
+        self.move_counts_us = {}  # Dict[str, int]
+        self.move_counts_opp = {} # Dict[str, int]
+        self.crit_count_us = 0
+        self.crit_count_opp = 0
+        self.miss_count_us = 0
+        self.miss_count_opp = 0
+        self.supereffective_count_us = 0
+        self.supereffective_count_opp = 0
+
+    def switch(self, pokemon_str: str, details: str, hp_status: str):
+        identifier = pokemon_str.split(":")[0][:2]
+        is_mine = identifier == self._player_role
+        
+        if is_mine:
+            if getattr(self, "force_switch", False):
+                self.forced_switches_us += 1
+            else:
+                self.voluntary_switches_us += 1
+        super().switch(pokemon_str, details, hp_status)
+
+    def parse_message(self, split_message):
+        if len(split_message) > 3 and split_message[1] == "move":
+            pokemon_str = split_message[2]
+            move_id = split_message[3]
+            identifier = pokemon_str.split(":")[0][:2]
+            is_mine = identifier == self._player_role
+            
+            mid = move_id.lower().replace(" ", "").replace("-", "")
+            if is_mine:
+                self.move_counts_us[mid] = self.move_counts_us.get(mid, 0) + 1
+            else:
+                self.move_counts_opp[mid] = self.move_counts_opp.get(mid, 0) + 1
+        
+        if len(split_message) > 2:
+            msg_type = split_message[1]
+            if msg_type == "-crit":
+                role = getattr(self, "_player_role", "p1") or "p1"
+                is_us = split_message[2].startswith(role)
+                if is_us:
+                    self.crit_count_opp += 1
+                else:
+                    self.crit_count_us += 1
+            elif msg_type == "-miss":
+                role = getattr(self, "_player_role", "p1") or "p1"
+                is_us = split_message[2].startswith(role)
+                if is_us:
+                    self.miss_count_us += 1
+                else:
+                    self.miss_count_opp += 1
+            elif msg_type == "-supereffective":
+                role = getattr(self, "_player_role", "p1") or "p1"
+                is_us = split_message[2].startswith(role)
+                if is_us:
+                    self.supereffective_count_opp += 1
+                else:
+                    self.supereffective_count_us += 1
+        super().parse_message(split_message)
+
+# Patch the Player class to use our StatsBattle
+async def patched_create_battle(self, split_message):
+    if split_message[1] == self._format and len(split_message) >= 2:
+        battle_tag = "-".join(split_message)[1:]
+        if battle_tag in self._battles:
+            return self._battles[battle_tag]
+        
+        gen = GenData.from_format(self._format).gen
+        battle = StatsBattle(
+            battle_tag=battle_tag,
+            username=self.username,
+            logger=self.logger,
+            gen=gen,
+            save_replays=self._save_replays,
+        )
+        battle._format = self._format
+        await self._battle_count_queue.put(None)
+        async with self._battle_start_condition:
+            self._battle_semaphore.release()
+            self._battle_start_condition.notify_all()
+            self._battles[battle_tag] = battle
+        return battle
+    return await self._original_create_battle(split_message)
+
+if not hasattr(Player, "_original_create_battle"):
+    Player._original_create_battle = Player._create_battle
+    Player._create_battle = patched_create_battle
 
 from p01_heuristics.s01_singles.core.factory import AgentFactory
 
@@ -130,7 +229,9 @@ def _short(name: str) -> str:
     return _SHORT_NAMES.get(name, name.replace("_", "")[:8])
 
 
-async def _run_streaming(player, opponent, total_n: int, agent_name: str, opp_name: str, out_csv: Path) -> int:
+async def _run_streaming(
+    player, opponent, total_n: int, agent_name: str, opp_name: str, out_csv: Path, port: int, battle_format: str = ""
+) -> int:
     """Executes battles in small, isolated chunks to optimize memory usage.
 
     This function cycles through player.battle_against, result extraction,
@@ -159,8 +260,10 @@ async def _run_streaming(player, opponent, total_n: int, agent_name: str, opp_na
 
     fieldnames = [
         "battle_id",
+        "format",
         "heuristic",
         "opponent",
+        "winner",
         "won",
         "turns",
         "fainted_us",
@@ -171,6 +274,21 @@ async def _run_streaming(player, opponent, total_n: int, agent_name: str, opp_na
         "total_hp_opp",
         "team_us",
         "team_opp",
+        "side_conditions_us",
+        "side_conditions_opp",
+        "voluntary_switches_us",
+        "forced_switches_us",
+        "move_stats_us",
+        "move_stats_opp",
+        "crit_us",
+        "crit_opp",
+        "miss_us",
+        "miss_opp",
+        "supereffective_us",
+        "supereffective_opp",
+        "hp_perc_us",
+        "hp_perc_opp",
+        "timestamp",
     ]
 
     out_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -179,6 +297,40 @@ async def _run_streaming(player, opponent, total_n: int, agent_name: str, opp_na
         with open(out_csv, "w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
+
+    def _format_side_conditions(side_conditions):
+        if not side_conditions:
+            return ""
+        parts = []
+        for sc, val in side_conditions.items():
+            if hasattr(sc, "name"):
+                name = sc.name
+            else:
+                name = str(sc)
+            if val > 1:
+                parts.append(f"{name}({val})")
+            else:
+                parts.append(name)
+        return "|".join(sorted(parts))
+
+    def _format_team_detailed(team):
+        if not team:
+            return ""
+        mons = []
+        for m in team.values():
+            details = [str(m.species)]
+            if m.item:
+                details.append(f"item:{m.item}")
+            if m.ability:
+                details.append(f"ability:{m.ability}")
+            if m.status:
+                # Use .name for enum clean display (FNT, PAR, etc)
+                st = m.status.name if hasattr(m.status, "name") else str(m.status)
+                details.append(f"status:{st}")
+            if m.fainted:
+                 details.append("FNT")
+            mons.append(f"{m.species}({','.join(details[1:])})")
+        return "|".join(sorted(mons))
 
     for i in range(0, total_n, chunk_size):
         this_n = min(chunk_size, total_n - i)
@@ -195,29 +347,60 @@ async def _run_streaming(player, opponent, total_n: int, agent_name: str, opp_na
 
         # Extract results
         rows: list[dict] = []
-        # Access internal battles dict directly to ensure we can clear it
-        battles = player.battles
+        # Access internal battles dict directly
+        if hasattr(player, "_battles"):
+            battles = player._battles
+        elif hasattr(player, "battles"):
+            # Some versions might have it public
+            battles = player.battles # type: ignore
+        else:
+            battles = {}
+
         for bid, b in battles.items():
             if not b.finished:
                 continue
             row = {
                 "battle_id": bid,
+                "format": getattr(b, "_format", None) or battle_format,
                 "heuristic": agent_name,
                 "opponent": opp_name,
+                "winner": agent_name if b.won else opp_name,
                 "won": 1 if b.won else 0,
                 "turns": b.turn,
+                "voluntary_switches_us": getattr(b, "voluntary_switches_us", 0),
+                "forced_switches_us": getattr(b, "forced_switches_us", 0),
+                "crit_us": getattr(b, "crit_count_us", 0),
+                "crit_opp": getattr(b, "crit_count_opp", 0),
+                "miss_us": getattr(b, "miss_count_us", 0),
+                "miss_opp": getattr(b, "miss_count_opp", 0),
+                "supereffective_us": getattr(b, "supereffective_count_us", 0),
+                "supereffective_opp": getattr(b, "supereffective_count_opp", 0),
+                "timestamp": datetime.datetime.now().isoformat(),
             }
-            if b.team:
+
+            def _serialize_counts(counts):
+                if not counts:
+                    return ""
+                return "|".join([f"{k}:{v}" for k, v in sorted(counts.items(), key=lambda x: x[1], reverse=True)])
+
+            row["move_stats_us"] = _serialize_counts(getattr(b, "move_counts_us", {}))
+            row["move_stats_opp"] = _serialize_counts(getattr(b, "move_counts_opp", {}))
+
+            if hasattr(b, "team") and b.team:
                 fainted = sum(m.fainted for m in b.team.values())
                 row.update(
                     {
                         "fainted_us": fainted,
                         "remaining_pokemon_us": len(b.team) - fainted,
                         "total_hp_us": round(sum(m.current_hp_fraction for m in b.team.values() if not m.fainted), 3),
-                        "team_us": "|".join(sorted({str(m.species) for m in b.team.values()})),
+                        "hp_perc_us": round(sum(m.current_hp_fraction for m in b.team.values()) / len(b.team), 3)
+                        if len(b.team) > 0
+                        else 0,
+                        "team_us": _format_team_detailed(b.team),
+                        "side_conditions_us": _format_side_conditions(getattr(b, "side_conditions", {})),
                     }
                 )
-            if b.opponent_team:
+            if hasattr(b, "opponent_team") and b.opponent_team:
                 fainted = sum(m.fainted for m in b.opponent_team.values())
                 row.update(
                     {
@@ -226,7 +409,11 @@ async def _run_streaming(player, opponent, total_n: int, agent_name: str, opp_na
                         "total_hp_opp": round(
                             sum(m.current_hp_fraction for m in b.opponent_team.values() if not m.fainted), 3
                         ),
-                        "team_opp": "|".join(sorted({str(m.species) for m in b.opponent_team.values()})),
+                        "hp_perc_opp": round(sum(m.current_hp_fraction for m in b.opponent_team.values()) / len(b.opponent_team), 3)
+                        if len(b.opponent_team) > 0
+                        else 0,
+                        "team_opp": _format_team_detailed(b.opponent_team),
+                        "side_conditions_opp": _format_side_conditions(getattr(b, "opponent_side_conditions", {})),
                     }
                 )
             rows.append(row)
@@ -236,6 +423,7 @@ async def _run_streaming(player, opponent, total_n: int, agent_name: str, opp_na
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writerows(rows)
             done_total += len(rows)
+            print(f"      [DEBUG] Port {port}: Wrote {len(rows)} games to {out_csv.name}", flush=True)
 
         # IMPORTANT: Clear both player and opponent to free memory
         try:
@@ -275,7 +463,7 @@ def main() -> None:
     # Create agents using the Unified Factory
     player = AgentFactory.create(
         args.agent,
-        account_configuration=AccountConfiguration(f"S{_short(args.agent)}{tag}", None),
+        account_configuration=AccountConfiguration(f"S{_short(args.agent)}{tag}", ""),
         server_configuration=server_config,
         battle_format=args.format,
         tag=tag,
@@ -288,7 +476,7 @@ def main() -> None:
 
     opponent = AgentFactory.create(
         args.opponent,
-        account_configuration=AccountConfiguration(f"Op{_short(args.opponent)}{tag}", None),
+        account_configuration=AccountConfiguration(f"Op{_short(args.opponent)}{tag}", ""),
         server_configuration=server_config,
         battle_format=args.format,
         tag=tag,
@@ -298,6 +486,9 @@ def main() -> None:
         log_dir=args.log_dir,
         max_concurrent_battles=args.concurrency,
     )
+
+    # Convert output path to absolute BEFORE changing directory
+    out_path = Path(args.out).resolve()
 
     # Always change to pokechamp root because our poke_env fork expects it for data loading
     if _POKECHAMP.exists():
@@ -311,7 +502,9 @@ def main() -> None:
         _apply_llm_logging(opponent, args.opponent, llm_log_dir, suffix=str(args.port))
 
     total_done = asyncio.run(
-        _run_streaming(player, opponent, args.n_battles, args.agent, args.opponent, Path(args.out))
+        _run_streaming(
+            player, opponent, args.n_battles, args.agent, args.opponent, out_path, args.port, battle_format=args.format
+        )
     )
 
     print(f"WORKER_OK:{total_done}")
