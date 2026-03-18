@@ -116,7 +116,35 @@ The benchmark automatically launches the required number of local Showdown serve
 
 ---
 
-## 🛠️ 6. Troubleshooting
+## 📊 6. Advanced Battle Analytics (New!)
+
+The evaluation engine now captures deeply granular data for every battle, providing insights far beyond simple winrates.
+
+### 🧠 Strategic Metrics
+- **Switch Intelligence**: Tracks `voluntary_switches` (strategic) vs `forced_switches` (due to faints), allowing you to measure agent "pivoting" efficiency.
+- **Move Usage Profiling**: Serialized move statistics (e.g., `bugbuzz:5|airslash:3`) to identify "spamming" patterns or preferred finishing moves.
+
+### 🎲 Luck & RNG Tracking
+- **RNG Metrics**: Explicitly counts `critical_hits`, `misses`, and `super_effective_hits` for both players. This is essential for identifying "lucky wins" in large-scale simulations.
+
+### 🔍 Micro-State Monitoring
+- **Team HP %**: Cumulative team health percentage (0.0 to 6.0) and percentage (0-100%) to differentiate between "close wins" and crushing victories.
+- **Side Conditions**: Active hazards (Spikes, Stealth Rock, Sticky Web) are tracked per-side.
+- **Detailed Team State**: Per-Pokémon items, abilities, and status effects (including `FNT` for fainted mons) are serialized into the CSV for deep post-game analysis.
+
+---
+
+## ⏱️ 7. Performance Monitoring
+
+A new `matchup_performance.csv` is generated for every benchmark run to help optimize high-concurrency 10k game runs.
+
+- **Seconds per Game (SPG)**: Real-time monitoring of agent decision speed.
+- **Duration Tracking**: Total time taken per matchup to help plan long-running experiments.
+- **Subfolder Organization**: Results are automatically grouped by battle format (e.g., `data/.../gens_10k_teams/gen9randombattle/`) to keep multi-generation data clean.
+
+---
+
+## 🛠️ 8. Troubleshooting
 
 - **"Port Busy"**: Use `pkill node` or wait 10 seconds for the OS to release the port.
 - **"Out of Memory"**: Reduce your `--concurrency` flag. Start with `5` and work your way up.
@@ -124,6 +152,6 @@ The benchmark automatically launches the required number of local Showdown serve
 
 ---
 
-## 📜 7. License & Credits
+## 📜 9. License & Credits
 
 Developed as part of the **TFM Pokémon Research Project**. Built on top of the incredible `poke-env` library and the Pokémon Showdown engine.
