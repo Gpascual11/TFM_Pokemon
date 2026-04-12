@@ -15,6 +15,9 @@ node_modules/
 data/models/dataset/huggingface_cache/
 pokechamp/
 
+data/models/dataset/huggingface_cache/
+data/1_vs_1/benchmarks/gens_10k_teams/
+
 # LaTeX temporary files
 # Core latex/pdflatex aux files
 report/**/*.aux
