@@ -1,3 +1,5 @@
+# [In progress...]
+
 # TFM: Pokémon Battle AI Research Environment
 
 This project focuses on developing and benchmarking Heuristic and Reinforcement Learning agents for Pokémon Showdown. The environment uses a local Node.js server for high-speed, parallel battle simulations.
