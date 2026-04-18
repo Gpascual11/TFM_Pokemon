@@ -14,27 +14,23 @@ import os
 import sys
 
 # ---------------------------------------------------------------------------
-# Package bootstrap
+# Package bootstrap — ensures relative imports work when invoked directly.
+# File lives at: src/p01_heuristics/s02_doubles/evaluation/engine/run.py
 # ---------------------------------------------------------------------------
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-_PARENT_DIR = os.path.dirname(_THIS_DIR)
+_EVAL_DIR = os.path.dirname(_THIS_DIR)  # evaluation/
+_S02_DIR = os.path.dirname(_EVAL_DIR)  # s02_doubles/
+_P01_DIR = os.path.dirname(_S02_DIR)   # p01_heuristics/
+_SRC_DIR = os.path.dirname(_P01_DIR)   # src/
 
-if __package__ is None or __package__ == "":
-    # Add the 'src' directory to sys.path
-    _SRC_DIR = os.path.dirname(_PARENT_DIR)
-    if _SRC_DIR not in sys.path:
-        sys.path.insert(0, _SRC_DIR)
+if _SRC_DIR not in sys.path:
+    sys.path.insert(0, _SRC_DIR)
 
-    # Set the package context correctly
-    # Structure is src/p01_heuristics/s02_doubles
-    __package__ = "p01_heuristics.s02_doubles"
-    import importlib
+__package__ = "p01_heuristics.s02_doubles.evaluation.engine"
 
-    importlib.import_module(__package__)
-
-from .core.battle_manager import BattleManager, OPPONENT_CHOICES  # noqa: E402
-from .core.factory import HeuristicFactory  # noqa: E402
-from .core.process_launcher import ProcessLauncher  # noqa: E402
+from ...core.battle_manager import BattleManager, OPPONENT_CHOICES  # noqa: E402
+from ...core.factory import HeuristicFactory  # noqa: E402
+from ...core.process_launcher import ProcessLauncher  # noqa: E402
 
 _OPPONENT_LABELS = {
     "random": "RandomPlayer",

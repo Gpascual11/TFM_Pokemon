@@ -7,51 +7,57 @@ This directory contains the testing suite for Doubles (2v2) heuristics.
 ### `agents/`
 Registered doubles heuristic versions.
 
-### `core/`
-The internal engine for double battles:
-- `battle_manager.py`: Handles the doubles battle loop.
-- `process_launcher.py`: Spawns parallel processes.
-
-### Tools
-- `run.py`: Single simulation entry point.
-- `benchmark.py`: Fully automated benchmarking suite.
-- `generate_report.py`: Visual analysis script (output to `results/`).
+### `evaluation/`
+The testing and analysis suite for doubles:
+- `engine/benchmark.py`: Fully automated benchmarking suite.
+- `engine/run.py`: Single simulation entry point.
+- `reporting/generate_report.py`: Visual analysis script.
+- `results/`: Local summary CSVs and generated plots.
 
 ---
 
 ## How it Works
 
 Doubles heuristics use a **Score-then-Combine** pattern:
-1.  **Candidate Selection**: For each active slot, the engine lists all valid actions.
-2.  **Scoring**: Each action is scored individually (e.g., damage against most vulnerable opponent).
-3.  **Combination**: `DoubleBattleOrder.join_orders` produces valid pairings, filtering illegal moves (like switching to the same Pokémon twice).
-4.  **Policy**: The pair with the highest combined score is picked.
+1.  **Candidate Selection**: Validates all possible actions for both active slots.
+2.  **Scoring**: Each action is scored individually (incorporating damage, status, and survival).
+3.  **Combination**: `DoubleBattleOrder.join_orders` produces valid pairings, filtering illegal moves.
+4.  **Policy**: The pair with the highest combined score (Slot 0 + Slot 1) is selected.
 
 ---
 
 ## How to Run
 
-### Automated Doubles Benchmark
-No manual server setup is required. The script manages the server lifecycle automatically.
+### Automated Doubles Benchmark (10k Games)
+The script handles the server lifecycle (restarts every 5 matchups) automatically. Results are organized by generation.
+
 ```bash
-# Full tournament against all heuristics and baselines.
-# Output: data/2_vs_2/benchmarks/unified/2_vs_2_<agent>_vs_<opponent>_*.csv
-uv run python src/p01_heuristics/s02_doubles/benchmark.py 1000 --ports 8000 8001 8002 8003 --resume
+# Run a specific benchmark (e.g. Gen 9)
+# Output: data/2_vs_2/benchmarks/gens_10k_teams/gen9randomdoublesbattle/*.csv
+uv run python src/p01_heuristics/s02_doubles/evaluation/engine/benchmark.py 10000 \
+    --ports 8 \
+    --battle-format gen9randomdoublesbattle
+```
+
+### Multi-Generation Sweep
+To replicate the singles "all-gen" benchmark:
+```bash
+for gen in {4..9}; do
+  uv run python src/p01_heuristics/s02_doubles/evaluation/engine/benchmark.py 10000 \
+      --ports 8 --battle-format gen${gen}randomdoublesbattle
+done
 ```
 
 ### Visual Report
 ```bash
-uv run python src/p01_heuristics/s02_doubles/generate_report.py
+uv run python src/p01_heuristics/s02_doubles/evaluation/reporting/generate_report.py
 ```
 
 ---
 
-## Technical Features
-
-### Memory Management
-- **Python-level**: Forced garbage collection between matchups.
-- **Server-level**: Automatic restarts every 5 matchups to prevent `pokemon-showdown` memory bloat.
-- **Safe Batching**: Batch size is set to 250 to stay within 16GB RAM limits.
-
-### Checkpoints
-Uses `data/2_vs_2/benchmarks/unified/checkpoint_v2.json` to resume from failures.
+## Data Schema & Metrics
+The doubles engine records 30+ metrics per battle to remain compatible with `s01_singles` analysis tools:
+- **Core**: `won`, `turns`, `winner`, `format`.
+- **Survival**: `hp_perc_us`, `remaining_pokemon_us`, `side_conditions_us`.
+- **Performance**: crits, misses, and move effectiveness (schema matched to singles).
+- **Organization**: Data is stored in `data/2_vs_2/benchmarks/gens_10k_teams/`.

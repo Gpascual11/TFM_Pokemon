@@ -287,8 +287,91 @@ def generate_full_report(data_dir: Path, output_dir: Path) -> None:
     ax.set_ylabel("Mean Success Probability (%)")
     ax.grid(True, linestyle=":", alpha=0.3)
     finalize_plot(fig)
-    
     plt.savefig(output_dir / "06_efficiency_scatter.png", bbox_inches='tight', pad_inches=0.01)
+    plt.close()
+
+    # --- 7. Survival Dominance (End-of-Match HP %) ---
+    fig, ax = plt.subplots(figsize=(12, 9))
+    # Only calculate HP for wins to show 'Dominance'
+    win_only_df = df[df["won"] == 1].copy()
+    hp_pivot = _pivot(win_only_df, "hp_perc_us", agents_raw, opps_raw)
+    hp_pivot.index = [get_display_name(x) for x in hp_pivot.index]
+    hp_pivot.columns = [get_display_name(x) for x in hp_pivot.columns]
+    
+    sns.heatmap(
+        hp_pivot, annot=True, fmt=".1f", cmap="YlGn", 
+        linewidths=0.5, linecolor='white', ax=ax,
+        cbar_kws={'label': 'Mean Winner HP (%)', 'shrink': 0.8}
+    )
+    plt.xticks(rotation=45, ha='right')
+    finalize_plot(fig)
+    plt.savefig(output_dir / "07_survival_dominance.png", bbox_inches='tight', pad_inches=0.01)
+    plt.close()
+
+    # --- 8. Switching Frequency (Tactical Agility) ---
+    fig, ax = plt.subplots(figsize=(10, 6))
+    switch_data = df.groupby("agent")["voluntary_switches_us"].mean().reindex(agents_raw).sort_values()
+    display_names = [get_display_name(x) for x in switch_data.index]
+    colors = [get_category_color(x) for x in display_names]
+    
+    bars = ax.barh(display_names, switch_data.values, color=colors, alpha=0.85, edgecolor='black', linewidth=0.5)
+    for bar, val in zip(bars, switch_data.values):
+        ax.text(val + 0.05, bar.get_y() + bar.get_height()/2, f"{val:.2f}", va="center", fontsize=8)
+    
+    ax.set_xlabel("Mean Voluntary Switches per Battle")
+    finalize_plot(fig)
+    plt.savefig(output_dir / "08_tactical_agility.png", bbox_inches='tight', pad_inches=0.01)
+    plt.close()
+
+    # --- 9. Coverage Effectiveness (Super-Effective Hits) ---
+    fig, ax = plt.subplots(figsize=(10, 6))
+    # Note: We filter for rows where 'supereffective_us' exists
+    if "supereffective_us" in df.columns:
+        cov_data = df.groupby("agent")["supereffective_us"].mean().reindex(agents_raw).sort_values()
+        display_names = [get_display_name(x) for x in cov_data.index]
+        colors = [get_category_color(x) for x in display_names]
+        bars = ax.barh(display_names, cov_data.values, color=colors, alpha=0.85, edgecolor='black', linewidth=0.5)
+        ax.set_xlabel("Mean Super-Effective Hits per Battle")
+        finalize_plot(fig)
+        plt.savefig(output_dir / "09_coverage_effectiveness.png", bbox_inches='tight', pad_inches=0.01)
+    plt.close()
+
+    # --- 10. Luck Variance (Crits & Misses) ---
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
+    
+    if "crit_us" in df.columns and "miss_us" in df.columns:
+        crit_agg = df.groupby("agent")["crit_us"].mean().reindex(agents_raw)
+        miss_agg = df.groupby("agent")["miss_us"].mean().reindex(agents_raw)
+        labels = [get_display_name(x) for x in agents_raw]
+        
+        ax1.bar(labels, crit_agg.values, color=COLORS["primary"], alpha=0.7, label="Critical Hits")
+        ax1.set_title("Mean Crit Count")
+        ax1.tick_params(axis='x', rotation=45)
+        
+        ax2.bar(labels, miss_agg.values, color=COLORS["secondary"], alpha=0.7, label="Misses")
+        ax2.set_title("Mean Miss Count")
+        ax2.tick_params(axis='x', rotation=45)
+        
+        finalize_plot(fig)
+        plt.savefig(output_dir / "10_luck_variance.png", bbox_inches='tight', pad_inches=0.01)
+    plt.close()
+
+    # --- 11. Hazard Impact (Side Conditions) ---
+    fig, ax = plt.subplots(figsize=(10, 6))
+    # Count how many side conditions are typically active
+    if "side_conditions_us" in df.columns:
+        def count_h(x):
+            if pd.isna(x) or x == "": return 0
+            return len(str(x).split("|"))
+        
+        df["hazard_count"] = df["side_conditions_us"].apply(count_h)
+        haz_data = df.groupby("agent")["hazard_count"].mean().reindex(agents_raw).sort_values()
+        display_names = [get_display_name(x) for x in haz_data.index]
+        colors = [get_category_color(x) for x in display_names]
+        ax.barh(display_names, haz_data.values, color=colors, alpha=0.85, edgecolor='black', linewidth=0.5)
+        ax.set_xlabel("Mean Side Conditions (Hazards/Screens) Active")
+        finalize_plot(fig)
+        plt.savefig(output_dir / "11_hazard_management.png", bbox_inches='tight', pad_inches=0.01)
     plt.close()
 
     print(f"✅ Paper export complete. Source: {data_dir.name}")

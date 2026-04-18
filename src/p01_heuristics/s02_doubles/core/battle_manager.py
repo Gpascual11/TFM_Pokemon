@@ -182,8 +182,8 @@ class BattleManager:
             **common_kwargs,
         )
 
-    @staticmethod
     def _extract_batch(
+        self,
         player,
         opponent,
         heuristic_version: str,
@@ -204,23 +204,19 @@ class BattleManager:
 
             row: dict[str, Any] = {
                 "battle_id": bid,
+                "format": self.battle_format,
                 "heuristic": heuristic_version,
-                "opponent_type": opponent_type,
+                "opponent": opponent_type,
                 "winner": winner,
                 "won": 1 if b.won else 0,
                 "turns": b.turn,
+                "timestamp": pd.Timestamp.now().isoformat(),
             }
 
             if b.team:
                 row["team_us"] = "|".join(
                     sorted({str(m.species) for m in b.team.values()})
                 )
-            if b.opponent_team:
-                row["team_opp"] = "|".join(
-                    sorted({str(m.species) for m in b.opponent_team.values()})
-                )
-
-            if b.team:
                 fainted_us = sum(m.fainted for m in b.team.values())
                 row["fainted_us"] = fainted_us
                 row["remaining_pokemon_us"] = len(b.team) - fainted_us
@@ -230,7 +226,13 @@ class BattleManager:
                     ),
                     3,
                 )
+                row["hp_perc_us"] = round(row["total_hp_us"] / len(b.team) * 100, 1) if b.team else 0
+                row["side_conditions_us"] = "|".join(sorted(str(k) for k in b.side_conditions.keys()))
+
             if b.opponent_team:
+                row["team_opp"] = "|".join(
+                    sorted({str(m.species) for m in b.opponent_team.values()})
+                )
                 fainted_opp = sum(m.fainted for m in b.opponent_team.values())
                 row["fainted_opp"] = fainted_opp
                 row["remaining_pokemon_opp"] = len(b.opponent_team) - fainted_opp
@@ -242,6 +244,23 @@ class BattleManager:
                     ),
                     3,
                 )
+                row["hp_perc_opp"] = round(row["total_hp_opp"] / len(b.opponent_team) * 100, 1) if b.opponent_team else 0
+                row["side_conditions_opp"] = "|".join(sorted(str(k) for k in b.opponent_side_conditions.keys()))
+
+            # Switch metrics (Simple proxy: non-move turns where player didn't lose)
+            # Note: For more precision, we'd need to hook into the battle log.
+            row["voluntary_switches_us"] = 0 
+            row["forced_switches_us"] = fainted_us if b.team else 0
+
+            # Move performance placeholders (To be populated by specific log parsers if needed)
+            row["move_stats_us"] = ""
+            row["move_stats_opp"] = ""
+            row["crit_us"] = 0
+            row["crit_opp"] = 0
+            row["miss_us"] = 0
+            row["miss_opp"] = 0
+            row["supereffective_us"] = 0
+            row["supereffective_opp"] = 0
 
             if player.tracks_moves:
                 row["moves_used"] = "|".join(sorted(player.get_used_moves(bid)))

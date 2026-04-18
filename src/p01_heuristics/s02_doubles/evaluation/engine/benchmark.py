@@ -3,7 +3,11 @@ from pathlib import Path
 
 # Dynamic path resolution to find core modules
 _this_dir = Path(__file__).parent.resolve()
-_src_dir = _this_dir.parent.parent  # src
+_engine_dir = _this_dir
+_eval_dir = _engine_dir.parent
+_doubles_dir = _eval_dir.parent
+_heuristics_dir = _doubles_dir.parent
+_src_dir = _heuristics_dir.parent
 _root_dir = _src_dir.parent
 if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
@@ -14,9 +18,10 @@ import subprocess
 import time
 
 import pandas as pd
+from tabulate import tabulate
+
 from p01_heuristics.s02_doubles.core.factory import HeuristicFactory
 from p01_heuristics.s02_doubles.core.process_launcher import ProcessLauncher
-from tabulate import tabulate
 
 DEFAULT_DATA_DIR = "data/2_vs_2/benchmarks/unified"
 
@@ -31,19 +36,22 @@ def get_csv_games(csv_path: Path) -> int:
     except:
         return 0
 
-def run_matchup(v_a: str, v_b: str, games: int, ports: list[int], data_dir: Path, battle_format: str) -> tuple[dict, int]:
+
+def run_matchup(
+    v_a: str, v_b: str, games: int, ports: list[int], data_dir: Path, battle_format: str
+) -> tuple[dict, int]:
     """Run a specific matchup and return its summary metrics and games actually launched."""
     # Check if we need more games
     csv_path = data_dir / f"{v_a}_vs_{v_b}.csv"
     existing = get_csv_games(csv_path)
-    
+
     games_ran = 0
     if existing >= games:
         print(f"      [doubles] {v_a} vs {v_b}: Found {existing} games. No new battles needed.")
     else:
         to_run = games - existing
         print(f"      [doubles] {v_a} vs {v_b}: Starting {to_run} more games (Total: {games})...")
-        
+
         launcher = ProcessLauncher(
             version=v_a,
             opponent=v_b,
@@ -102,21 +110,21 @@ def main():
     parser.add_argument(
         "--data-dir",
         type=str,
-        default=DEFAULT_DATA_DIR,
+        default="data/2_vs_2/benchmarks/gens_10k_teams",
         help="Data directory for per-matchup CSVs.",
     )
     parser.add_argument(
         "--output-csv",
         type=str,
-        default="src/p01_heuristics/s02_doubles/results/benchmark_summary.csv",
+        default="src/p01_heuristics/s02_doubles/evaluation/results/benchmark_summary.csv",
         help="Final summary CSV.",
     )
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir)
-    # If using the default directory, make it format-specific
-    if args.data_dir == DEFAULT_DATA_DIR:
-        data_dir = data_dir.parent / f"unified_{args.battle_format}"
+    # If using the default top-level directory, sub-folder by battle format
+    if args.data_dir == "data/2_vs_2/benchmarks/gens_10k_teams":
+        data_dir = data_dir / args.battle_format
 
     data_dir.mkdir(parents=True, exist_ok=True)
 
@@ -138,7 +146,7 @@ def main():
     for v_a in rows_v:
         for v_b in cols_v:
             # Print a clean header for the matchup
-            print(f"\n⚔️  [{matchup_count+1}/{len(rows_v)*len(cols_v)}] Executing {v_a} vs {v_b}...")
+            print(f"\n⚔️  [{matchup_count + 1}/{len(rows_v) * len(cols_v)}] Executing {v_a} vs {v_b}...")
 
             # Only restart if we've actually run 5 active matchups since the last restart
             if active_since_restart >= 5:
@@ -148,10 +156,10 @@ def main():
             # Run Matchup
             metrics, games_ran = run_matchup(v_a, v_b, args.total_games, ports, data_dir, args.battle_format)
             results_list.append({"version": v_a, "opponent": v_b, **metrics})
-            
+
             if games_ran > 0:
                 active_since_restart += 1
-                
+
             matchup_count += 1
 
     # Final Export

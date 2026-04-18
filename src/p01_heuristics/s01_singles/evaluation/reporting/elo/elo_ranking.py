@@ -3,13 +3,8 @@ import glob
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 from sklearn.linear_model import LogisticRegression
-
-# Define paths for Data input and Plot output
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../../"))
-BENCHMARKS_DIR = os.path.join(PROJECT_ROOT, "data/1_vs_1/benchmarks/unified")
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "src/p01_heuristics/s01_singles/evaluation/results")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def calculate_elo(df: pd.DataFrame, SCALE: int=400, BASE: int=10, INIT_RATING: int=1000):
     """
@@ -50,10 +45,15 @@ def calculate_elo(df: pd.DataFrame, SCALE: int=400, BASE: int=10, INIT_RATING: i
     return pd.Series(elo_scores, index=models_series.index).sort_values(ascending=False)
 
 def main():
-    print(f"Loading benchmark files from: {BENCHMARKS_DIR}")
-    csv_files = glob.glob(os.path.join(BENCHMARKS_DIR, "*.csv"))
+    parser = argparse.ArgumentParser(description="Calculate Elo ratings from benchmark CSVs.")
+    parser.add_argument("--data-dir", type=str, required=True, help="Path to CSV folder")
+    parser.add_argument("--output", type=str, default="elo_summary.csv", help="Output CSV file path")
+    args = parser.parse_args()
+
+    print(f"📁 Loading benchmark files from: {args.data_dir}")
+    csv_files = glob.glob(os.path.join(args.data_dir, "*.csv"))
     if not csv_files:
-        print("No CSSV files found. Please ensure benchmarks have been run.")
+        print("❌ No CSV files found. Please ensure benchmarks have been run.")
         return
         
     all_battles = []
@@ -75,7 +75,7 @@ def main():
             matchup_df = pd.DataFrame({
                 'model_a': df['agent'],
                 'model_b': df['opponent'],
-                'winner': df['won'].apply(lambda w: 'model_a' if w == 1 else 'model_b') # ignoring ties for simple benchmark processing unless recorded otherwise
+                'winner': df['won'].apply(lambda w: 'model_a' if w == 1 else 'model_b')
             })
             all_battles.append(matchup_df)
         except Exception as e:
@@ -86,34 +86,24 @@ def main():
         return
 
     combined_df = pd.concat(all_battles, ignore_index=True)
-    print(f"Total battles loaded: {len(combined_df)}")
+    print(f"✅ Total battles loaded: {len(combined_df):,}")
     
-    print("Calculating Elo ratings...")
+    print("📈 Calculating Elo ratings...")
     elo_ratings = calculate_elo(combined_df)
     
+    # Save the CSV
+    elo_ratings_df = elo_ratings.reset_index()
+    elo_ratings_df.columns = ["agent", "elo"]
+    
+    output_dir = os.path.dirname(args.output)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+        
+    elo_ratings_df.to_csv(args.output, index=False)
+    print(f"💾 Saved Elo ratings to: {args.output}")
+
     print("\n--- Final Elo Ratings ---")
     print(elo_ratings)
-    
-    # Save the text file
-    output_txt = os.path.join(OUTPUT_DIR, "elo_ratings.txt")
-    with open(output_txt, "w") as f:
-        f.write("Final Elo Ratings\n")
-        f.write("=================\n")
-        f.write(elo_ratings.to_string())
-    print(f"\nSaved ratings text to {output_txt}")
-
-    # Generate a plot
-    plt.figure(figsize=(10, 6))
-    elo_ratings.plot(kind='bar', color='skyblue', edgecolor='black')
-    plt.title('Agent Elo Ratings (Bradley-Terry WHR)')
-    plt.xlabel('Agent')
-    plt.ylabel('Elo Rating (Baseline = 1000)')
-    plt.xticks(rotation=45, ha='right')
-    plt.tight_layout()
-    
-    output_png = os.path.join(OUTPUT_DIR, "elo_ratings_plot.png")
-    plt.savefig(output_png)
-    print(f"Saved ratings plot to {output_png}")
 
 if __name__ == "__main__":
     main()
