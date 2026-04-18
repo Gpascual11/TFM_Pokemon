@@ -12,11 +12,10 @@ replays/
 
 pokemon-showdown/
 node_modules/
-data/models/dataset/huggingface_cache/
-pokechamp/
-
-data/models/dataset/huggingface_cache/
-data/1_vs_1/benchmarks/gens_10k_teams/
+# Data folders (keep structure, ignore files)
+data/**/*
+!data/**/
+!data/**/.gitkeep
 
 # LaTeX temporary files
 # Core latex/pdflatex aux files

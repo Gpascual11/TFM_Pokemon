@@ -1,6 +1,0 @@
-battle_id,heuristic,opponent,won,turns,fainted_us,remaining_pokemon_us,total_hp_us,fainted_opp,remaining_pokemon_opp,total_hp_opp
-battle-gen9randombattle-204474,ml_baseline,v6,0,16,6,0,0.0,2,1,0.63
-battle-gen9randombattle-204475,ml_baseline,v6,1,18,5,1,0.903,6,0,0.0
-battle-gen9randombattle-204476,ml_baseline,v6,0,15,6,0,0.0,3,1,0.83
-battle-gen9randombattle-204474,ml_baseline,v6,0,19,6,0,0.0,3,1,1.0
-battle-gen9randombattle-204475,ml_baseline,v6,0,16,6,0,0.0,3,1,0.1
