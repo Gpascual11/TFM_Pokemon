@@ -254,7 +254,17 @@ class ProcessLauncher:
             logger.warning("No per-process CSVs found matching '%s'", pattern)
             return merged_path
 
+        # Load new results
         frames = [pd.read_csv(f) for f in part_files]
+        
+        # If the file already exists, load the history so we append instead of overwrite
+        if merged_path.exists():
+            try:
+                history_df = pd.read_csv(merged_path)
+                frames.insert(0, history_df)
+            except Exception as e:
+                logger.warning("Could not read existing history in %s: %s. Starting fresh.", merged_path, e)
+
         merged = pd.concat(frames, ignore_index=True)
         merged.to_csv(merged_path, index=False)
 

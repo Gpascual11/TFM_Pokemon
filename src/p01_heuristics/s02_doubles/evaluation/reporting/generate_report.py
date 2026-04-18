@@ -5,7 +5,7 @@ import numpy as np
 
 
 def generate_visual_report(
-    csv_path="src/p01_heuristics/s02_doubles/results/benchmark_summary.csv",
+    csv_path="src/p01_heuristics/s02_doubles/evaluation/results/benchmark_summary.csv",
 ):
     """Generates a visual report for doubles heuristic performance."""
     try:
@@ -44,7 +44,7 @@ def generate_visual_report(
     plt.title("Turns vs. Survival in Doubles")
 
     plt.tight_layout()
-    report_file = "src/p01_heuristics/s02_doubles/results/benchmark_report.png"
+    report_file = "src/p01_heuristics/s02_doubles/evaluation/results/benchmark_report.png"
     plt.savefig(report_file, dpi=300)
     print(f"✅ Doubles Analysis report saved as: {report_file}")
 
