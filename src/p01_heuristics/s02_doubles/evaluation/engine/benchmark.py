@@ -116,8 +116,8 @@ def main():
     parser.add_argument(
         "--output-csv",
         type=str,
-        default="src/p01_heuristics/s02_doubles/evaluation/results/benchmark_summary.csv",
-        help="Final summary CSV.",
+        default=None,
+        help="Final summary CSV. Defaults to benchmark_summary.csv in the data directory.",
     )
     args = parser.parse_args()
 
@@ -127,6 +127,8 @@ def main():
         data_dir = data_dir / args.battle_format
 
     data_dir.mkdir(parents=True, exist_ok=True)
+
+    output_csv = Path(args.output_csv) if args.output_csv else data_dir / "benchmark_summary.csv"
 
     # Define Participants
     versions = HeuristicFactory.available_versions()
@@ -165,8 +167,8 @@ def main():
     # Final Export
     if results_list:
         final_df = pd.DataFrame(results_list)
-        final_df.to_csv(args.output_csv, index=False)
-        print(f"\n✅ MASTER SUMMARY SAVED TO: {args.output_csv}")
+        final_df.to_csv(output_csv, index=False)
+        print(f"\n✅ MASTER SUMMARY SAVED TO: {output_csv}")
 
         # Print Win Rate Matrix
         print("\n" + "=" * 80)

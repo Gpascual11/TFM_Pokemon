@@ -4,10 +4,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def generate_visual_report(
-    csv_path="src/p01_heuristics/s02_doubles/evaluation/results/benchmark_summary.csv",
-):
+import argparse
+from pathlib import Path
+
+def generate_visual_report(csv_path: str):
     """Generates a visual report for doubles heuristic performance."""
+    csv_path = Path(csv_path)
     try:
         df = pd.read_csv(csv_path)
     except FileNotFoundError:
@@ -44,7 +46,8 @@ def generate_visual_report(
     plt.title("Turns vs. Survival in Doubles")
 
     plt.tight_layout()
-    report_file = "src/p01_heuristics/s02_doubles/evaluation/results/benchmark_report.png"
+    # SAVE IN SAME FOLDER AS CSV
+    report_file = csv_path.parent / "benchmark_report.png"
     plt.savefig(report_file, dpi=300)
     print(f"✅ Doubles Analysis report saved as: {report_file}")
 
@@ -55,4 +58,12 @@ def generate_visual_report(
 
 
 if __name__ == "__main__":
-    generate_visual_report()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--csv", 
+        type=str, 
+        default="src/p01_heuristics/s02_doubles/evaluation/results/benchmark_summary.csv",
+        help="Path to the summary CSV."
+    )
+    args = parser.parse_args()
+    generate_visual_report(args.csv)

@@ -382,10 +382,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=str, default=str(DEFAULT_DATA_DIR))
     parser.add_argument("output_dir_pos", nargs="?", help="Optional positional output directory")
-    parser.add_argument("--output-dir", type=str, default="src/p01_heuristics/s01_singles/evaluation/results/pokechamp_reports")
+    parser.add_argument("--output-dir", type=str, default=None, help="Directory to save the PNG reports. Defaults to --data-dir.")
     args = parser.parse_args()
     
     output_dir = args.output_dir_pos if args.output_dir_pos else args.output_dir
+    if output_dir is None:
+        output_dir = args.data_dir
+
     generate_full_report(Path(args.data_dir), Path(output_dir))
 
 if __name__ == "__main__":

@@ -166,8 +166,18 @@ def generate_doubles_report(data_dir: Path, output_dir: Path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--gen", type=int, default=9)
+    parser.add_argument("--data-dir", type=str, default=None)
+    parser.add_argument("--output-dir", type=str, default=None)
     args = parser.parse_args()
     
-    data_path = Path(f"data/2_vs_2/benchmarks/unified_gen{args.gen}randomdoublesbattle")
-    out_path = Path(f"src/p01_heuristics/s02_doubles/results/heatmaps_gen{args.gen}")
+    if args.data_dir:
+        data_path = Path(args.data_dir)
+    else:
+        data_path = Path(f"data/2_vs_2/benchmarks/unified_gen{args.gen}randomdoublesbattle")
+    
+    if args.output_dir:
+        out_path = Path(args.output_dir)
+    else:
+        out_path = data_path
+
     generate_doubles_report(data_path, out_path)
