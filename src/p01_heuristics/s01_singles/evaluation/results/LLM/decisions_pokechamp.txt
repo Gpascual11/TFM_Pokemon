@@ -1,5 +1,0 @@
-=== POKECHAMP DECISIONS LOG ===
-
---- Turn 1 ---
-{"switch":"ironboulder"}
-

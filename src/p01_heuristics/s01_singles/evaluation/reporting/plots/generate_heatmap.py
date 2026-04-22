@@ -121,15 +121,18 @@ def generate_heatmap(
 def main():
     parser = argparse.ArgumentParser(description="Generate a win-rate heatmap from CSV results.")
     parser.add_argument("--data-dir", type=str, required=True, help="Path to CSV files")
-    parser.add_argument("--output", type=str, default="heatmap.png", help="Output PNG path")
+    parser.add_argument("--output", type=str, default=None, help="Output PNG path. Defaults to heatmap.png in --data-dir.")
     parser.add_argument("--title", type=str, default="Matchup Win Rates", help="Plot title")
     parser.add_argument("--agents", nargs="+", help="Only include these agents in the heatmap")
     parser.add_argument("--opponents", nargs="+", help="Only include these opponents in the heatmap")
-    args = parser.parse_class_args() if hasattr(parser, "parse_class_args") else parser.parse_args()
+    args = parser.parse_args()
     
+    data_dir = Path(args.data_dir)
+    output_path = Path(args.output) if args.output else data_dir / "heatmap.png"
+
     generate_heatmap(
-        Path(args.data_dir), 
-        Path(args.output), 
+        data_dir, 
+        output_path, 
         args.title,
         filter_agents=args.agents,
         filter_opponents=args.opponents

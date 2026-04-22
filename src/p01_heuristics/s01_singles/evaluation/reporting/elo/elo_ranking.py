@@ -47,8 +47,11 @@ def calculate_elo(df: pd.DataFrame, SCALE: int=400, BASE: int=10, INIT_RATING: i
 def main():
     parser = argparse.ArgumentParser(description="Calculate Elo ratings from benchmark CSVs.")
     parser.add_argument("--data-dir", type=str, required=True, help="Path to CSV folder")
-    parser.add_argument("--output", type=str, default="elo_summary.csv", help="Output CSV file path")
+    parser.add_argument("--output", type=str, default=None, help="Output CSV file path. Defaults to elo_summary.csv in --data-dir.")
     args = parser.parse_args()
+
+    if args.output is None:
+        args.output = os.path.join(args.data_dir, "elo_summary.csv")
 
     print(f"📁 Loading benchmark files from: {args.data_dir}")
     csv_files = glob.glob(os.path.join(args.data_dir, "*.csv"))
