@@ -8,34 +8,40 @@ only need to implement ``_select_action``.
 from __future__ import annotations
 
 import abc
+import logging
 
 from poke_env.player import Player
-import logging
 
 logger = logging.getLogger(__name__)
 
 
 class BaseHeuristic1v1(Player, abc.ABC):
     """Abstract Foundation for Rule-Based Singles Strategies.
-    
-    This class implements the Template Method pattern for move selection. 
+
+    This class implements the Template Method pattern for move selection.
     Execution Pipeline:
     1. _pre_move_hook(): Check for early returns (e.g. priority KOs).
     2. _select_action(): Main decision logic implementation.
     3. choose_random_move(): Fallback if no specific order is produced.
-    
-    It also provides shared utilities for move tracking and basic error handling 
+
+    It also provides shared utilities for move tracking and basic error handling
     to prevent battle deadlocks.
     """
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._used_moves_by_battle: dict[str, set[str]] = {}
+        self._fallback_moves_by_battle: dict[str, int] = {}
+        self._error_moves_by_battle: dict[str, int] = {}
+        self._total_decisions_by_battle: dict[str, int] = {}
 
     def reset_battles(self) -> None:
         """Clear both the poke-env battle history and our custom move tracking."""
         super().reset_battles()
         self._used_moves_by_battle.clear()
+        self._fallback_moves_by_battle.clear()
+        self._error_moves_by_battle.clear()
+        self._total_decisions_by_battle.clear()
 
     def choose_move(self, battle):
         """Orchestrate the three-phase decision pipeline.
@@ -46,6 +52,9 @@ class BaseHeuristic1v1(Player, abc.ABC):
 
         Wrapped in a try-except to prevent deadlocks on logic errors.
         """
+        btag = battle.battle_tag
+        self._total_decisions_by_battle[btag] = self._total_decisions_by_battle.get(btag, 0) + 1
+
         try:
             early = self._pre_move_hook(battle)
             if early is not None:
@@ -56,7 +65,11 @@ class BaseHeuristic1v1(Player, abc.ABC):
                 return order
         except Exception as e:
             logger.error(f"Error in {self.__class__.__name__} logic: {e}", exc_info=True)
+            self._error_moves_by_battle[btag] = self._error_moves_by_battle.get(btag, 0) + 1
+            return self.choose_random_move(battle)
 
+        # If we reach here, no specific order was selected (graceful fallback)
+        self._fallback_moves_by_battle[btag] = self._fallback_moves_by_battle.get(btag, 0) + 1
         return self.choose_random_move(battle)
 
     def _pre_move_hook(self, battle):

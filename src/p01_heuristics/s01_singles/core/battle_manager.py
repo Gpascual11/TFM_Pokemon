@@ -1,7 +1,7 @@
 """Battle Manager — Simulation Orchestrator.
 
-This module handles the execution of battle batches between two agents. It 
-manages the async loop, connects to the Showdown server, and extracts 
+This module handles the execution of battle batches between two agents. It
+manages the async loop, connects to the Showdown server, and extracts
 detailed results (HP, fainted counts, moves used) into CSV format.
 """
 
@@ -169,7 +169,10 @@ class BattleManager:
         factory = factories.get(self.opponent)
         if factory:
             return factory()
-        if self.opponent in HeuristicFactory.available_internal() or self.opponent in HeuristicFactory.available_baselines():
+        if (
+            self.opponent in HeuristicFactory.available_internal()
+            or self.opponent in HeuristicFactory.available_baselines()
+        ):
             return HeuristicFactory.create(
                 self.opponent,
                 account_configuration=AccountConfiguration(f"{self.opponent.replace('_', '')}B{tag}", None),
@@ -212,6 +215,12 @@ class BattleManager:
                 "winner": winner,
                 "won": 1 if b.won else 0,
                 "turns": b.turn,
+                "decisions_us": getattr(player, "_total_decisions_by_battle", {}).get(bid, 0),
+                "decisions_opp": getattr(opponent, "_total_decisions_by_battle", {}).get(bid, 0),
+                "fallback_moves_us": getattr(player, "_fallback_moves_by_battle", {}).get(bid, 0),
+                "fallback_moves_opp": getattr(opponent, "_fallback_moves_by_battle", {}).get(bid, 0),
+                "error_moves_us": getattr(player, "_error_moves_by_battle", {}).get(bid, 0),
+                "error_moves_opp": getattr(opponent, "_error_moves_by_battle", {}).get(bid, 0),
             }
 
             if b.team:

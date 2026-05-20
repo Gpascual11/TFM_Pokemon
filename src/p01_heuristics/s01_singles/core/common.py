@@ -1,7 +1,11 @@
 """Common utility functions for singles heuristic players.
 
-Includes status name mapping, speed calculation with modifiers, and a
-standardized base damage estimation formula.
+This module provides shared mathematical and game-state evaluation tools
+used by various heuristic agents (e.g., V2, V3, V6). By centralizing
+these calculations, we ensure consistent baseline damage estimation,
+status handling, and speed tie breaking across different agent versions.
+
+It relies heavily on the `poke_env` data structures for execution.
 """
 
 from __future__ import annotations
@@ -12,7 +16,11 @@ from poke_env.data import GenData
 class GameDataManager:
     """Singleton wrapper for generation-specific game data.
 
-    Avoids reloading ``GenData`` on every use.
+    Loading Pokémon data via `GenData.from_gen(gen)` involves reading large
+    JSON files into memory. In a parallel benchmarking environment with thousands
+    of battles, doing this per-agent or per-battle causes severe memory bloat
+    and CPU overhead. This singleton ensures the data is loaded exactly once
+    per Python process, keeping memory consumption flat.
     """
 
     _instance: GameDataManager | None = None
@@ -22,16 +30,27 @@ class GameDataManager:
 
     @classmethod
     def instance(cls, gen: int = 9) -> GameDataManager:
-        """Return the module-level singleton."""
+        """Return the module-level singleton instance."""
         if cls._instance is None:
             cls._instance = cls(gen)
         return cls._instance
 
 
 def get_stat(pokemon, stat_name: str) -> int:
-    """Return the best available stat value for *pokemon*.
+    """Return the best available stat value for a given Pokémon.
 
-    Falls back through: battle stat → base stat → 100 (neutral default).
+    This function attempts to retrieve the most accurate stat representation
+    for the current battle state. It uses a fallback mechanism:
+    1. Battle Stat (`pokemon.stats`): The actual computed stat in battle, if known.
+    2. Base Stat (`pokemon.base_stats`): The Pokédex base stat, if the battle stat is unknown.
+    3. Default (100): A neutral fallback value to prevent division by zero or evaluation errors.
+
+    Args:
+        pokemon (Pokemon): The `poke_env` Pokémon object to evaluate.
+        stat_name (str): The short name of the stat (e.g., "atk", "def", "spe").
+
+    Returns:
+        int: The estimated or actual integer value of the requested stat.
     """
     if pokemon.stats and pokemon.stats.get(stat_name):
         return pokemon.stats[stat_name]
@@ -41,13 +60,30 @@ def get_stat(pokemon, stat_name: str) -> int:
 
 
 def get_speed(pokemon, status: str | None = None) -> float:
-    """Return effective speed, halved when paralysed."""
+    """Calculate the effective speed of a Pokémon, factoring in major status conditions.
+
+    In Pokémon mechanics, Paralysis (PAR) cuts the affected Pokémon's speed in half
+    (in modern generations). This heuristic applies that penalty to ensure agents
+    correctly evaluate speed ties and turn orders.
+
+    Args:
+        pokemon (Pokemon): The `poke_env` Pokémon object.
+        status (str | None): The string representation of the Pokémon's status condition.
+
+    Returns:
+        float: The effective speed stat, potentially halved if paralyzed.
+    """
     raw = get_stat(pokemon, "spe")
     return raw * 0.5 if status == "PAR" else float(raw)
 
 
 def get_status_name(pokemon) -> str:
-    """Return the status condition name (e.g. ``'BRN'``) or ``'HEALTHY'``."""
+    """Normalize the Pokémon's status condition into a safe string.
+
+    When checking conditions, a healthy Pokémon returns `None` for its status
+    in `poke_env`. This helper normalizes `None` to ``'HEALTHY'`` to simplify
+    string comparisons and dictionary lookups in heuristic logic downstream.
+    """
     return pokemon.status.name if pokemon.status else "HEALTHY"
 
 
@@ -57,13 +93,24 @@ def calculate_base_damage(
     defender,
     attacker_status: str,
 ) -> float:
-    """Estimate move damage using the physical/special split.
+    """Estimate the raw damage output of a move against a specific defender.
 
-    Factors: attack / defence stats, burn penalty on physical moves,
-    STAB (same-type attack bonus), and type effectiveness.
+    This function provides a fast, standardized heuristic for move scoring. It ignores
+    complex mechanics like random damage rolls, exact levels, and specific items to
+    prioritize execution speed during wide heuristic evaluations.
 
-    Used by V2, V3, and V6. V1 has its own simpler formula; V4 and V5
-    implement their own extended damage estimators.
+    The formula used is a simplified proportional estimator:
+    `Damage = (Attack / Defense) * Base Power * Effectiveness * STAB`
+
+    Implementation details:
+    - Differentiates between PHYSICAL and SPECIAL moves to use the correct offensive/defensive stats.
+    - Applies the Burn (BRN) penalty, which halves the effective Attack for Physical moves.
+    - Calculates STAB (Same-Type Attack Bonus) granting a 1.5x multiplier if types match.
+    - Retrieves exact type effectiveness multipliers (e.g., 2x, 0.5x, 0x) directly from `poke_env`.
+
+    Returns:
+        float: A numeric score representing the estimated damage. Returns 0.0 for status moves
+        or moves with no base power.
     """
     if move.base_power <= 1:
         return 0.0

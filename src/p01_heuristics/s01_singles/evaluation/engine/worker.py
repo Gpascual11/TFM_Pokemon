@@ -39,13 +39,14 @@ if _POKECHAMP.exists() and str(_POKECHAMP) not in sys.path:
     sys.path.insert(0, str(_POKECHAMP))
 
 from poke_env import AccountConfiguration, ServerConfiguration
-import poke_env.environment.battle
+from poke_env.data import GenData
 from poke_env.environment.battle import Battle
 from poke_env.player.player import Player
-from poke_env.data import GenData
+
 
 class StatsBattle(Battle):
     """A Battle subclass that tracks advanced metrics for research analysis."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.voluntary_switches_us = 0
@@ -53,7 +54,7 @@ class StatsBattle(Battle):
         self.voluntary_switches_opp = 0
         self.forced_switches_opp = 0
         self.move_counts_us = {}  # Dict[str, int]
-        self.move_counts_opp = {} # Dict[str, int]
+        self.move_counts_opp = {}  # Dict[str, int]
         self.crit_count_us = 0
         self.crit_count_opp = 0
         self.miss_count_us = 0
@@ -64,7 +65,7 @@ class StatsBattle(Battle):
     def switch(self, pokemon_str: str, details: str, hp_status: str):
         identifier = pokemon_str.split(":")[0][:2]
         is_mine = identifier == self._player_role
-        
+
         if is_mine:
             if getattr(self, "force_switch", False):
                 self.forced_switches_us += 1
@@ -78,13 +79,13 @@ class StatsBattle(Battle):
             move_id = split_message[3]
             identifier = pokemon_str.split(":")[0][:2]
             is_mine = identifier == self._player_role
-            
+
             mid = move_id.lower().replace(" ", "").replace("-", "")
             if is_mine:
                 self.move_counts_us[mid] = self.move_counts_us.get(mid, 0) + 1
             else:
                 self.move_counts_opp[mid] = self.move_counts_opp.get(mid, 0) + 1
-        
+
         if len(split_message) > 2:
             msg_type = split_message[1]
             if msg_type == "-crit":
@@ -110,13 +111,14 @@ class StatsBattle(Battle):
                     self.supereffective_count_us += 1
         super().parse_message(split_message)
 
+
 # Patch the Player class to use our StatsBattle
 async def patched_create_battle(self, split_message):
     if split_message[1] == self._format and len(split_message) >= 2:
         battle_tag = "-".join(split_message)[1:]
         if battle_tag in self._battles:
             return self._battles[battle_tag]
-        
+
         gen = GenData.from_format(self._format).gen
         battle = StatsBattle(
             battle_tag=battle_tag,
@@ -133,6 +135,7 @@ async def patched_create_battle(self, split_message):
             self._battles[battle_tag] = battle
         return battle
     return await self._original_create_battle(split_message)
+
 
 if not hasattr(Player, "_original_create_battle"):
     Player._original_create_battle = Player._create_battle
@@ -266,6 +269,12 @@ async def _run_streaming(
         "winner",
         "won",
         "turns",
+        "decisions_us",
+        "decisions_opp",
+        "fallback_moves_us",
+        "fallback_moves_opp",
+        "error_moves_us",
+        "error_moves_opp",
         "fainted_us",
         "remaining_pokemon_us",
         "total_hp_us",
@@ -328,7 +337,7 @@ async def _run_streaming(
                 st = m.status.name if hasattr(m.status, "name") else str(m.status)
                 details.append(f"status:{st}")
             if m.fainted:
-                 details.append("FNT")
+                details.append("FNT")
             mons.append(f"{m.species}({','.join(details[1:])})")
         return "|".join(sorted(mons))
 
@@ -352,7 +361,7 @@ async def _run_streaming(
             battles = player._battles
         elif hasattr(player, "battles"):
             # Some versions might have it public
-            battles = player.battles # type: ignore
+            battles = player.battles  # type: ignore
         else:
             battles = {}
 
@@ -367,6 +376,12 @@ async def _run_streaming(
                 "winner": agent_name if b.won else opp_name,
                 "won": 1 if b.won else 0,
                 "turns": b.turn,
+                "decisions_us": getattr(player, "_total_decisions_by_battle", {}).get(bid, 0),
+                "decisions_opp": getattr(opponent, "_total_decisions_by_battle", {}).get(bid, 0),
+                "fallback_moves_us": getattr(player, "_fallback_moves_by_battle", {}).get(bid, 0),
+                "fallback_moves_opp": getattr(opponent, "_fallback_moves_by_battle", {}).get(bid, 0),
+                "error_moves_us": getattr(player, "_error_moves_by_battle", {}).get(bid, 0),
+                "error_moves_opp": getattr(opponent, "_error_moves_by_battle", {}).get(bid, 0),
                 "voluntary_switches_us": getattr(b, "voluntary_switches_us", 0),
                 "forced_switches_us": getattr(b, "forced_switches_us", 0),
                 "crit_us": getattr(b, "crit_count_us", 0),
@@ -409,7 +424,9 @@ async def _run_streaming(
                         "total_hp_opp": round(
                             sum(m.current_hp_fraction for m in b.opponent_team.values() if not m.fainted), 3
                         ),
-                        "hp_perc_opp": round(sum(m.current_hp_fraction for m in b.opponent_team.values()) / len(b.opponent_team), 3)
+                        "hp_perc_opp": round(
+                            sum(m.current_hp_fraction for m in b.opponent_team.values()) / len(b.opponent_team), 3
+                        )
                         if len(b.opponent_team) > 0
                         else 0,
                         "team_opp": _format_team_detailed(b.opponent_team),
