@@ -8,18 +8,24 @@ from sklearn.linear_model import LogisticRegression
 
 def calculate_elo(df: pd.DataFrame, SCALE: int=400, BASE: int=10, INIT_RATING: int=1000):
     """
-    Computes Bradley-Terry Whole-History Rating (Maximum Likelihood Estimation for Elo Ratings).
-    Adapted from pokechamp's whr.py
+    Computes Bradley-Terry ratings via Maximum Likelihood Estimation (logistic regression).
+    Adapted from pokechamp's whr.py.
+
+    The duplication trick symmetrizes the dataset: each game appears twice so that
+    model_a's win in the first half is implicitly model_b's loss in the second half
+    (where Y=0). This avoids needing to encode both perspectives explicitly.
+    For ties, the first-half copy is scored as an A win and the second-half copy
+    as a B win, effectively splitting ties 50/50.
     """
     if "model_a" not in df.columns or "model_b" not in df.columns or "winner" not in df.columns:
         raise ValueError("DataFrame must contain 'model_a', 'model_b', and 'winner' columns.")
 
     models = pd.concat([df['model_a'], df['model_b']]).unique()
     models_series = pd.Series(np.arange(len(models)), index=models)
-    
-    # duplicate battles to balance the dataset
+
+    # Symmetrization: duplicate so each game is represented from both perspectives
     df_eval = pd.concat([df, df], ignore_index=True)
-    
+
     p = len(models_series)
     n = df_eval.shape[0]
 
@@ -27,16 +33,16 @@ def calculate_elo(df: pd.DataFrame, SCALE: int=400, BASE: int=10, INIT_RATING: i
     X[np.arange(n), models_series[df_eval["model_a"]]] = +np.log(BASE)
     X[np.arange(n), models_series[df_eval["model_b"]]] = -np.log(BASE)
 
-    # one A win => two A win (since we duplicated)
+    # In the duplicated dataset, mark all A wins as Y=1 (both copies).
+    # The second copy of B-wins stays Y=0, which is correct by construction.
     Y = np.zeros(n)
     Y[df_eval["winner"] == "model_a"] = 1.0
 
-    # Handle ties: one tie => one A win + one B win
+    # Ties: mark only the first-half copy as A win (Y=1); the second-half copy
+    # stays Y=0 (B win). Net effect: each tie counts as 0.5 win for each side.
     tie_idx = (df_eval["winner"] == "tie") | (df_eval["winner"] == "tie (bothbad)")
-    # Split ties so exactly half are scored as a win for A
-    tie_idx_subset = tie_idx.copy()
-    tie_idx_subset[len(tie_idx)//2:] = False
-    Y[tie_idx_subset] = 1.0
+    tie_idx[len(tie_idx)//2:] = False
+    Y[tie_idx] = 1.0
 
     lr = LogisticRegression(fit_intercept=False)
     lr.fit(X, Y)

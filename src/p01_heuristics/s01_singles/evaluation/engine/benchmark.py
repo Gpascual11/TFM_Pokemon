@@ -141,11 +141,11 @@ async def run_worker_batch(
 
     proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
+    batch_timeout = 200
     try:
-        # 5 minute timeout per batch (more responsive)
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=200)
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=batch_timeout)
     except TimeoutError:
-        print(f"      ⚠️  {batch_info} -> Port {port} TIMEOUT after 5 minutes. Cleaning up...", flush=True)
+        print(f"      ⚠️  {batch_info} -> Port {port} TIMEOUT after {batch_timeout}s. Cleaning up...", flush=True)
         try:
             proc.terminate()
             await asyncio.sleep(1)  # Give it a second to terminate

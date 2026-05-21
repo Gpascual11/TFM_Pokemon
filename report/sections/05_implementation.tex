@@ -18,78 +18,306 @@ Abans de descriure el funcionament intern de cada component, es resumeixen les p
 
 Aquests components es combinen amb llibreries i agents existents (poke-env, Pokechamp, sb3-contrib) que es fan servir com a fonaments sobre els quals construir i avaluar les contribucions pròpies.
 
-\section{Orquestració Operacional i Entorn Paral·lelitzat}
+\section{Arquitectura Master-Worker per a Benchmarking Massiu}
+\label{sec:master_worker}
 
-El motor d'aquest projecte recau en un mòdul orquestrador propi, situat a \texttt{src/p03\_scripts/}, encarregat de trencar la limitació original d'un sol fil de connexió pròpia de \textit{poke-env}. Fent ús intensiu de l'asincronia de Python (\texttt{asyncio}), els scripts desenvolupats són capaços de:
+Com s’ha introduït a la Secció~\ref{subsec:necessitat_paralel}, l’execució de 10.000 partides per matchup requereix una infraestructura paral·lela robusta. Aquesta secció detalla l’arquitectura implementada, les decisions de disseny i els mecanismes de tolerància a fallades.
 
-\begin{enumerate}
-    \item \textbf{Llançament massiu de servidors Showdown}: Aixecar dinàmicament múltiples instàncies de Pokémon Showdown en ports consecutius (p. ex.\ 8000, 8001, 8002...), cadascuna com a procés Node.js independent. Es deshabiliten serveis innecessaris (\textit{verifier}, \textit{friends}, \textit{repl}) per reduir consum i prevenir errors de connexió.
-    \item \textbf{Distribució d'agents}: L'orquestrador Python distribueix les batalles entre els ports disponibles mitjançant tasques asíncrones massives amb \texttt{asyncio}, permetent que múltiples batalles s'executin simultàniament.
-    \item \textbf{Gestió de memòria i robustesa}: Inicialment, els scripts utilitzaven una neteja manual del Garbage Collector de Python. No obstant això, vam detectar que els processos de \textit{Showdown} (Node.js) degradaven el rendiment amb el temps. Vam evolucionar la lògica de \texttt{--restart-every}: d'un reinici basat en el temps, vam passar a un reinici basat en \textit{matchups actius}. Això vol dir que el servidor només es reinicia si realment ha processat batalles noves, optimitzant la càrrega del sistema.
-    \item \textbf{Detecció Automàtica de Progrés}: En les primeres versions, calia especificar el flag \texttt{--resume} per continuar un experiment. Vam millorar-ho implementant una detecció automàtica: el sistema comprova l'existència dels fitxers \texttt{resultsDUMMY\_UNDERSCORE*.csv} i \texttt{checkpoint.json} i reprèn la feina sense intervenció humana, reduint el risc d'errors d'usuari.
-    \item \textbf{Resolució d'Inconsistències de Protocol}: Vam trobar que en Generacions 8 i 9, certes combinacions d'habilitats (com \textit{Magic Bounce}) i moviments (com \textit{Copycat}) feien fallar el seguiment estricte de \textit{poke-env} (\texttt{AssertionError}). En lloc d'aturar el projecte, vam decidir desactivar el \textit{strict tracking} per garantir la finalització dels experiments massius, prioritzant la recol·lecció de dades sobre el debug de la llibreria base.
-\end{enumerate}
+\subsection{Visió General del Patró}
 
-\subsection{Funcionament Intern Detallat (Execution Flow)}
+El sistema segueix un patró \textbf{Master-Worker} clàssic adaptat a les particularitats del simulador Pokémon Showdown:
 
-Per tal de comprendre la robustesa del sistema, cal analitzar el flux d'execució pas a pas tant en el format Singles com en Doubles, ja que utilitzen arquitectures de paral·lelisme lleugerament diferents.
+\begin{itemize}
+    \item \textbf{Master} (\texttt{benchmark.py}): Procés Python principal que itera sobre la matriu de matchups, gestiona la cua de ports disponibles, llança workers i consolida resultats.
+    \item \textbf{Workers} (\texttt{worker.py}): Subprocessos Python efímers, cadascun amb el seu propi event loop \texttt{asyncio}, que executen un lot de batalles contra un servidor Showdown dedicat.
+    \item \textbf{Servidors Showdown}: Instàncies Node.js independents, cadascuna escoltant en un port TCP exclusiu (8000, 8001, ..., 800N).
+\end{itemize}
 
 \begin{figure}[H]
     \centering
-    \begin{tikzpicture}[node distance=1.3cm, auto, font=\footnotesize]
-        % Nodes
-        \node (start) [rectangle, draw, rounded corners, fill=blue!5] {benchmark.py (Main)};
-        \node (matchup) [rectangle, draw, below of=start] {Iteració Matchup (Agent vs Oponent)};
-        \node (check) [diamond, draw, below of=matchup, yshift=-0.5cm] {Partides existents?};
-        \node (run) [rectangle, draw, below of=check, yshift=-0.5cm, fill=green!5] {Llançament Processos Worker};
-        \node (port) [rectangle, draw, right of=run, xshift=3cm, fill=orange!5] {Gestió de Ports (Showdown)};
-        \node (games) [rectangle, draw, below of=run, fill=green!10] {poke-env Battle Loop};
-        \node (stats) [rectangle, draw, below of=games, fill=yellow!5] {StatsBattle (Custom Tracking)};
-        \node (csv) [rectangle, draw, below of=stats, fill=gray!10] {Escriptura CSV Parcial};
-        \node (merge) [rectangle, draw, below of=csv, fill=purple!10] {Consolidació de Resultats};
-        
-        % Lines
-        \draw [->] (start) -- (matchup);
-        \draw [->] (matchup) -- (check);
-        \draw [->] (check) -- node[left]{No} (run);
-        \draw [->] (check.east) -- ++(1,0) |- node[near start, right]{Sí (Saltar)} (matchup.east);
-        \draw [<->, dashed] (run) -- (port);
-        \draw [->] (run) -- (games);
-        \draw [->] (games) -- (stats);
-        \draw [->] (stats) -- (csv);
-        \draw [->] (csv) -- (merge);
-        \draw [->] (merge.west) -- ++(-1.5,0) |- (matchup.west);
+    \begin{tikzpicture}[
+        node distance=1cm, font=\footnotesize,
+        master/.style={rectangle, draw, fill=blue!10, text width=3.8cm, align=center, minimum height=1.2cm, rounded corners},
+        worker/.style={rectangle, draw, fill=green!8, text width=3cm, align=center, minimum height=1cm},
+        server/.style={rectangle, draw, fill=orange!10, text width=2.8cm, align=center, minimum height=0.9cm},
+        disk/.style={cylinder, draw, fill=gray!15, shape border rotate=90, aspect=0.25, minimum height=0.9cm, minimum width=2cm, align=center, font=\scriptsize},
+        ram/.style={rectangle, draw, fill=yellow!10, text width=2.8cm, align=center, minimum height=0.7cm, dashed}
+    ]
+        % Master
+        \node[master] (master) {\textbf{MASTER}\\benchmark.py\\(asyncio event loop)};
+        \node[ram, above=0.3cm of master] (queue) {Port Queue: [8000, 8001, 8002]};
+
+        % Workers
+        \node[worker, below left=2cm and 1.5cm of master] (w1) {\textbf{Worker 1}\\(subprocess)\\poke-env + Agent};
+        \node[worker, below=2cm of master] (w2) {\textbf{Worker 2}\\(subprocess)\\poke-env + Agent};
+        \node[worker, below right=2cm and 1.5cm of master] (wn) {\textbf{Worker N}\\(subprocess)\\poke-env + Agent};
+
+        % Servers
+        \node[server, below=1cm of w1] (s1) {Showdown Node.js\\Port 8000};
+        \node[server, below=1cm of w2] (s2) {Showdown Node.js\\Port 8001};
+        \node[server, below=1cm of wn] (sn) {Showdown Node.js\\Port 8002};
+
+        % Disk (positioned far right to avoid overlap with Worker N)
+        \node[disk, right=2.5cm of wn] (tmp) {\_tmp\_*.csv\\(parcials)};
+        \node[disk, below=0.8cm of tmp] (final) {agent\_vs\_opp.csv\\(consolidat)};
+
+        % Connections Master -> Workers
+        \draw[->, thick] (master) -- node[left, font=\scriptsize]{spawn} (w1);
+        \draw[->, thick] (master) -- node[left, font=\scriptsize]{spawn} (w2);
+        \draw[->, thick] (master) -- node[right, font=\scriptsize]{spawn} (wn);
+
+        % Workers -> Servers
+        \draw[<->, thick] (w1) -- node[left, font=\scriptsize]{WS} (s1);
+        \draw[<->, thick] (w2) -- node[left, font=\scriptsize]{WS} (s2);
+        \draw[<->, thick] (wn) -- node[left, font=\scriptsize]{WS} (sn);
+
+        % Workers -> Disk
+        \draw[->, dashed, gray] (w1.east) -- ++(1,0) |- (tmp.west);
+        \draw[->, dashed, gray] (w2.east) -- ++(0.5,0) |- (tmp.west);
+        \draw[->, dashed, gray] (wn.east) -- (tmp.west);
+
+        % Master -> Final CSV
+        \draw[->, thick, dotted] (master.east) -| node[near end, right, font=\scriptsize]{merge} (final.north);
     \end{tikzpicture}
-    \caption{Diagrama de flux de l'execució d'un benchmark complet.}
-    \label{fig:flux_benchmark}
+    \caption{Arquitectura completa del sistema Master-Worker. Les línies contínues representen comunicació en RAM (processos i WebSocket), les discontínues representen escriptures a disc (persistència).}
+    \label{fig:master_worker_full}
 \end{figure}
 
-\subsubsection{Workflow de Singles (1vs1)}
+\subsection{Paral·lelisme i Thread-Safety}
+\label{subsec:thread_safety}
 
-L'arquitectura de Singles es basa en un model de \textbf{Subprocessos per Matchup}:
-
-\begin{enumerate}
-    \item \textbf{Inicialització}: \texttt{benchmark.py} crea una cua asíncrona (\texttt{asyncio.Queue}) amb els ports configurats. 
-    \item \textbf{Càlcul de Delta}: \texttt{run\_matchup()} analitza el CSV destí per comptar les línies vàlides. Si es requereixen 10.000 partides i n’hi ha 2.000, calcula un \textit{delta} d’execució.
-    \item \textbf{Invocació del Worker}: Es crida a \texttt{worker.py} mitjançant \texttt{subprocess.exec}. Això garanteix que tota la RAM consumida per la llibreria \textit{poke-env} i els agents (especialment els LLM) s'alliberi al SO en acabar el procés.
-    \item \textbf{Instrumentation (StatsBattle)}: El worker aplica un parche dinàmic al mètode \texttt{Player.\_create\_battle}. En lloc de la classe base, injecta \texttt{StatsBattle}, una classe pròpia que:
-    \begin{itemize}
-        \item Intercepta els missatges WebSocket \texttt{|-crit|}, \texttt{|-miss|} i \texttt{|-supereffective|} per comptar la sort o RNG.
-        \item Detecta si un canvi és voluntari o forçat (per debilitació).
-        \item Serialitza l'historial de moviments fets per cada Pokémon.
-    \end{itemize}
-    \item \textbf{Retorn}: El worker finalitza amb un codi d'èxit o error, i l'orquestrador allibera el port per al següent batch de partides.
-\end{enumerate}
-
-\subsubsection{Workflow de Doubles (2vs2)}
-
-El format Doubles utilitza una arquitectura de \textbf{Multiprocessament Simètric per Port}:
+La decisió d’utilitzar \textbf{multiprocessing} en lloc de \textbf{threading} és fonamental i respon a tres restriccions tècniques:
 
 \begin{enumerate}
-    \item \textbf{ProcessLauncher}: En lloc de batches seqüencials, el llançador divideix el total de partides entre el nombre de ports. Si s'han de jugar 1.000 partides en 4 ports, crea 4 processos worker de 250 partides cadascun.
-    \item \textbf{BattleManager}: Dins de cada worker, un objecte \texttt{BattleManager} gestiona el bucle de batalles. Aprofita l'asincronia nativa de \texttt{poke-env} per tenir múltiples batalles obertes contra el mateix port Showdown simultàniament (\textit{interleaving}).
-    \item \textbf{Merger}: En acabar els processos paral·lels, el llançador busca els fitxers temporals per port (\texttt{agent\_vs\_opp\_p8000.csv}, etc.), els fusiona en un únic fitxer mestre i elimina els residuals per mantenir el sistema de fitxers net.
+    \item \textbf{Global Interpreter Lock (GIL)}: El GIL de CPython impedeix l’execució paral·lela real de codi Python en múltiples fils. Threading només aporta beneficis per a operacions I/O-bound, però el càlcul de les heurístiques és CPU-bound.
+    \item \textbf{Aïllament d’estat asyncio}: Poke-env utilitza internament un event loop \texttt{asyncio} per gestionar les connexions WebSocket. Si s’utilitza \texttt{fork()} (el mode per defecte de \texttt{multiprocessing} en Linux), l’estat de l’event loop es copia al fill, causant \textit{deadlocks}. Per evitar-ho, s’utilitza el context \texttt{spawn}:
+    \begin{verbatim}
+  _mp_ctx = multiprocessing.get_context("spawn")
+    \end{verbatim}
+    Això crea un intèrpret Python completament nou per cada worker, sense herència d’estat.
+    \item \textbf{Alliberament garantit de memòria}: Quan un subprocés acaba (exit code 0 o error), el sistema operatiu reclama \textbf{tota} la RAM que ocupava. Això elimina qualsevol \textit{memory leak} acumulat per poke-env, objectes \texttt{Battle}, o models LLM carregats en VRAM.
 \end{enumerate}
+
+Cada worker opera sobre un port Showdown \textbf{exclusiu}. No hi ha cap recurs compartit entre workers: ni memòria, ni connexions de xarxa, ni fitxers (cada un escriu al seu propi \texttt{\_tmp\_*.csv}). Això fa el sistema inherentment \textit{thread-safe} sense necessitat de locks, semàfors o sincronització explícita.
+
+\subsection{Gestió de Memòria: RAM vs Disc}
+\label{subsec:ram_disc}
+
+La Figura~\ref{fig:ram_disc} mostra el cicle de vida de les dades durant una execució típica.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+        font=\footnotesize,
+        ram/.style={rectangle, draw, fill=yellow!15, text width=5cm, align=left, minimum height=2cm},
+        disc/.style={rectangle, draw, fill=gray!15, text width=5cm, align=left, minimum height=2cm},
+    ]
+        \node[ram] (rambox) {
+            \textbf{RAM (volàtil):}\\[2pt]
+            -- Estats Battle (poke-env)\\
+            -- Buffers WebSocket\\
+            -- Objectes Pokemon/Move\\
+            -- Event loop asyncio\\
+            -- Model LLM (si aplica)
+        };
+        \node[disc, right=1.5cm of rambox] (discbox) {
+            \textbf{Disc (persistent):}\\[2pt]
+            -- \_tmp\_agent\_opp\_p8000.csv\\
+            -- agent\_vs\_opp.csv (final)\\
+            -- matchup\_performance.csv\\
+            -- battle\_log/ (LLM thinking)
+        };
+
+        \draw[->, thick, red!60] (rambox.east) -- node[above, font=\scriptsize]{cada 25 partides} (discbox.west);
+        \draw[->, thick, blue!60] (rambox.south) -- ++(0,-0.7) node[below, font=\scriptsize]{\texttt{gc.collect()} + \texttt{reset\_battles()}};
+    \end{tikzpicture}
+    \caption{Cicle de vida de les dades: les batalles viuen en RAM fins que un chunk de 25 partides es completa, moment en què es serialitzen a disc i l’estat en memòria s’allibera.}
+    \label{fig:ram_disc}
+\end{figure}
+
+\textbf{Dins de cada worker}, el cicle de gestió de memòria és:
+\begin{enumerate}
+    \item Es juguen 25 batalles simultàniament (chunk) mitjançant \texttt{battle\_against()}.
+    \item S’extreuen les mètriques de les batalles finalitzades i s’escriuen al CSV parcial.
+    \item Es crida \texttt{player.reset\_battles()} i \texttt{opponent.reset\_battles()} per eliminar les referències als objectes \texttt{Battle} acumulats.
+    \item Es crida \texttt{gc.collect()} per forçar la recollida d’objectes orfes.
+    \item Es repeteix fins a completar el lot assignat.
+\end{enumerate}
+
+Sense aquest cicle, 10.000 batalles acumulades en un sol procés consumirien $>$2~GB de RAM. Amb el chunking, el consum es manté estable al voltant de $\sim$200--400~MB per worker.
+
+\subsection{Tolerància a Fallades (Crash-Safe State)}
+\label{subsec:crash_safe}
+
+L’execució de desenes de milers de partides pot trigar hores. El sistema implementa múltiples mecanismes per garantir que cap fallada causa la pèrdua del treball realitzat:
+
+\subsubsection{Recuperació Automàtica (Resume)}
+
+A l’inici de cada matchup, el master llegeix el CSV de sortida i compta les partides existents:
+
+\begin{verbatim}
+  already_done = len(pd.read_csv(out_csv))
+  n_to_run = target_battles - already_done
+  if n_to_run <= 0: return  # Matchup ja complet
+\end{verbatim}
+
+Si l’execució es va interrompre (tall de corrent, error de xarxa, reinici del sistema), simplement re-executar el benchmark reprèn exactament on es va quedar. No cal cap flag \texttt{--resume} ni fitxers de checkpoint: la veritat rau en el CSV.
+
+\subsubsection{Aïllament de Fallades per Worker}
+
+Si un worker crasha (timeout, error de connexió, OOM):
+\begin{itemize}
+    \item El seu fitxer temporal \texttt{\_tmp\_*.csv} es neteja sempre (bloc \texttt{finally}).
+    \item El CSV principal \textbf{no es corromp}: les dades només s’hi afegeixen (\textit{append}) un cop el worker ha completat satisfactòriament.
+    \item El master detecta la falta de progrés i pot re-assignar les partides pendents en la següent iteració del bucle de reintents.
+\end{itemize}
+
+\subsubsection{Timeouts Multinivell}
+
+El sistema implementa timeouts a tres nivells per evitar bloquejos indefinits:
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|l|c|p{7cm}|}
+    \hline
+    \textbf{Nivell} & \textbf{Timeout} & \textbf{Acció en cas d’expiració} \\ \hline
+    Chunk (25 partides) & 120--180s & S’extreuen els resultats parcials disponibles i es continua. \\ \hline
+    Worker complet & 200s & El master mata el procés (\texttt{SIGTERM}) i allibera el port. \\ \hline
+    Detecció de progrés & -- & Si un cicle complet no produeix cap partida nova, s’atura el matchup. \\ \hline
+    \end{tabular}
+    \caption{Timeouts multinivell del sistema de benchmarking.}
+    \label{tab:timeouts}
+\end{table}
+
+\subsection{Reinici Periòdic de Servidors}
+\label{subsec:restart_logic}
+
+S’ha observat empíricament que els processos Node.js de Pokémon Showdown experimenten una degradació gradual de rendiment:
+
+\begin{itemize}
+    \item \textbf{Causa}: El Garbage Collector de V8 (motor JavaScript) utilitza un algoritme generacional. Objectes de llarga durada (metadades de formats, estadístiques de Pokémon carregades en memòria) es promouen a l’\textit{old generation}, on la recollida és menys agressiva. Això causa fragmentació de memòria que mai es recupera completament.
+    \item \textbf{Símptoma}: Després de $\sim$3.000--5.000 batalles, el procés Node.js creix de $\sim$80~MB a $>$400~MB i la latència per torn augmenta un $\sim$30\%.
+    \item \textbf{Solució}: Reinici periòdic controlat pel master.
+\end{itemize}
+
+El reinici s’activa cada N matchups \textbf{actius} (configurable amb \texttt{--restart-every}, per defecte 3). El procediment és:
+
+\begin{enumerate}
+    \item \texttt{pkill -f pokemon-showdown} --- Mata tots els processos Showdown.
+    \item Sleep 2 segons --- Permet l’alliberament dels ports TCP.
+    \item Relançament de N instàncies noves via script bash.
+    \item Sleep 15 segons --- Temps d’inicialització (càrrega de JSONs de Pokémon, moviments i habilitats a RAM).
+\end{enumerate}
+
+El cost total és de $\sim$17 segons de \textit{downtime} per reinici. En una execució típica de 4 hores amb 30 matchups, això suposa menys de 3 minuts acumulats ($\sim$1\% del temps total), un cost negligible a canvi de la garantia d’estabilitat.
+
+\subsection{Paràmetres de Configuració}
+
+La Taula~\ref{tab:params_benchmark} resumeix els paràmetres configurables del sistema i els valors per defecte utilitzats en els experiments d’aquest TFM.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|l|c|p{6.5cm}|}
+    \hline
+    \textbf{Paràmetre} & \textbf{Defecte} & \textbf{Descripció} \\ \hline
+    \texttt{n\_battles} & 10.000 & Partides objectiu per matchup. \\ \hline
+    \texttt{--ports} & 2 & Nombre de servidors Showdown paral·lels (workers simultanis). \\ \hline
+    \texttt{--start-port} & 8000 & Port base; s’assignen consecutivament (8000, 8001...). \\ \hline
+    \texttt{--concurrency} & 10 & Batalles simultànies per worker (\texttt{max\_concurrent\_battles}). \\ \hline
+    \texttt{--restart-every} & 3 & Reiniciar servidors cada N matchups actius. \\ \hline
+    chunk\_size & 25 & Batalles per cicle d’escriptura a disc i GC. \\ \hline
+    chunk\_timeout & 180s & Timeout per chunk de batalles. \\ \hline
+    batch\_timeout & 200s & Timeout total per worker. \\ \hline
+    \end{tabular}
+    \caption{Paràmetres de configuració del benchmark i valors per defecte.}
+    \label{tab:params_benchmark}
+\end{table}
+
+\subsection{Dades Recollides per Partida}
+\label{subsec:dades_partida}
+
+Cada batalla finalitzada genera un registre amb les mètriques següents, dissenyades per permetre una anàlisi multidimensional del rendiment dels agents:
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|l|p{9cm}|}
+    \hline
+    \textbf{Camp} & \textbf{Descripció} \\ \hline
+    \texttt{battle\_id} & Identificador únic de la batalla (assignat per Showdown). \\ \hline
+    \texttt{format} & Format jugat (p.~ex.\ \texttt{gen9randombattle}). \\ \hline
+    \texttt{heuristic / opponent} & Noms dels dos agents enfrontats. \\ \hline
+    \texttt{won} & Resultat binari (1 = victòria de l’agent principal). \\ \hline
+    \texttt{turns} & Durada de la partida en torns. \\ \hline
+    \texttt{fainted\_us / fainted\_opp} & Pokémon derrotats per cada bàndol. \\ \hline
+    \texttt{remaining\_pokemon\_us/opp} & Pokémon supervivents al final. \\ \hline
+    \texttt{total\_hp\_us / total\_hp\_opp} & Suma de la fracció de HP dels supervivents. \\ \hline
+    \texttt{team\_us / team\_opp} & Composició completa dels equips (espècies, objectes, habilitats). \\ \hline
+    \texttt{move\_stats\_us / move\_stats\_opp} & Historial de moviments usats (move\_id:count). \\ \hline
+    \texttt{crit\_us / crit\_opp} & Nombre de cops crítics rebuts/infligits. \\ \hline
+    \texttt{miss\_us / miss\_opp} & Nombre de moviments fallats. \\ \hline
+    \texttt{supereffective\_us/opp} & Nombre de cops supereficaços. \\ \hline
+    \texttt{voluntary\_switches\_us} & Canvis voluntaris (decisió estratègica). \\ \hline
+    \texttt{forced\_switches\_us} & Canvis forçats (per debilitació d’un Pokémon). \\ \hline
+    \end{tabular}
+    \caption{Camps recollits per cada partida durant el benchmarking. Permeten anàlisi de win-rate, eficiència, agressivitat, impacte de l’RNG i patrons de joc.}
+    \label{tab:camps_csv}
+\end{table}
+
+\subsection{Instrumentació: StatsBattle}
+
+Per recollir les mètriques avançades (crits, misses, moviments per Pokémon), s’ha implementat una subclasse \texttt{StatsBattle} que intercepta els missatges WebSocket de Showdown abans que siguin processats per poke-env. Això s’aconsegueix mitjançant un \textit{monkey-patch} dinàmic:
+
+\begin{enumerate}
+    \item Al carregar-se, el worker substitueix el mètode \texttt{Player.\_create\_battle()} per una versió que instancia \texttt{StatsBattle} en lloc de la classe base \texttt{Battle}.
+    \item \texttt{StatsBattle} sobreescriu \texttt{parse\_message()} per detectar events com \texttt{|-crit|}, \texttt{|-miss|} i \texttt{|-supereffective|} i actualitzar comptadors interns.
+    \item Sobreescriu \texttt{switch()} per distingir entre canvis voluntaris (l’agent decideix canviar) i forçats (un Pokémon ha caigut i s’ha de triar substitut).
+    \item Al final de la batalla, els comptadors es serialitzen directament al CSV sense cap overhead addicional.
+\end{enumerate}
+
+Aquesta tècnica és transparent per als agents: no necessiten cap modificació per funcionar amb \texttt{StatsBattle}, ja que la interfície de \texttt{Battle} es manté idèntica.
+
+\subsection{Workflow Complet d’una Execució}
+
+La Figura~\ref{fig:flux_benchmark} mostra el flux complet d’una execució del benchmark, des de l’arrencada fins a la consolidació final.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[node distance=1.2cm, auto, font=\footnotesize,
+        block/.style={rectangle, draw, text width=4.5cm, align=center, minimum height=0.7cm},
+        decision/.style={diamond, draw, aspect=2.5, text width=2.5cm, align=center, inner sep=1pt}
+    ]
+        \node[block, fill=blue!8, rounded corners] (start) {Master: Inicialitzar Port Queue i Matriu de Matchups};
+        \node[block, below=of start] (restart) {Reiniciar Servidors Showdown (pkill + relaunch)};
+        \node[block, below=of restart] (matchup) {Seleccionar pròxim matchup $(A, B)$};
+        \node[decision, below=of matchup] (check) {CSV existeix?\\rows $\geq$ target?};
+        \node[block, fill=green!8, below left=1.2cm and 0.5cm of check] (spawn) {Spawn Workers\\(1 per port disponible)};
+        \node[block, fill=green!8, below=of spawn] (battle) {Worker: battle\_against()\\(chunks de 25 partides)};
+        \node[block, fill=yellow!8, below=of battle] (write) {Escriure resultats a \_tmp\_*.csv};
+        \node[block, fill=orange!8, below=of write] (gc) {reset\_battles() + gc.collect()};
+        \node[decision, below=of gc] (done) {Lot\\complet?};
+        \node[block, fill=purple!8, below left=1cm and -1cm of done] (merge) {Master: Merge \_tmp\_*.csv $\rightarrow$ final.csv};
+        \node[decision, right=2.5cm of merge] (more) {Més\\matchups?};
+
+        \draw[->] (start) -- (restart);
+        \draw[->] (restart) -- (matchup);
+        \draw[->] (matchup) -- (check);
+        \draw[->] (check) -- node[left]{No (falten partides)} (spawn);
+        \draw[->] (check.east) -- ++(2,0) node[right]{Sí (saltar)} |- (more);
+        \draw[->] (spawn) -- (battle);
+        \draw[->] (battle) -- (write);
+        \draw[->] (write) -- (gc);
+        \draw[->] (gc) -- (done);
+        \draw[->] (done.west) -- ++(-1.5,0) node[above, font=\scriptsize]{No} |- (battle.west);
+        \draw[->] (done) -- node[left]{Sí} (merge);
+        \draw[->] (merge) -- (more);
+        \draw[->] (more.north) -- ++(0,1) -| node[near start, right, font=\scriptsize]{Sí} (matchup.east);
+    \end{tikzpicture}
+    \caption{Flux complet d’execució del benchmark amb el cicle de recuperació, escriptura incremental i consolidació.}
+    \label{fig:flux_benchmark}
+\end{figure}
 
 
 \section{Fase 1.1: Desenvolupament d'Heurístiques per Singles (1vs1)}

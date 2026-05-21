@@ -9,41 +9,187 @@ Per poder dissenyar, avaluar i entrenar agents d'IA en el metagame Pokémon pres
 \section{Entorn de Simulació}
 \label{sec:entorn}
 
-\subsection{Arquitectura Interna de Pokémon Showdown}
+\subsection{Arquitectura Client-Servidor de Pokémon Showdown}
 
-Pokémon Showdown~\cite{pokemon_showdown} s'executa com un servidor Node.js que processa la lògica del combat de forma determinista donats uns inputs. El flux de comunicació funciona mitjançant \textbf{WebSockets}:
+Pokémon Showdown~\cite{pokemon_showdown} és un simulador de combats Pokémon de codi obert que implementa la totalitat de les regles oficials de les generacions 1 a 9. A nivell tècnic, s'estructura com una aplicació \textbf{Node.js} que exposa un servidor de combats accessible via el protocol \textbf{WebSocket} (RFC~6455). Aquesta arquitectura client-servidor és fonamental per entendre com els agents d'IA interactuen amb el joc.
 
+\subsubsection{Llançament del Servidor Local}
+
+En un entorn de recerca, Showdown s'executa localment sense interfície gràfica ni autenticació:
+
+\begin{verbatim}
+  node pokemon-showdown start --port 8000 --no-security
+\end{verbatim}
+
+El flag \texttt{--no-security} desactiva el sistema d'autenticació (passwords, tokens), permetent que qualsevol client local es connecti directament. Cada instància del servidor ocupa un \textbf{port TCP exclusiu} i funciona com un procés Node.js independent que manté en memòria volàtil (RAM) l'estat de totes les batalles actives. No hi ha persistència a disc: quan el procés es tanca, tot l'estat es perd.
+
+\subsubsection{Protocol de Comunicació WebSocket}
+
+La comunicació entre un agent (client) i el servidor utilitza \textbf{WebSocket}, un protocol full-duplex sobre TCP que manté una connexió persistent. A diferència de HTTP (request-response), WebSocket permet que el servidor enviï missatges al client en qualsevol moment sense necessitat de polling.
+
+Els missatges de Showdown utilitzen un \textbf{format de text pla} amb una sintaxi basada en delimitadors \texttt{|}. Cada línia representa un event del combat:
+
+\begin{verbatim}
+  |move|p1a: Pikachu|Thunderbolt|p2a: Gyarados
+  |-damage|p2a: Gyarados|23/100
+  |-supereffective|p2a: Gyarados
+  |turn|5
+\end{verbatim}
+
+L'estructura general és \texttt{|tipus\_event|argument1|argument2|...}. Els prefixos \texttt{|-} denoten events secundaris (dany, efectes, estats alterats). Aquesta codificació en text pla és molt lleugera ($\sim$50--200 bytes per torn) comparada amb un format binari o JSON complet.
+
+\subsubsection{El Missatge \texttt{request}: El JSON d'Estat}
+
+El missatge més important per a un agent és el \texttt{|request|}, que el servidor envia a cada jugador al començament de cada torn. Conté un objecte JSON complet amb tota la informació disponible per prendre una decisió:
+
+\begin{verbatim}
+  |request|{"active":[{"moves":[
+    {"move":"Thunderbolt","id":"thunderbolt","pp":24,
+     "maxpp":24,"target":"normal","disabled":false},
+    {"move":"Iron Tail","id":"irontail","pp":24,
+     "maxpp":24,"target":"normal","disabled":false},
+    ...
+  ]}],"side":{"pokemon":[
+    {"ident":"p1: Pikachu","details":"Pikachu, L84, M",
+     "condition":"187/187","active":true,
+     "stats":{"atk":137,"def":98,"spa":148,"spd":118,"spe":178},
+     "moves":["thunderbolt","irontail","surf","voltswitch"],
+     "item":"lightball","ability":"Static"},
+    ...
+  ]}}
+\end{verbatim}
+
+Aquest JSON conté: els moviments disponibles (amb PP restants, si estan desactivats), les estadístiques exactes dels Pokémon propis, l'objecte equipat, l'habilitat, i la condició actual (\texttt{HP\_actual/HP\_màxim status}). Notar que les estadístiques i objectes de l'oponent \textbf{no s'inclouen} mai --- això formalitza la informació imperfecta.
+
+\subsubsection{Resposta de l'Agent: Ordres de Combat}
+
+L'agent respon amb una cadena de text simple que codifica la seva decisió:
+
+\begin{itemize}
+    \item \texttt{/choose move 1} --- Usar el primer moviment de la llista.
+    \item \texttt{/choose move 3 -2} --- Usar el tercer moviment apuntant al segon oponent (format Doubles).
+    \item \texttt{/choose switch 4} --- Substituir pel quart Pokémon de l'equip.
+    \item \texttt{/choose move 1 terastallize} --- Atacar amb Teracristal·lització activa.
+\end{itemize}
+
+Un cop el servidor rep les ordres d'ambdós jugadors, \textbf{resol el torn de forma atòmica}: aplica les regles de prioritat, compara velocitats, calcula dany amb la fórmula oficial (incloent un factor aleatori entre 0.85 i 1.0), i envia el flux de events resultant a ambdós clients.
+
+\subsubsection{Cicle de Vida Complet d'una Batalla}
+
+La Figura~\ref{fig:cicle_batalla} il·lustra el cicle complet d'una batalla des de la connexió fins al resultat final.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+        node distance=1.1cm, auto, font=\footnotesize,
+        block/.style={rectangle, draw, fill=blue!5, text width=4.8cm, align=center, minimum height=0.7cm},
+        msg/.style={->, thick, >=stealth},
+        lbl/.style={font=\scriptsize, midway}
+    ]
+        % Lifelines
+        \node[font=\small\bfseries] (agent_title) at (0,0) {Agent (Python)};
+        \node[font=\small\bfseries] (server_title) at (7,0) {Showdown (Node.js)};
+        \draw[dashed, gray] (0,-0.5) -- (0,-11.5);
+        \draw[dashed, gray] (7,-0.5) -- (7,-11.5);
+
+        % Messages
+        \draw[msg] (0,-1) -- node[above, lbl]{WebSocket Connect (port 8000)} (7,-1);
+        \draw[msg] (0,-1.8) -- node[above, lbl]{\texttt{|/autojoin|}} (7,-1.8);
+        \draw[msg, <-] (0,-2.6) -- node[above, lbl]{\texttt{|updateuser|...}} (7,-2.6);
+
+        \draw[msg] (0,-3.5) -- node[above, lbl]{\texttt{/challenge username, gen9randombattle}} (7,-3.5);
+        \draw[msg, <-] (0,-4.3) -- node[above, lbl]{\texttt{|request|\{JSON amb equip complet\}}} (7,-4.3);
+
+        \node[block, fill=green!8] at (3.5,-5.3) {Bucle de Torns (repetir fins \texttt{|win|})};
+
+        \draw[msg, <-] (0,-6.2) -- node[above, lbl]{\texttt{|request|\{moves, switches disponibles\}}} (7,-6.2);
+        \draw[msg] (0,-7.0) -- node[above, lbl]{\texttt{/choose move 1}} (7,-7.0);
+        \draw[msg, <-] (0,-7.8) -- node[above, lbl]{\texttt{|move|...|} \texttt{|-damage|...|} \texttt{|turn|N+1}} (7,-7.8);
+
+        \node[block, fill=orange!8] at (3.5,-8.8) {\textit{...N torns...}};
+
+        \draw[msg, <-] (0,-9.8) -- node[above, lbl]{\texttt{|win|Nom\_Jugador}} (7,-9.8);
+        \draw[msg, <-] (0,-10.6) -- node[above, lbl]{\texttt{|request|\{"wait":true\}} (batalla acabada)} (7,-10.6);
+    \end{tikzpicture}
+    \caption{Diagrama de seqüència del protocol WebSocket entre un agent i Pokémon Showdown durant una batalla completa.}
+    \label{fig:cicle_batalla}
+\end{figure}
+
+Punts importants d'aquest cicle:
+\begin{itemize}
+    \item Tot l'estat del combat viu exclusivament a la \textbf{RAM del procés Node.js}. No hi ha cap escriptura a disc durant la batalla.
+    \item El servidor és \textbf{completament determinista} donats els mateixos inputs i la mateixa llavor de RNG. Això permet la reproductibilitat dels experiments.
+    \item La latència d'un torn (enviar ordre → rebre resultat) és típicament $<$5~ms en local, permetent velocitats de centenars de batalles per minut.
+    \item Cada instància del servidor pot gestionar \textbf{múltiples batalles simultànies} de forma concurrent gràcies a l'event loop de Node.js.
+\end{itemize}
+
+\subsection{Poke-env: La Capa d'Abstracció Python}
+\label{subsec:pokeenv}
+
+La llibreria poke-env~\cite{poke_env} actua com a pont entre el protocol WebSocket de Showdown i el codi Python dels agents. Proporciona una interfície orientada a objectes que permet als investigadors centrar-se en la lògica de decisió sense gestionar connexions de xarxa ni parsejar missatges de text.
+
+\subsubsection{Arquitectura Interna de Poke-env}
+
+La Figura~\ref{fig:pokeenv_arch} mostra com poke-env transforma els missatges crus del servidor en objectes Python estructurats.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+        node distance=0.8cm, font=\footnotesize,
+        box/.style={rectangle, draw, text width=3.2cm, align=center, minimum height=0.9cm},
+        arr/.style={->, thick, >=stealth}
+    ]
+        \node[box, fill=red!8] (ws) {WebSocket Raw\\(\texttt{|move|p1a:...})};
+        \node[box, fill=yellow!10, right=of ws] (parser) {Parser de Missatges\\(\texttt{parse\_message})};
+        \node[box, fill=blue!8, right=of parser] (battle) {Objecte \texttt{Battle}\\(estat estructurat)};
+        \node[box, fill=green!8, below=of battle] (agent) {Agent: \texttt{choose\_move(battle)}};
+        \node[box, fill=purple!8, left=of agent] (order) {\texttt{BattleOrder}\\(acció escollida)};
+        \node[box, fill=red!8, left=of order] (ws2) {WebSocket Send\\(\texttt{/choose move 1})};
+
+        \draw[arr] (ws) -- (parser);
+        \draw[arr] (parser) -- (battle);
+        \draw[arr] (battle) -- (agent);
+        \draw[arr] (agent) -- (order);
+        \draw[arr] (order) -- (ws2);
+    \end{tikzpicture}
+    \caption{Pipeline intern de poke-env: del missatge WebSocket cru fins a la resposta de l'agent.}
+    \label{fig:pokeenv_arch}
+\end{figure}
+
+\subsubsection{Classes Principals}
+
+\begin{itemize}
+    \item \textbf{\texttt{Player}}: Classe base abstracta per a qualsevol agent. El desenvolupador només necessita implementar el mètode \texttt{choose\_move(battle)} que rep l'estat actual i retorna una acció. Poke-env s'encarrega de tota la gestió de connexió, autenticació i sincronització.
+    \item \textbf{\texttt{Battle}}: Encapsula l'estat complet observable d'una batalla a cada torn. Conté: \texttt{active\_pokemon}, \texttt{opponent\_active\_pokemon}, \texttt{available\_moves}, \texttt{available\_switches}, \texttt{weather}, \texttt{fields}, \texttt{side\_conditions}, etc.
+    \item \textbf{\texttt{Pokemon}}: Objecte amb atributs com \texttt{types}, \texttt{stats}, \texttt{boosts}, \texttt{status}, \texttt{current\_hp\_fraction}, \texttt{moves} (revelats), etc.
+    \item \textbf{\texttt{Move}}: Conté \texttt{base\_power}, \texttt{type}, \texttt{accuracy}, \texttt{category} (Physical/Special/Status), \texttt{priority}, i efectes secundaris.
+\end{itemize}
+
+\subsubsection{Model de Concurrència: asyncio}
+
+Poke-env utilitza el framework \texttt{asyncio} de Python per gestionar múltiples batalles simultàniament dins d'un sol fil d'execució. El paràmetre \texttt{max\_concurrent\_battles} controla quantes batalles pot mantenir obertes un agent alhora (típicament 10--20). Internament, un \texttt{Semaphore} limita la creació de batalles noves fins que les anteriors finalitzin.
+
+Quan es crida \texttt{player.battle\_against(opponent, n\_battles=100)}, poke-env:
 \begin{enumerate}
-    \item El servidor envia l'estat observable de la batalla en format text (vida dels Pokémon, moviments disponibles, condicions actives, etc.).
-    \item Cada jugador respon amb una ordre codificada (\texttt{/choose move 1}, \texttt{/choose switch 3}, etc.).
-    \item El servidor resol el torn aplicant les regles oficials (prioritat, velocitat, RNG) i envia el nou estat als jugadors.
+    \item Obre connexions WebSocket per ambdós jugadors.
+    \item Llança el challenge i espera l'acceptació.
+    \item Per cada torn, crida \texttt{choose\_move()} i envia la resposta.
+    \item Un cop rep \texttt{|win|}, marca la batalla com a finalitzada i allibera el semàfor.
 \end{enumerate}
 
-L'avantatge clau per a la investigació és que Showdown pot funcionar com a \textbf{servidor local sense interfície gràfica}. Això permet:
-\begin{itemize}
-    \item Executar batalles a gran velocitat (centenars per minut).
-    \item Controlar completament les variables d'entorn (format, generació, equips inicials).
-    \item Automatitzar la recopilació de dades massives per a entrenament d'agents.
-\end{itemize}
+Tot aquest procés és \textbf{no-bloquejant}: mentre una batalla espera la resposta del servidor, altres batalles poden estar enviant les seves ordres.
 
-\subsection{Poke-env com a Interfície Python}
+\subsubsection{Compatibilitat amb OpenAI Gym}
 
-La llibreria poke-env~\cite{poke_env} tradueix els missatges WebSocket del servidor a objectes Python estructurats. Proporciona:
+Poke-env també exposa una interfície compatible amb l'estàndard \textit{Gymnasium}~\cite{brockman2016openai}, permetent l'ús directe d'algorismes de Reinforcement Learning (DQN, PPO, A2C). Aquesta interfície transforma cada torn en una tupla \texttt{(observation, reward, done, info)} i gestiona automàticament el cicle de vida de l'entorn.
 
-\begin{itemize}
-    \item \textbf{Classe \texttt{Battle}}: Conté tot l'estat observable ---~Pokémon actius, vida restant, moviments disponibles, condicions de camp, registre d'accions passades~--- com a atributs directament accesibles.
-    \item \textbf{Classe \texttt{Player}}: Classe base per definir agents. El mètode \texttt{chooseDUMMY\_UNDERSCOREmove(battle)} rep l'estat i retorna l'acció seleccionada.
-    \item \textbf{Compatibilitat Gym}: Proporciona interfície compatible amb l'estàndard \textit{OpenAI Gym}~\cite{brockman2016openai}, habilitant l'ús directe d'algorismes de RL com DQN o PPO.
-    \item \textbf{Gestió asíncrona}: Tota la comunicació es gestiona amb \texttt{asyncio} de Python, permetent concurrència nativa.
-\end{itemize}
-
-\subsection{Discrepàncies Técniques: Poke-env vs Pokechamp}
+\subsection{Discrepàncies Tècniques: Poke-env vs Pokechamp}
 
 Durant el desenvolupament, s'ha identificat una dicotomia metodològica entre la versió oficial de \textit{poke-env} i la versió utilitzada pel repositori \textit{Pokechamp}. Aquesta distinció és crítica per a la reproductibilitat:
 
 \begin{itemize}
-    \item \textbf{Compatibilitat d'Atributs}: La versió de \textit{Pokechamp} utilitza una branca antiga de la llibreria que accedeix a atributs de batalla (com \texttt{activeDUMMY\_UNDERSCOREpokemon}) de forma diferent a la versió \texttt{1.3+} oficial. Això ha obligat a crear una capa d'abstracció a \texttt{BattleManager} per garantir que els agents de ambdues procedències puguin coexistir en el mateix benchmark.
-    \item \textbf{Seguiment Estricte (Strict Tracking)}: Mentre que \textit{Pokechamp} ignora certs errors de protocol de Showdown, \textit{poke-env} oficial llança excepcions d'assequibilitat (\textit{Assertions}) quan detecta moviments inesperats. Com s'ha mencionat anteriorment, la decisió metodològica ha estat relaxar aquest seguiment (\texttt{strictDUMMY\_UNDERSCOREbattleDUMMY\_UNDERSCOREtracking=False}) per permetre la compatibilitat amb la lògica de tercers i assegurar la continuïtat de les simulacions de llarga durada.
+    \item \textbf{Compatibilitat d'Atributs}: La versió de \textit{Pokechamp} utilitza una branca modificada de la llibreria que accedeix a atributs de batalla (com \texttt{active\_pokemon}) de forma diferent a la versió \texttt{0.11+} oficial. Això ha obligat a crear una capa d'abstracció a \texttt{AgentFactory} per garantir que els agents d'ambdues procedències puguin coexistir en el mateix benchmark.
+    \item \textbf{Seguiment Estricte (Strict Tracking)}: Mentre que \textit{Pokechamp} ignora certs errors de protocol de Showdown, \textit{poke-env} oficial llança excepcions quan detecta moviments inesperats. La decisió metodològica ha estat relaxar aquest seguiment (\texttt{strict\_battle\_tracking=False}) per permetre la compatibilitat amb la lògica de tercers i assegurar la continuïtat de les simulacions de llarga durada.
 \end{itemize}
 
 \subsection{Variables d'Estat Disponibles}
@@ -74,46 +220,60 @@ L'objecte \texttt{Battle} que rep l'agent cada torn exposa les següents variabl
 
 \textbf{Informació oculta}: En tot moment, l'agent \textbf{desconeix} les EVs, IVs, Nature, moviments no revelats, objecte i habilitat dels Pokémon rivals, així com l'ordre dels Pokémon que l'oponent manté a la reserva. Això confirma formalment que l'entorn és un POMDP.
 
-\subsection{Infraestructura Paral·lela i Orquestració Distribuïda}
+\subsection{Necessitat d'Infraestructura Paral·lela}
+\label{subsec:necessitat_paralel}
 
-L'execució de benchmarks estadísticament significatius (milers de partides per parella d'agents) amb un sol servidor resulta inviable per la latència del protocol WebSocket i el consum de CPU de Node.js. Per solucionar-ho, s'ha dissenyat una infraestructura d'orquestració distribuïda (situada a \texttt{src/p01DUMMY\_UNDERSCOREheuristics/s02DUMMY\_UNDERSCOREdoubles/core/}) que implementa els següents principis metodològics:
+L'execució de benchmarks estadísticament significatius (10.000 partides per parella d'agents) amb un sol servidor resulta inviable per dues limitacions inherents al sistema descrit anteriorment:
 
 \begin{enumerate}
-    \item \textbf{Multiprocessament Simètric}: Es llança una instància independent de Showdown per cada nucli de CPU disponible (o segons el paràmetre \texttt{--ports}). Cada port (8000, 8001...) actua com un node de computació aïllat.
-    \item \textbf{Batches i Concurrència}: Les partides es divideixen en \textit{batches} (paquets de 100-200 partides). Dins de cada batch, s'utilitza la capacitat asíncrona de \textit{poke-env} per gestionar múltiples batalles simultànies (\texttt{maxDUMMY\_UNDERSCOREconcurrentDUMMY\_UNDERSCOREbattles}), optimitzant el \textit{throughput} total del sistema.
-    \item \textbf{Cicle de Vida del Servidor (Restart Logic)}: S'ha observat que els servidors Showdown acumulen memòria de forma incremental a causa de la fragmentació del Garbage Collector de Node.js. Per garantir la reproductibilitat i prevenir bloquejos per \textit{Out of Memory} (OOM), s'ha implementat una lògica de reinici automàtic: el servidor es reinicia completament cada N matchups \textit{actius} (on s'han jugat partides noves).
-    \item \textbf{Robustesa davant Estats Invàlids}: En versions modernes de Pokémon (Gen 8 i 9), moviments complexos com \textit{Magic Bounce} o \textit{Copycat} poden generar inconsistències en el seguiment de l'estat. Metodològicament, s'ha optat per desactivar el \texttt{strictDUMMY\_UNDERSCOREbattleDUMMY\_UNDERSCOREtracking} en els benchmarks massius per evitar la interrupció del workflow davant d'errors menors de la llibreria base, prioritzant la completesa de l'experiment (success rate del 100\%).
+    \item \textbf{Limitació de Node.js}: Cada instància de Showdown utilitza un únic fil d'execució (event loop). Tot i que pot gestionar múltiples batalles concurrentment, el throughput es satura al voltant de 20--30 batalles simultànies per la serialització de la resolució de torns.
+    \item \textbf{Acumulació de memòria}: El Garbage Collector de Node.js no allibera completament la memòria fragmentada de batalles finalitzades. Després de milers de batalles, el procés pot créixer de $\sim$80~MB a $>$500~MB, degradant el rendiment i arriscant un \textit{Out of Memory} (OOM).
 \end{enumerate}
 
-Aquesta infraestructura ha permès augmentar la velocitat d'avaluació en un factor de $\times 4$ respecte a implementacions seqüencials tradicionals, permetent la recopilació de dades massives necessàries per a aquest TFM.
+Per superar-ho, la metodologia d'avaluació d'aquest TFM es basa en un patró \textbf{Master-Worker} amb múltiples instàncies de Showdown executant-se en ports paral·lels. Cada worker és un procés Python independent que es comunica amb el seu propi servidor Showdown dedicat, eliminant qualsevol contenció entre experiments. Els detalls d'implementació d'aquesta arquitectura es descriuen al Capítol~\ref{chap:implementacio} (Secció~5.2).
 
 \subsection{Disseny de la Matriu d'Avaluació (Benchmark Matrix)}
 
-Per tal de garantir una comparació justa i exhaustiva entre els diversos agents, s'ha implementat una metodologia d'\textbf{avaluació per matriu}. Un run del benchmark no avalua un sol agent, sinó que processa una matriu creuada de $N$ heurístiques pròpies contra $M$ baselines o oponents externs.
+Per tal de garantir una comparació justa i exhaustiva entre els diversos agents, s'ha implementat una metodologia d'\textbf{avaluació per matriu completa}. Un \textit{run} del benchmark no avalua un sol agent, sinó que processa una matriu creuada de $N$ agents contra $M$ oponents, resultant en $N \times M$ matchups independents.
 
 \begin{itemize}
-    \item \textbf{Càlcul de partides faltants}: El sistema és intel·ligent i comprova l'existència de dades prèvies. Si d'un matchup de 10.000 partides ja se n'han jugat 2.000, el benchmark només llançarà les 8.000 restants.
-    \item \textbf{Balanceig de Jugadors}: Per eliminar el biaix del "Jugador 1" (que pot tenir certs avantatges marginals en determinades mecàniques de Showdown), les partides es distribueixen perquè cada agent ocupi la posició inicial de forma equitativa.
-    \item \textbf{Consistència de Formats}: S'obliga a que tots els oponents del benchmark utilitzin exactament el mateix format (p. ex. \texttt{gen9randombattle}) i el mateix set de dades estàtiques (Pokémon, moviments, habilitats).
+    \item \textbf{Recuperació automàtica (Resume)}: El sistema comprova l'existència de dades prèvies a disc. Si d'un matchup de 10.000 partides ja se n'han completat 2.000 en una execució anterior, el benchmark només llançarà les 8.000 restants. Això fa el procés tolerant a interrupcions (talls de corrent, errors de xarxa, reinicis del sistema).
+    \item \textbf{Consistència de Formats}: Tots els agents del benchmark s'avaluen sota exactament el mateix format i generació (p.~ex.\ \texttt{gen9randombattle}), garantint que les diferències de rendiment es deuen exclusivament a la qualitat de la decisió, no a variacions de l'entorn.
+    \item \textbf{Aleatorietat controlada}: En el format \textit{Random Battle}, els equips són assignats aleatòriament pel servidor Showdown a cada partida. Amb 10.000 partides per matchup, la llei dels grans nombres garanteix que qualsevol avantatge puntual per equip es dilueix estadísticament.
 \end{itemize}
 
-\begin{figure}[h]
+\begin{figure}[H]
     \centering
-    \begin{tikzpicture}[node distance=2cm, font=\small]
-        \node (main) [rectangle, draw, fill=blue!10, text width=3cm, align=center] {Orquestrador Python \\ (Main Batch Loop)};
-        \node (sub1) [rectangle, draw, fill=green!10, below left of=main, xshift=-1cm, text width=2cm, align=center] {Port 8000 \\ (Worker 1)};
-        \node (sub2) [rectangle, draw, fill=green!10, below left of=main, xshift=1.5cm, text width=2cm, align=center] {Port 8001 \\ (Worker 2)};
-        \node (dots) [below of=main, yshift=0.5cm] {...};
-        \node (subN) [rectangle, draw, fill=green!10, below right of=main, xshift=1cm, text width=2cm, align=center] {Port 800N \\ (Worker N)};
-        
-        \draw [->, thick] (main) -- (sub1);
-        \draw [->, thick] (main) -- (sub2);
-        \draw [->, thick] (main) -- (subN);
-        
-        \node (restart) [circle, draw, fill=red!10, right of=main, xshift=3cm, text width=2cm, align=center] {Restart \\ Logic};
-        \draw [<->, dashed] (main) -- (restart);
+    \begin{tikzpicture}[
+        node distance=1.5cm, font=\small,
+        master/.style={rectangle, draw, fill=blue!10, text width=3.5cm, align=center, minimum height=1cm},
+        worker/.style={rectangle, draw, fill=green!10, text width=2.5cm, align=center, minimum height=0.8cm},
+        server/.style={rectangle, draw, fill=orange!10, text width=2.5cm, align=center, minimum height=0.8cm},
+        disk/.style={cylinder, draw, fill=gray!10, shape border rotate=90, aspect=0.3, minimum height=0.8cm, minimum width=1.5cm, align=center}
+    ]
+        \node[master] (master) {Benchmark Master\\(\texttt{benchmark.py})};
+
+        \node[worker, below left=1.5cm and 0.5cm of master] (w1) {Worker 1\\(subprocess)};
+        \node[worker, below=1.5cm of master] (w2) {Worker 2\\(subprocess)};
+        \node[worker, below right=1.5cm and 0.5cm of master] (wn) {Worker N\\(subprocess)};
+
+        \node[server, below=0.8cm of w1] (s1) {Showdown\\Port 8000};
+        \node[server, below=0.8cm of w2] (s2) {Showdown\\Port 8001};
+        \node[server, below=0.8cm of wn] (sn) {Showdown\\Port 800N};
+
+        \node[disk, right=2cm of master] (csv) {CSV\\(disc)};
+
+        \draw[->, thick] (master) -- (w1);
+        \draw[->, thick] (master) -- (w2);
+        \draw[->, thick] (master) -- (wn);
+        \draw[<->, thick] (w1) -- node[left, font=\scriptsize]{WebSocket} (s1);
+        \draw[<->, thick] (w2) -- node[left, font=\scriptsize]{WebSocket} (s2);
+        \draw[<->, thick] (wn) -- node[left, font=\scriptsize]{WebSocket} (sn);
+        \draw[->, dashed] (w1.east) -- ++(0.3,0) |- (csv);
+        \draw[->, dashed] (w2.east) -- ++(0.15,0) |- (csv);
+        \draw[->, dashed] (wn.north east) -- ++(0.5,0.3) -| (csv);
     \end{tikzpicture}
-    \caption{Esquema de la infraestructura distribuïda i paral·lela.}
+    \caption{Arquitectura Master-Worker: cada worker és un procés Python aïllat que es comunica amb el seu propi servidor Showdown via WebSocket i escriu resultats parcials a disc.}
     \label{fig:infraestructura}
 \end{figure}
 
