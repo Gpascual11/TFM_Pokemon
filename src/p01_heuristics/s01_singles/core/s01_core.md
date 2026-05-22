@@ -11,17 +11,39 @@ The `core` directory contains the foundational plumbing that allows agents to ex
 This file defines `BaseHeuristic1v1`. We use the **Template Method Pattern**:
 
 - **`choose_move`**: This is the "Public API" caller. It implements a safe 3-phase pipeline:
-    1. `_pre_move_hook`: Early-exit logic.
-    2. `_select_action`: The main logic (implemented by subclasses like V1-V6).
+    1. `_pre_move_hook`: Early-exit logic (used by V7/V8 for KO detection).
+    2. `_select_action`: The main logic (implemented by subclasses V1-V8).
     3. `choose_random_move`: The absolute safety fallback.
 - **Why?**: This prevents "battle freezes" if a specific heuristic crashes. The system will simply log the error and move on with a random action.
+
+#### Tracking Counters
+
+`BaseHeuristic1v1` maintains per-battle counters for analysis:
+
+| Counter | Purpose | Agents that use it |
+|---------|---------|-------------------|
+| `_total_decisions_by_battle` | Total `choose_move` calls | All |
+| `_fallback_moves_by_battle` | Times no move was selected (random fallback) | All |
+| `_error_moves_by_battle` | Times logic crashed (exception caught) | All |
+| `_used_moves_by_battle` | Set of move IDs used per battle | V3+ (tracks_moves=True) |
+| `_hazard_sets_by_battle` | Times entry hazards were set | V7, V8 |
+| `_hazard_removals_by_battle` | Times hazards were removed | V7, V8 |
+| `_setup_uses_by_battle` | Times boost moves were used | V7, V8 |
+| `_ko_checks_by_battle` | Times KO pre-check triggered | V7, V8 |
+| `_matchup_switches_by_battle` | Times matchup-based switching fired | V7, V8 |
+
+All counters are cleared in `reset_battles()` between batches.
 
 ### `factory.py` — Dependency Injection
 
 The **`AgentFactory`** is the "single source of truth" for instantiating players.
 
-- **Unified Naming**: You don't need to know which class to import. Just call `AgentFactory.create("v6")`.
-- **Legacy Support**: It automatically handles path-injection for `abyssal` and other agents that require the `pokechamp` external repo.
+- **Unified Naming**: Just call `AgentFactory.create("v8")` — no imports needed.
+- **Registered Agents**:
+  - Internal: `v1`, `v2`, `v3`, `v4`, `v5`, `v6`, `v7`, `v8`
+  - Baselines: `random`, `max_power`, `abyssal`, `one_step`, `safe_one_step`, `simple_heuristic`
+  - LLM: `pokechamp`, `pokellmon`, `llm_vgc`
+- **Legacy Support**: Automatically handles path-injection for `abyssal` and other agents that require the `pokechamp` external repo.
 
 ---
 
@@ -37,25 +59,22 @@ This module implements a **Pre-flight-Check Process Launcher**.
 - It uses the `spawn` multiprocessing context.
 - **Process Isolation**: Every child process is a "sandbox." When the simulation finishes, the process is killed, reclaiming 100% of the memory.
 
-### `battle_manager.py`
+### `battle_manager.py` (Legacy)
 
-This is the internal orchestrator used by the worker processes.
-
-- **Batching**: It breaks a 1000-game request into small, digestible chunks (e.g., 250 games).
-- **GC Triggering**: It explicitly calls `gc.collect()` after every batch to keep RAM usage flat throughout the run.
-- **Analytic Extraction**: It transforms hundreds of raw `Battle` objects into clean CSV rows with 11 distinct metrics.
+The internal orchestrator for the older `run_single.py` pipeline. The primary benchmark now uses `benchmark.py` + `worker.py` directly.
 
 ---
 
 ## 3. Shared Mathematics (`common.py`)
 
-To ensure that V2, V3, and V6 are comparable, they all use the same underlying math helper for baseline damage and speed estimation.
+To ensure V2, V3, V4, and V6 are comparable, they all use the same underlying math helper for baseline damage and speed estimation.
 
-- **`calculate_base_damage`**: Standardized physical/special attack split with burn, STAB, and type effectiveness (used by V2, V3, and V6).
+- **`calculate_base_damage`**: Standardized physical/special attack split with burn, STAB, and type effectiveness. Used by V2, V3, V4, V6.
 - **`get_speed`**: Correctly factors in Paralysis penalties.
+- **`get_status_name`**: Normalizes `None` to `"HEALTHY"` for safe string comparisons.
 - **`GameDataManager`**: A performance-optimized singleton that prevents loading the massive Pokémon move/data JSONs multiple times into memory.
 
-V4 and V5 build on the same ideas but use their own extended damage estimators that layer in weather, terrain, and stat-boost awareness.
+V5, V7, and V8 use their own `_get_boosted_stat()` method for stat-stage-aware damage estimation, building on the same proportional formula.
 
 ---
 
@@ -63,6 +82,7 @@ V4 and V5 build on the same ideas but use their own extended damage estimators t
 
 When modifying the logic in `core/`:
 
-1. **Thread Safety**: Assume any variable in `BattleManager` or `ProcessLauncher` will be accessed by concurrent processes.
-2. **Path Resolution**: Use `Path(__file__).parent` rather than hardcoded strings, as these files are often executed from the root via `uv run`.
-3. **Logging**: Child processes suppress `INFO` level logs to prevent terminal spam; use `print(..., flush=True)` for critical cross-process progress updates.
+1. **Counter Lifecycle**: Any new counter added to `BaseHeuristic1v1.__init__` must also be cleared in `reset_battles()`, or it will accumulate across batches and produce incorrect CSV data.
+2. **Thread Safety**: Assume any variable in `BattleManager` or `ProcessLauncher` will be accessed by concurrent processes.
+3. **Path Resolution**: Use `Path(__file__).parent` rather than hardcoded strings, as these files are often executed from the root via `uv run`.
+4. **Logging**: Child processes suppress `INFO` level logs to prevent terminal spam; use `print(..., flush=True)` for critical cross-process progress updates.

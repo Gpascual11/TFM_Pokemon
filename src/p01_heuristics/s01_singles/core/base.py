@@ -34,6 +34,12 @@ class BaseHeuristic1v1(Player, abc.ABC):
         self._fallback_moves_by_battle: dict[str, int] = {}
         self._error_moves_by_battle: dict[str, int] = {}
         self._total_decisions_by_battle: dict[str, int] = {}
+        # Strategy tracking (incremented by V7/V8, zero for simpler agents)
+        self._hazard_sets_by_battle: dict[str, int] = {}
+        self._hazard_removals_by_battle: dict[str, int] = {}
+        self._setup_uses_by_battle: dict[str, int] = {}
+        self._ko_checks_by_battle: dict[str, int] = {}
+        self._matchup_switches_by_battle: dict[str, int] = {}
 
     def reset_battles(self) -> None:
         """Clear both the poke-env battle history and our custom move tracking."""
@@ -42,6 +48,11 @@ class BaseHeuristic1v1(Player, abc.ABC):
         self._fallback_moves_by_battle.clear()
         self._error_moves_by_battle.clear()
         self._total_decisions_by_battle.clear()
+        self._hazard_sets_by_battle.clear()
+        self._hazard_removals_by_battle.clear()
+        self._setup_uses_by_battle.clear()
+        self._ko_checks_by_battle.clear()
+        self._matchup_switches_by_battle.clear()
 
     def choose_move(self, battle):
         """Orchestrate the three-phase decision pipeline.

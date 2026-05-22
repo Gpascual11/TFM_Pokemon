@@ -25,52 +25,70 @@ Instead of sharing state between threads, the system spawns **independent OS pro
 
 Contains the shared infrastructure required to build and run any agent.
 
-- **`factory.py`**: The *Unified AgentFactory*. This is the only entry point you need to instantiate any agent by its name (e.g., `"v6"`, `"abyssal"`, `"pokechamp"`).
-- **`base.py`**: Definites the `BaseHeuristic1v1` contract. All custom heuristics must implement the `_select_action` method.
-- **`common.py`**: Mathematical utilities (Speed tier calculation, damage estimation) used across multiple heuristic versions.
+- **`factory.py`**: The *Unified AgentFactory*. This is the only entry point you need to instantiate any agent by its name (e.g., `"v8"`, `"abyssal"`, `"pokechamp"`).
+- **`base.py`**: Defines the `BaseHeuristic1v1` contract. All custom heuristics must implement the `_select_action` method. Also provides per-battle strategy tracking counters.
+- **`common.py`**: Mathematical utilities (speed tier calculation, damage estimation) used across multiple heuristic versions.
+
+### `agents/` — Strategy Implementations
 
 Categorized into three distinct families:
 
-1. **`internal/`**: Our custom heuristic evolution (**V1 to V6**).
+1. **`internal/`**: Our custom heuristic evolution (**V1 to V8**).
 2. **`baselines/`**: Standard rule-based players including `random`, `max_power`, and `simple_heuristic`.
 3. **`llm/`**: Connectors for agents like `Pokechamp` and `Pokellmon` that use Ollama as a thinking backend.
 
 ### `evaluation/` — The Proving Grounds
 
 - **`engine/`**: Contains the `benchmark.py` and `worker.py` scripts. Use these for 90% of your testing.
-- **`reporting/`**: Python scripts to turn massive CSV files into readable heatmaps and charts.
+- **`reporting/`**: Python scripts to turn massive CSV files into readable heatmaps, Elo rankings, and charts.
 - **`docs/`**: Deep-dive technical guides (see [docs/s01_parallel_benchmark_guide.md](docs/s01_parallel_benchmark_guide.md)).
 
 ---
 
-## 3. The Heuristic Evolution (V1 - V6)
+## 3. The Heuristic Evolution (V1 - V8)
 
-Each version builds upon the successes and failures of the previous one:
+Each version builds upon the successes and failures of the previous ones:
 
-| Version | Key Logic | Defensive Strategy |
+| Version | Key Logic | Switching Strategy |
 | :--- | :--- | :--- |
-| **V1** | Primary Power | Random switching. |
-| **V2** | Physical/Special Split | Type-disadvantage awareness. |
-| **V3** | **Defensive Stability** | Escape Toxic/Bad matchups + Speed-check pivoting. |
-| **V4** | Field-Aware Damage Overhaul | Burn penalty + STAB + Weather/Terrain scaling. |
-| **V5** | **Boost-Aware Field Expert** | Stat-boost-aware damage + KO pre-check + relaxed pivoting. |
-| **V6** | **The Peak** | Priority move valuation + Refined field awareness. |
+| **V1** | Max `bp × eff × stab` | None |
+| **V2** | Stats-based damage + burn penalty | TOX escape + outsped pivot |
+| **V3** | V2 + per-battle move tracking | Same as V2 |
+| **V4** | V3 + weather/terrain + accuracy × priority | V3 triggers + smart type-based target |
+| **V5** | V4 + stat-boost-aware damage | V3 triggers + smart type-based target |
+| **V6** | V3 + weather/terrain/priority (lightweight) | V3 triggers (slot 0) |
+| **V7** | Hazards + setup + KO check + matchup switching | Matchup score (Abyssal formula) |
+| **V8** | V7 + item/ability/screen/Trick Room awareness | Matchup + Trick Room reversal |
+
+### Key Research Finding
+
+V1, V2, V3, V6 perform equivalently (~50% against each other, ~30% vs strong baselines). This proves that naive damage optimization plateaus fast. V7 and V8 introduce **positional awareness** (hazards, setup, matchup switching) to close the gap to Abyssal/SimpleHeuristic.
 
 ---
 
 ## 4. Usage Guide
 
 For a full list of runnable commands and CLI flags, see [docs/s01_cli_reference.md](docs/s01_cli_reference.md).  
-For the on-disk outputs layout, see [docs/s01_data_layout.md](docs/s01_data_layout.md).
+For the on-disk outputs layout, see [docs/s01_data_layout.md](docs/s01_data_layout.md).  
+For CSV column documentation, see [docs/s01_csv_schema.md](docs/s01_csv_schema.md).
 
 ### Running a Full Tournament
 
-To run 1000 battles per matchup between all heuristics and baselines across 4 parallel workers:
+To run 10,000 battles per matchup between all heuristics and baselines across 4 parallel workers:
 
 ```bash
-uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 1000 \
+uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 10000 \
     --ports 4 \
     --concurrency 10
+```
+
+### Running a Specific Generation
+
+```bash
+uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 10000 \
+    --ports 4 \
+    --concurrency 10 \
+    --battle-format gen4randombattle
 ```
 
 ### Evaluating LLMs
@@ -80,14 +98,14 @@ Only run 1 or 2 ports for LLMs to avoid GPU bottlenecking:
 ```bash
 uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 50 \
     --agents pokechamp \
-    --opponents v6 random \
+    --opponents v8 random \
     --ports 1 \
     --concurrency 2
 ```
 
 ### Generating the Heatmap
 
-Once CSVs are generated in `data/1_vs_1/benchmarks/unified/`:
+Once CSVs are generated in `data/1_vs_1/benchmarks/gens_10k_teams/`:
 
 ```bash
 uv run python src/p01_heuristics/s01_singles/evaluation/reporting/plots/generate_heatmap.py
@@ -101,55 +119,80 @@ uv run python src/p01_heuristics/s01_singles/evaluation/reporting/plots/generate
 
 If a benchmark is interrupted (crash, power loss, manual stop), simply **run the same command again**. The system will scan existing files, calculate the missing games, and finish them automatically.
 
-### 2. Thinking Logs
+### 2. Strategy Tracking (V7/V8)
+
+The CSV output includes per-battle counters proving intelligent play:
+- `hazard_sets_us`: Times entry hazards were deliberately set
+- `setup_uses_us`: Times boost moves (Swords Dance, etc.) were used
+- `ko_checks_us`: Times a guaranteed KO was detected and executed
+- `matchup_switches_us`: Times switching was triggered by type matchup analysis
+
+These are always 0 for V1-V6, providing direct evidence that V7/V8 make qualitatively different decisions.
+
+### 3. Thinking Logs (LLM Agents)
 
 When using LLM agents, a full chain-of-thought is saved for every single move.
 
 - **Location**: `src/p01_heuristics/s01_singles/evaluation/results/LLM/`
 - **Files**: `thinking_*.txt` (The rationale) and `decisions_*.txt` (The final choice).
 
-### 3. Server Management
+### 4. Server Management
 
 The benchmark automatically launches the required number of local Showdown servers. The default is `--restart-every 3` (recommended for long runs); increase or decrease as needed.
 
 ---
 
-## 6. Advanced Battle Analytics (New!)
+## 6. Battle Analytics
 
-The evaluation engine now captures deeply granular data for every battle, providing insights far beyond simple winrates.
+The evaluation engine captures deeply granular data for every battle (46 columns per game). See [docs/s01_csv_schema.md](docs/s01_csv_schema.md) for the complete schema.
+
+### Decision Quality
+- **Fallback rate**: How often the agent couldn't decide and fell back to random.
+- **Error rate**: How often the agent's logic crashed internally.
 
 ### Strategic Metrics
-- **Switch Intelligence**: Tracks `voluntary_switches` (strategic) vs `forced_switches` (due to faints), allowing you to measure agent "pivoting" efficiency.
-- **Move Usage Profiling**: Serialized move statistics (e.g., `bugbuzz:5|airslash:3`) to identify "spamming" patterns or preferred finishing moves.
+- **Switch Intelligence**: Tracks `voluntary_switches` (strategic) vs `forced_switches` (due to faints).
+- **Move Usage Profiling**: Serialized move statistics (e.g., `stealthrock:2|swordsdance:1|earthquake:5`).
 
 ### Luck & RNG Tracking
-- **RNG Metrics**: Explicitly counts `critical_hits`, `misses`, and `super_effective_hits` for both players. This is essential for identifying "lucky wins" in large-scale simulations.
+- **RNG Metrics**: Explicitly counts `critical_hits`, `misses`, and `super_effective_hits` for both players. Essential for identifying "lucky wins" in large-scale simulations.
 
-### Micro-State Monitoring
-- **Team HP %**: Cumulative team health percentage (0.0 to 6.0) and percentage (0-100%) to differentiate between "close wins" and crushing victories.
-- **Side Conditions**: Active hazards (Spikes, Stealth Rock, Sticky Web) are tracked per-side.
-- **Detailed Team State**: Per-Pokémon items, abilities, and status effects (including `FNT` for fainted mons) are serialized into the CSV for deep post-game analysis.
+### Strategy Metrics (V7/V8)
+- **Hazard Management**: How often hazards were set vs removed.
+- **Setup Usage**: How often boost moves were used.
+- **KO Detection**: How often guaranteed knockouts were identified and executed.
 
 ---
 
-## 7. Performance Monitoring
+## 7. Statistical Methodology
 
-A new `matchup_performance.csv` is generated for every benchmark run to help optimize high-concurrency 10k game runs.
+See [docs/s01_statistical_justification.md](docs/s01_statistical_justification.md) for the full analysis.
+
+- **10,000 games per matchup** provides ±0.98% precision at 95% confidence.
+- **Same sample size across all generations** (gen1-gen9) for uniform methodology.
+- Can reliably detect win rate differences of ≥2 percentage points.
+- Pool size (number of Pokemon per gen) does NOT affect required sample size.
+
+---
+
+## 8. Performance Monitoring
+
+A `matchup_performance.csv` is generated for every benchmark run to help optimize high-concurrency runs.
 
 - **Seconds per Game (SPG)**: Real-time monitoring of agent decision speed.
 - **Duration Tracking**: Total time taken per matchup to help plan long-running experiments.
-- **Subfolder Organization**: Results are automatically grouped by battle format (e.g., `data/.../gens_10k_teams/gen9randombattle/`) to keep multi-generation data clean.
+- **Subfolder Organization**: Results are automatically grouped by battle format (e.g., `data/.../gens_10k_teams/gen9randombattle/`).
 
 ---
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 - **"Port Busy"**: Use `pkill node` or wait 10 seconds for the OS to release the port.
 - **"Out of Memory"**: Reduce your `--concurrency` flag. Start with `5` and work your way up.
-- **"Ollama Connection Failed"**: Ensure Ollama is running (`ollama ps`) and you have pulled the model (`ollama pull qwen3.5:8b`).
+- **"Ollama Connection Failed"**: Ensure Ollama is running (`ollama ps`) and you have pulled the model (`ollama pull qwen3:8b`).
 
 ---
 
-## 9. License & Credits
+## 10. License & Credits
 
 Developed as part of the **TFM Pokémon Research Project**. Built on top of the incredible `poke-env` library and the Pokémon Showdown engine.

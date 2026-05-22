@@ -1,51 +1,25 @@
+"""Heuristic V5: Boost-Aware Field Expert with Smart Switching.
+
+Extends V4's field awareness with stat-boost-aware damage estimation:
+
+- **Stat-Boost Awareness**: Calculates damage using stage-multiplied atk/def.
+- **Weather & Terrain**: Same field modifiers as V4.
+- **Smart Switching**: V3's proven triggers with best-type-matchup target selection.
+- **Relaxed Switch Threshold**: Accepts switch-ins up to 2.0× (not just <=1.0).
+"""
+
 from __future__ import annotations
 
 from ...core.base import BaseHeuristic1v1
-from ...core.common import get_status_name
-import logging
-
-logger = logging.getLogger(__name__)
+from ...core.common import get_speed, get_status_name
 
 
 class HeuristicV5(BaseHeuristic1v1):
-    """Accurate Damage Estimation with Stat-Boost Awareness & KO Priority.
-    
-    Heuristic V5 introduces a more granular damage model that accounts for 
-    in-battle stat changes (stages) and environmental modifiers. It also 
-    features a 'KO First' policy.
-    
-    Logic & Expert Enhancements:
-    - Stat-Boost Awareness: Calculates damage using stage-multiplied attack/defense.
-    - Weather & Terrain: Incorporates field effects into every damage estimate.
-    - KO Pre-Check: Dedicated logic in `_pre_move_hook` to instantly select moves that secure a knockout.
-    - Relaxed Pivoting: Switches to neutral teammates if in danger or HP < 25%.
-    """
+    """Stat-boost-aware heuristic with field effects and smart switching."""
 
     @property
     def tracks_moves(self) -> bool:
         return True
-
-    # -- Template hooks ---------------------------------------------------
-
-    def _pre_move_hook(self, battle):
-        """Short-circuit with a guaranteed KO move (priority-first)."""
-        me = battle.active_pokemon
-        opp = battle.opponent_active_pokemon
-
-        if not battle.available_moves or me is None or opp is None:
-            return None
-
-        sorted_moves = sorted(
-            battle.available_moves,
-            key=lambda m: m.entry.get("priority", 0),
-            reverse=True,
-        )
-        for move in sorted_moves:
-            if self._estimate_damage(move, me, opp, battle) >= opp.current_hp:
-                self._record_used_move(battle.battle_tag, move.id)
-                return self.create_order(move)
-
-        return None
 
     def _select_action(self, battle):
         me = battle.active_pokemon
@@ -54,36 +28,52 @@ class HeuristicV5(BaseHeuristic1v1):
         if me is None or opp is None:
             return None
 
-        # 1. Evaluate all moves to find the best and its raw damage
+        my_status = get_status_name(me)
+        opp_status = get_status_name(opp)
+        my_speed = get_speed(me, my_status)
+        opp_speed = get_speed(opp, opp_status)
+
+        # 1. Score all moves with boost-aware damage + field modifiers
         best_move = None
         max_score = -1.0
-        max_raw_damage = 0.0
+        max_raw_damage = -1.0
 
         for move in battle.available_moves or []:
             dmg = self._estimate_damage(move, me, opp, battle)
+
+            if dmg > max_raw_damage:
+                max_raw_damage = dmg
+
             score = self._score_move(move, dmg)
 
             if score > max_score:
                 max_score, best_move = score, move
-            if dmg > max_raw_damage:
-                max_raw_damage = dmg
 
-        # 2. Smart switching: only when truly necessary
-        if battle.available_switches and self._needs_to_switch(me, opp, max_raw_damage):
-            switch = self._get_best_switch(battle)
-            if switch:
-                return self.create_order(switch)
+        # 2. V3's proven switching triggers + smart target selection
+        if battle.available_switches:
+            if my_status == "TOX" and me.status_counter > 2:
+                switch = self._get_best_switch(battle)
+                if switch:
+                    return self.create_order(switch)
+                return self.create_order(battle.available_switches[0])
 
-        # 3. Execute the best evaluated move
+            if max_raw_damage < 20 and my_speed < opp_speed:
+                switch = self._get_best_switch(battle)
+                if switch:
+                    return self.create_order(switch)
+                return self.create_order(battle.available_switches[0])
+
+        # 3. Execute best move
         if best_move:
             self._record_used_move(battle.battle_tag, best_move.id)
             return self.create_order(best_move)
 
         return None
 
-    # -- Damage & Stat estimation -----------------------------------------
+    # -- Boost-aware damage estimation ------------------------------------
 
-    def _get_boosted_stat(self, pokemon, stat_name: str) -> float:
+    @staticmethod
+    def _get_boosted_stat(pokemon, stat_name: str) -> float:
         """Calculate a stat with in-battle stage boosts applied."""
         raw_stat = pokemon.stats.get(stat_name) or pokemon.base_stats.get(stat_name, 100)
         boost = pokemon.boosts.get(stat_name, 0)
@@ -98,12 +88,7 @@ class HeuristicV5(BaseHeuristic1v1):
         return raw_stat * multiplier
 
     def _estimate_damage(self, move, attacker, defender, battle) -> float:
-        """Estimate move damage.
-
-        Uses the same base formula as V3 (``atk/defe * bp * stab * eff``) so
-        that the switching threshold and KO check are on the same numeric scale,
-        then layers in stat-boost, weather, and terrain modifiers.
-        """
+        """Estimate move damage with stat boosts, weather, and terrain."""
         if move.base_power <= 1:
             return 0.0
 
@@ -121,7 +106,6 @@ class HeuristicV5(BaseHeuristic1v1):
         effectiveness = defender.damage_multiplier(move)
         stab = 1.5 if move.type in attacker.types else 1.0
 
-        # V3-compatible base formula (no scaling constant that skews the scale)
         damage = (atk / defe) * move.base_power * stab * effectiveness
 
         damage = self._apply_weather(damage, move, battle)
@@ -165,59 +149,20 @@ class HeuristicV5(BaseHeuristic1v1):
         return damage
 
     def _score_move(self, move, dmg: float) -> float:
-        """Score a move: ``damage × accuracy``, with a small boost for priority moves.
-
-        Uses float-only accuracy check (mirrors V4) to avoid the boolean trap
-        where ``True`` evaluates as 1 and ``True / 100.0 == 0.01``.
-        """
-        # poke-env reports accuracy as a float (0.0–1.0) or True for guaranteed
+        """Score a move: ``damage × accuracy``, with priority boost."""
         accuracy = move.accuracy if isinstance(move.accuracy, float) else 1.0
-
         score = dmg * accuracy
 
-        # Modest priority bias: prefer priority moves when they land KOs (handled
-        # in _pre_move_hook), but don't blindly prefer weak +1 priority moves
         if move.entry.get("priority", 0) > 0:
             score *= 1.2
 
         return float(score)
 
-    # -- Defensive helpers ------------------------------------------------
-
-    def _needs_to_switch(self, me, opp, max_damage: float) -> bool:
-        """Decide whether switching out is the right call.
-
-        Triggers on three independent conditions (mirrors V3's logic plus
-        HP-fraction danger check from V4):
-        1. Badly poisoned for more than 2 turns → escape toxic stacking.
-        2. Outsped AND can't deal meaningful damage → pivot rather than take
-           a hit and do nothing.
-        3. Critically low HP (<25%) → don't sacrifice if a better switch exists.
-        """
-        my_status = get_status_name(me)
-        my_speed = self._get_boosted_stat(me, "spe")
-        opp_speed = self._get_boosted_stat(opp, "spe")
-
-        if my_status == "TOX" and me.status_counter > 2:
-            return True
-
-        if max_damage < 20 and my_speed < opp_speed:
-            return True
-
-        if me.current_hp_fraction < 0.25:
-            return True
-
-        return False
+    # -- Smart switching ---------------------------------------------------
 
     @staticmethod
     def _get_best_switch(battle):
-        """Pick the teammate with the best defensive typing vs the opponent.
-
-        Returns the switch-in whose worst type weakness is lowest, as long as
-        it is ≤ 2.0× (i.e. not doubly weak to every opponent type).  The
-        relaxed threshold (was 1.0) means V5 will nearly always find a smart
-        switch rather than falling back to a blind slot-0 pick.
-        """
+        """Pick the teammate with the best defensive typing vs the opponent."""
         opp = battle.opponent_active_pokemon
         if opp is None:
             return None
@@ -226,16 +171,14 @@ class HeuristicV5(BaseHeuristic1v1):
         min_multiplier = 4.0
 
         for pokemon in battle.available_switches:
-            # Safety check: ensure opp.types is not empty before calling max()
             valid_types = [t for t in opp.types if t is not None]
             if not valid_types:
                 worst = 1.0
             else:
                 worst = max(pokemon.damage_multiplier(t) for t in valid_types)
-                
+
             if worst < min_multiplier:
                 min_multiplier = worst
                 best_teammate = pokemon
 
-        # Accept any switch that isn't doubly weak to every opponent type
         return best_teammate if min_multiplier <= 2.0 else None

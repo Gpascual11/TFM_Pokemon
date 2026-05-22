@@ -297,6 +297,17 @@ async def _run_streaming(
         "supereffective_opp",
         "hp_perc_us",
         "hp_perc_opp",
+        # Strategy tracking (non-zero for V7/V8, zero for simpler agents)
+        "hazard_sets_us",
+        "hazard_sets_opp",
+        "hazard_removals_us",
+        "hazard_removals_opp",
+        "setup_uses_us",
+        "setup_uses_opp",
+        "ko_checks_us",
+        "ko_checks_opp",
+        "matchup_switches_us",
+        "matchup_switches_opp",
         "timestamp",
     ]
 
@@ -390,6 +401,17 @@ async def _run_streaming(
                 "miss_opp": getattr(b, "miss_count_opp", 0),
                 "supereffective_us": getattr(b, "supereffective_count_us", 0),
                 "supereffective_opp": getattr(b, "supereffective_count_opp", 0),
+                # Strategy tracking
+                "hazard_sets_us": getattr(player, "_hazard_sets_by_battle", {}).get(bid, 0),
+                "hazard_sets_opp": getattr(opponent, "_hazard_sets_by_battle", {}).get(bid, 0),
+                "hazard_removals_us": getattr(player, "_hazard_removals_by_battle", {}).get(bid, 0),
+                "hazard_removals_opp": getattr(opponent, "_hazard_removals_by_battle", {}).get(bid, 0),
+                "setup_uses_us": getattr(player, "_setup_uses_by_battle", {}).get(bid, 0),
+                "setup_uses_opp": getattr(opponent, "_setup_uses_by_battle", {}).get(bid, 0),
+                "ko_checks_us": getattr(player, "_ko_checks_by_battle", {}).get(bid, 0),
+                "ko_checks_opp": getattr(opponent, "_ko_checks_by_battle", {}).get(bid, 0),
+                "matchup_switches_us": getattr(player, "_matchup_switches_by_battle", {}).get(bid, 0),
+                "matchup_switches_opp": getattr(opponent, "_matchup_switches_by_battle", {}).get(bid, 0),
                 "timestamp": datetime.datetime.now().isoformat(),
             }
 

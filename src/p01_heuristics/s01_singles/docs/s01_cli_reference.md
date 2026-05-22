@@ -50,8 +50,8 @@ uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 20 \
 ### Parameters
 
 - **`n_battles`** *(positional)*: games per matchup.
-- **`--agents <...>`**: primary agents to evaluate. If omitted, runs all registered heuristic and baseline agents from `AgentFactory` (no LLMs).
-- **`--opponents <...>`**: opponent set. If omitted, runs all registered heuristic and baseline agents from `AgentFactory` (no LLMs).
+- **`--agents <...>`**: primary agents to evaluate. If omitted, runs all registered heuristic (v1-v8) and baseline agents from `AgentFactory` (no LLMs).
+- **`--opponents <...>`**: opponent set. If omitted, runs all registered heuristic (v1-v8) and baseline agents from `AgentFactory` (no LLMs).
 - **`--ports N`**: number of worker ports (and processes) to use.
 - **`--start-port P`**: first port (ports are `P..P+N-1`).
 - **`--concurrency M`**: max concurrent battles per worker.
@@ -161,14 +161,14 @@ uv run python src/p01_heuristics/s01_singles/evaluation/reporting/elo/elo_rankin
 ```bash
 uv run python src/p01_heuristics/s01_singles/evaluation/reporting/plots/generate_heatmap.py \
   --data-dir data/1_vs_1/benchmarks/gens_10k_teams/gen9randombattle \
-  --agents v6 v5 random \
-  --opponents v6 v5 random
+  --agents v8 v7 v6 abyssal random \
+  --opponents v8 v7 v6 abyssal random
 ```
 
 ### Per-Agent Metrics Report
 ```bash
 uv run python src/p01_heuristics/s01_singles/evaluation/reporting/plots/generate_report.py \
   --data-dir data/1_vs_1/benchmarks/gens_10k_teams/gen9randombattle \
-  --agent v6
+  --agent v8
 ```
 

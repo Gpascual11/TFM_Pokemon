@@ -4,6 +4,8 @@ from .v3 import HeuristicV3
 from .v4 import HeuristicV4
 from .v5 import HeuristicV5
 from .v6 import HeuristicV6
+from .v7 import HeuristicV7
+from .v8 import HeuristicV8
 
 __all__ = [
     "HeuristicV1",
@@ -12,4 +14,6 @@ __all__ = [
     "HeuristicV4",
     "HeuristicV5",
     "HeuristicV6",
+    "HeuristicV7",
+    "HeuristicV8",
 ]

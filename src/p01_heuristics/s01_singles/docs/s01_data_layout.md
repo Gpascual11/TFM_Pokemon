@@ -11,7 +11,8 @@ The primary location for long-running experimental data (10k team benchmarks) is
 ```text
 data/1_vs_1/benchmarks/gens_10k_teams/
 ├── gen9randombattle/           # Target folder for Gen 9 runs
-│   ├── {agent}_vs_{opponent}.csv  # Raw matchup data (win/loss, turns, fainted, HP, Luck)
+│   ├── {agent}_vs_{opponent}.csv  # 46-column battle data (see docs/s01_csv_schema.md)
+│   ├── matchup_performance.csv    # Timing data (seconds per game, duration)
 │   ├── elo_summary.csv            # Calculated Bradley-Terry Elo ratings
 │   ├── 01_win_rate_heatmap.png    # Primary Performance Heatmap
 │   ├── 02_agent_ranking.png       # Sorted Win Rate Bar Chart
@@ -21,7 +22,7 @@ data/1_vs_1/benchmarks/gens_10k_teams/
 │       ├── win_rate_matrix.tex
 │       └── fainted_diff.tex
 ├── gen8randombattle/           # Mirrored structure for Gen 8
-└── ... (gen1, gen4, gen5, gen6, gen7)
+└── ... (gen1-gen9)
 ```
 
 ---

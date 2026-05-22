@@ -44,7 +44,7 @@ The `worker.py` script is highly optimized for RAM:
 2. **The Chunking Engine**:
     - It splits its assigned batch into smaller **chunks of 25**.
     - It utilizes `await player.battle_against(...)`.
-    - After 25 battles, it iterates through the finished battles, extracts the 11 key metrics (won, turns, fainted_us, hp_opp, etc.), and appends them to a **Worker-Unique CSV**.
+    - After 25 battles, it iterates through the finished battles, extracts **46 columns** per game (identity, outcome, decision quality, team state, tactical tracking, RNG metrics, and strategy counters) and appends them to a **Worker-Unique CSV**.
     - It calls `player.reset_battles()` to clear all reference IDs.
     - It explicitly invokes `gc.collect()` to force Python to clear deleted objects from RAM.
 
@@ -58,12 +58,14 @@ The `AgentFactory` (and its alias `HeuristicFactory`) allows you to swap agents 
 
 | Label | Description | Characteristics |
 | :--- | :--- | :--- |
-| `v1` | Phase 1 baseline | High switch frequency, simple power checks. |
-| `v2` | Phase 2 refactor | Improved damage calculations and basic switching. |
-| `v3` | Defensive Pivot | Tracks moves and switches defensively (Toxic escape). |
-| `v4` | Field Strategist | Advanced scoring with Weather and Terrain support. |
-| `v5` | Expert Model | Accounts for Stat Boosts (stages) in damage. |
-| `v6` | Current Peak | Dynamic field evaluation + Priority move optimization. |
+| `v1` | The Civilian | Max `bp × eff × stab`. No switching. |
+| `v2` | The Fighter | Stats-based damage + burn penalty. TOX escape + outsped pivot. |
+| `v3` | The Tracker | V2 + per-battle move tracking. Same switching as V2. |
+| `v4` | The Field Expert | V3 damage + weather/terrain + accuracy × priority. Smart type-based switching. |
+| `v5` | The Boost Master | V4 + stat-boost-aware damage (in-battle stages). Smart type-based switching. |
+| `v6` | The Stable Peak | V3 damage + weather/terrain/priority (lightweight). V3 triggers (slot 0). |
+| `v7` | The Strategist | Hazards + setup + KO check + matchup switching. Abyssal-level play. |
+| `v8` | The Meta Reader | V7 + item/ability/screen/Trick Room awareness. Beyond Abyssal. |
 
 ### 📊 Baselines & Poke-Env Standards
 
@@ -219,16 +221,27 @@ If you notice a **~50.0% Win Rate** between `abyssal` and `simple_heuristic`, it
 ```text
 src/p01_heuristics/s01_singles/
 ├── core/
-│   └── factory.py        <-- Agent Management
+│   ├── factory.py        <-- Agent Management (v1-v8 + baselines + LLMs)
+│   ├── base.py           <-- BaseHeuristic1v1 (Template Method + counters)
+│   └── common.py         <-- Shared math (damage, speed, GameDataManager)
+├── agents/
+│   ├── internal/         <-- V1-V8 heuristic implementations
+│   ├── baselines/        <-- random, max_power, simple_heuristic
+│   └── llm/              <-- pokechamp, pokellmon connectors
 ├── evaluation/
-│   ├── docs/
-│   │   └── PARALLEL_BENCHMARK_GUIDE.md <-- THIS FILE
 │   ├── engine/
 │   │   ├── benchmark.py  <-- The Orchestrator
-│   │   └── worker.py     <-- The Worker
-│   └── results/          <-- LLM logs and JSONs
+│   │   └── worker.py     <-- The Worker (46-column CSV output)
+│   ├── reporting/        <-- Heatmaps, Elo, LaTeX tables
+│   └── debug/            <-- Turn-by-turn inspection
+├── docs/
+│   ├── s01_csv_schema.md           <-- 46-column documentation
+│   ├── s01_statistical_justification.md  <-- 10k games methodology
+│   ├── s01_cli_reference.md        <-- All CLI commands
+│   ├── s01_data_layout.md          <-- On-disk structure
+│   └── s01_parallel_benchmark_guide.md   <-- THIS FILE
 data/
 └── 1_vs_1/
     └── benchmarks/
-        └── unified/    <-- CSV Tournament Outputs
+        └── gens_10k_teams/   <-- CSV Tournament Outputs (per gen)
 ```

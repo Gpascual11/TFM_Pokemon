@@ -1,39 +1,30 @@
-"""Heuristic V4: Field-Aware Damage Strategist.
+"""Heuristic V4: Field-Aware Damage Strategist with Smart Switching.
 
-This heuristic extends the V3 defensive foundation with a more expressive
-damage model and basic field awareness:
+Extends the V3 defensive foundation with:
 
-- **Defensive Pivoting**: Switches out when in clear danger or badly poisoned.
-- **Scored Offence**: Selects moves by ``damage × accuracy``, with a boost for
-  priority moves.
+- **Smart Switch Targets**: Picks the best defensive typing teammate (not slot 0).
 - **Field Effects**: Integrates weather (sun/rain) and terrain
   (electric/grassy/psychic) modifiers into the damage estimate.
+- **Accuracy-Weighted Scoring**: Selects moves by ``damage × accuracy``.
+- **Priority Boost**: Gives a 1.5× scoring bonus to priority moves.
+- **Conservative Pivoting**: Uses V3's proven TOX/outsped switching triggers,
+  but routes to the best available switch-in.
 """
 
 from __future__ import annotations
 
 from ...core.base import BaseHeuristic1v1
-from ...core.common import get_status_name, get_stat
-import logging
-
-logger = logging.getLogger(__name__)
+from ...core.common import calculate_base_damage, get_speed, get_status_name
 
 
 class HeuristicV4(BaseHeuristic1v1):
-    """Expert-level singles heuristic incorporating KO detection, defensive pivoting, and field effects."""
+    """Field-aware heuristic with smart switch selection."""
 
     @property
     def tracks_moves(self) -> bool:
-        """Indicates that this heuristic tracks move usage."""
         return True
 
     def _select_action(self, battle):
-        """
-        Selects the optimal action (move or switch) based on the heuristic's decision pipeline.
-
-        Prioritizes defensive pivoting if the active Pokémon is in danger or badly poisoned.
-        Otherwise, selects the move with the highest calculated score.
-        """
         me = battle.active_pokemon
         opp = battle.opponent_active_pokemon
 
@@ -41,53 +32,59 @@ class HeuristicV4(BaseHeuristic1v1):
             return None
 
         my_status = get_status_name(me)
+        opp_status = get_status_name(opp)
+        my_speed = get_speed(me, my_status)
+        opp_speed = get_speed(opp, opp_status)
 
-        if self._is_in_danger(me, opp) or (my_status == "TOX" and me.status_counter > 2):
-            switch = self._get_best_switch(battle)
-            if switch:
-                return self.create_order(switch)
-
+        # 1. Score all moves with field modifiers
         best_move = None
         max_score = -1.0
+        max_raw_damage = -1.0
+
         for move in battle.available_moves or []:
-            score = self._score_move(move, me, opp, battle)
+            dmg = calculate_base_damage(move, me, opp, my_status)
+
+            if dmg > max_raw_damage:
+                max_raw_damage = dmg
+
+            score = dmg
+            score = self._apply_weather(score, move, battle)
+            score = self._apply_terrain(score, move, battle)
+
+            accuracy = move.accuracy if isinstance(move.accuracy, float) else 1.0
+            score *= accuracy
+
+            if move.entry.get("priority", 0) > 0:
+                score *= 1.5
+
             if score > max_score:
                 max_score, best_move = score, move
 
+        # 2. V3's proven switching triggers, but with smart target selection
+        if battle.available_switches:
+            if my_status == "TOX" and me.status_counter > 2:
+                switch = self._get_best_switch(battle)
+                if switch:
+                    return self.create_order(switch)
+                return self.create_order(battle.available_switches[0])
+
+            if max_raw_damage < 20 and my_speed < opp_speed:
+                switch = self._get_best_switch(battle)
+                if switch:
+                    return self.create_order(switch)
+                return self.create_order(battle.available_switches[0])
+
+        # 3. Execute best move
         if best_move:
             self._record_used_move(battle.battle_tag, best_move.id)
             return self.create_order(best_move)
 
         return None
 
-    # -- Damage estimation ------------------------------------------------
-
-    def _estimate_damage(self, move, attacker, defender, battle) -> float:
-        """Estimate move damage including weather and terrain modifiers."""
-        if move.base_power <= 1:
-            return 0.0
-
-        if move.category.name == "PHYSICAL":
-            atk = get_stat(attacker, "atk")
-            defe = get_stat(defender, "def")
-            if get_status_name(attacker) == "BRN":
-                atk *= 0.5
-        else:
-            atk = get_stat(attacker, "spa")
-            defe = get_stat(defender, "spd")
-
-        multiplier = defender.damage_multiplier(move)
-        stab = 1.5 if move.type in attacker.types else 1.0
-        damage = ((0.5 * move.base_power * (atk / defe) * stab) + 2) * multiplier
-
-        damage = self._apply_weather(damage, move, battle)
-        damage = self._apply_terrain(damage, move, battle)
-
-        return float(damage)
+    # -- Field modifiers ---------------------------------------------------
 
     @staticmethod
     def _apply_weather(damage: float, move, battle) -> float:
-        """Apply sun/rain damage modifiers."""
         if not battle.weather:
             return damage
         w_name = str(battle.weather).upper()
@@ -106,7 +103,6 @@ class HeuristicV4(BaseHeuristic1v1):
 
     @staticmethod
     def _apply_terrain(damage: float, move, battle) -> float:
-        """Apply terrain-based damage boosts (1.3× for matching types)."""
         if not battle.fields:
             return damage
         move_type = move.type.name
@@ -122,38 +118,15 @@ class HeuristicV4(BaseHeuristic1v1):
                     damage *= 1.3
         return damage
 
-    def _score_move(self, move, attacker, defender, battle) -> float:
-        """Score a move: ``damage × accuracy``, boosted 1.5× for priority."""
-        dmg = self._estimate_damage(move, attacker, defender, battle)
-        accuracy = move.accuracy if isinstance(move.accuracy, float) else 1.0
-        score = dmg * accuracy
-        if move.entry.get("priority", 0) > 0:
-            score *= 1.5
-        return float(score)
-
-    # -- Defensive helpers ------------------------------------------------
-
-    @staticmethod
-    def _is_in_danger(me, opp) -> bool:
-        """True when outsped by an opponent with super-effective STAB, or HP < 30%."""
-        if me is None or opp is None:
-            return False
-        opp_speed = get_stat(opp, "spe")
-        my_speed = get_stat(me, "spe")
-
-        if my_speed <= opp_speed:
-            for opp_type in opp.types:
-                if opp_type is not None and me.damage_multiplier(opp_type) >= 2.0:
-                    return True
-
-        return me.current_hp_fraction < 0.30
+    # -- Smart switching ---------------------------------------------------
 
     @staticmethod
     def _get_best_switch(battle):
         """Pick the teammate with the best defensive typing vs the opponent.
 
-        Returns the safest switch-in whose worst type weakness is ≤ 1.0×,
-        or ``None`` if no safe switch exists.
+        Returns the switch-in whose worst type weakness against the opponent is
+        lowest, accepting any teammate that is at most neutral (<=2.0) to the
+        opponent's STAB types.
         """
         opp = battle.opponent_active_pokemon
         if opp is None:
@@ -163,15 +136,14 @@ class HeuristicV4(BaseHeuristic1v1):
         min_multiplier = 4.0
 
         for pokemon in battle.available_switches:
-            # Safety check: ensure opp.types is not empty before calling max()
             valid_types = [t for t in opp.types if t is not None]
             if not valid_types:
                 worst = 1.0
             else:
                 worst = max(pokemon.damage_multiplier(t) for t in valid_types)
-                
+
             if worst < min_multiplier:
                 min_multiplier = worst
                 best_teammate = pokemon
 
-        return best_teammate if min_multiplier <= 1.0 else None
+        return best_teammate if min_multiplier <= 2.0 else None
