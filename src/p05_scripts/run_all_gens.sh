@@ -2,9 +2,8 @@
 # run_all_gens.sh — Full benchmark across gen1-gen9 with Telegram notifications
 # Fire-and-forget: retries on failure, cleans RAM/processes between attempts.
 
-avis_telegram() {
-    curl -s -X POST "https://api.telegram.org/bot8719717729:AAE7M_XyUzrArl6o5qtuyUH_zK4k8nJl_o4/sendMessage" -d chat_id="211146439" -d text="$1"
-}
+# Load avis_telegram from bashrc (token stays private there)
+eval "$(grep -A3 '^avis_telegram()' ~/.bashrc)"
 
 GENS="gen1randombattle gen2randombattle gen3randombattle gen4randombattle gen5randombattle gen6randombattle gen7randombattle gen8randombattle gen9randombattle"
 N_BATTLES=10000
