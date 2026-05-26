@@ -1,13 +1,13 @@
 #!/bin/bash
-# run_v7v8_diagnostic.sh — Quick validation of new V7/V8 agents
+# run_v7v8_diagnostic.sh — Quick validation of new V7/V8/V9 agents
 # Runs 100 games per matchup on 3 representative gens (gen1, gen5, gen9)
-# Only tests V7 and V8 as primary agents (opponents: v2, v6, abyssal, simple_heuristic, each other)
+# Tests V7, V8, V9 as primary agents against all default opponents
 
 # Load avis_telegram from bashrc (token stays private there)
 eval "$(grep -A3 '^avis_telegram()' ~/.bashrc)"
 
 GENS="gen1randombattle gen5randombattle gen9randombattle"
-AGENTS="v7 v8"
+AGENTS="v7 v8 v9"
 N_BATTLES=100
 PORTS=8
 CONCURRENCY=20
@@ -26,7 +26,7 @@ cleanup() {
 
 trap 'cleanup; avis_telegram "KILLED: V7/V8 diagnostic was terminated"; exit 1' SIGTERM SIGINT SIGHUP
 
-avis_telegram "Starting V7/V8 diagnostic: 100 games x 3 gens ($(date '+%H:%M'))"
+avis_telegram "Starting V7/V8/V9 diagnostic: 100 games x 3 gens ($(date '+%H:%M'))"
 
 cleanup
 
@@ -84,4 +84,4 @@ for GEN in $GENS; do
     cleanup
 done
 
-avis_telegram "V7/V8 diagnostic DONE. Results in $OUT_BASE/ ($(date '+%H:%M'))"
+avis_telegram "V7/V8/V9 diagnostic DONE. Results in $OUT_BASE/ ($(date '+%H:%M'))"

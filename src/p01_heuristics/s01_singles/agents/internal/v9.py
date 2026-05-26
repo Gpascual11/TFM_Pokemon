@@ -1,23 +1,27 @@
-"""Heuristic V8: Smart Boost-Aware Attacker.
+"""Heuristic V9: Boost-Aware Strategist.
 
-V7's proven boost-aware core + two safe additions:
+V7's proven boost-aware damage core + the two features that separate
+Tier 1 winners (Abyssal, SimpleHeuristic) from Tier 2:
 
-1. **Conservative Priority KO**: If a priority move can KO the opponent with
-   a wide safety margin (2x overkill), use it to guarantee the kill before
-   they can attack. Fires ~0-2 times per game.
+1. **Tight Hazards**: Set entry hazards ONLY on free turns (we outspeed AND
+   resist opponent's STAB). Chip damage compounds across forced switches.
+2. **Tight Setup**: Use stat-boost moves ONLY at full HP with a positive
+   type matchup. Creates overwhelming advantage when safe.
 
-2. **Ability Immunity**: Skip moves the opponent is immune to via their
-   ability (Flash Fire, Levitate, etc.) — only when ability is KNOWN.
-   Prevents wasting turns on moves that deal 0 damage.
+The attack is ALWAYS computed first as the default action. Hazards/setup
+only override when the conditions are strictly met — this prevents the
+turn-wasting problem that killed previous hazard-first approaches.
 
-REMOVED: Opponent OHKO detection (caused 981-switch loops in diagnostic).
-The over-switching destroyed win rate. V8 now matches V7's switch logic
-exactly — proven stable.
+Key insight: previous V7/V8 attempts with hazards failed because they
+used non-boost-aware damage scoring. When the fallback attack is already
+strong (boost-aware), the occasional hazard/setup turn is a net positive
+rather than a wasted turn.
 """
 
 from __future__ import annotations
 
 from poke_env.environment.move_category import MoveCategory
+from poke_env.environment.side_condition import SideCondition
 
 from ...core.base import BaseHeuristic1v1
 from ...core.common import get_status_name
@@ -26,6 +30,14 @@ SPEED_TIER_COEFF = 0.1
 HP_FRACTION_COEFF = 0.4
 SWITCH_OUT_MATCHUP_THRESHOLD = -2
 WEAK_MOVE_THRESHOLD = 30
+
+ENTRY_HAZARDS = {
+    "spikes": SideCondition.SPIKES,
+    "stealthrock": SideCondition.STEALTH_ROCK,
+    "stickyweb": SideCondition.STICKY_WEB,
+    "toxicspikes": SideCondition.TOXIC_SPIKES,
+}
+ANTI_HAZARDS_MOVES = {"rapidspin", "defog"}
 
 ABILITY_IMMUNITIES = {
     "flashfire": "FIRE",
@@ -40,73 +52,12 @@ ABILITY_IMMUNITIES = {
 }
 
 
-class HeuristicV8(BaseHeuristic1v1):
-    """Smart boost-aware attacker: V7 core + priority KO + ability immunity."""
+class HeuristicV9(BaseHeuristic1v1):
+    """Boost-aware strategist: V7 attack core + hazards on free turns + setup when safe."""
 
     @property
     def tracks_moves(self) -> bool:
         return True
-
-    # -- Priority KO Hook --------------------------------------------------
-
-    def _pre_move_hook(self, battle):
-        """Use priority move ONLY if it overkills by 2x margin.
-
-        Fires ~0-2 times per game. The 2x margin prevents the false-positive
-        problem that destroyed earlier versions (which fired 17/25 turns).
-        """
-        me = battle.active_pokemon
-        opp = battle.opponent_active_pokemon
-
-        if not battle.available_moves or me is None or opp is None:
-            return None
-
-        opp_hp_fraction = opp.current_hp_fraction
-        if opp_hp_fraction <= 0:
-            return None
-
-        my_status = get_status_name(me)
-
-        priority_moves = [
-            m for m in battle.available_moves
-            if m.entry.get("priority", 0) > 0 and m.base_power > 0
-        ]
-        if not priority_moves:
-            return None
-
-        physical_ratio = self._stat_estimation(me, "atk") / max(self._stat_estimation(opp, "def"), 1.0)
-        special_ratio = self._stat_estimation(me, "spa") / max(self._stat_estimation(opp, "spd"), 1.0)
-
-        if my_status == "BRN":
-            physical_ratio *= 0.5
-
-        for move in priority_moves:
-            if self._is_ability_immune(move, opp):
-                continue
-
-            if move.category == MoveCategory.PHYSICAL:
-                ratio = physical_ratio
-            elif move.category == MoveCategory.SPECIAL:
-                ratio = special_ratio
-            else:
-                continue
-
-            effectiveness = opp.damage_multiplier(move)
-            stab = 1.5 if move.type in me.types else 1.0
-            expected_hits = move.expected_hits if hasattr(move, "expected_hits") else 1.0
-
-            raw = (0.44 * move.base_power * ratio + 2) * stab * effectiveness * expected_hits
-            dmg_fraction = raw / 300.0
-
-            if dmg_fraction >= opp_hp_fraction * 2.0:
-                btag = battle.battle_tag
-                self._ko_checks_by_battle[btag] = self._ko_checks_by_battle.get(btag, 0) + 1
-                self._record_used_move(btag, move.id)
-                return self.create_order(move)
-
-        return None
-
-    # -- Main Decision Logic -----------------------------------------------
 
     def _select_action(self, battle):
         me = battle.active_pokemon
@@ -120,7 +71,7 @@ class HeuristicV8(BaseHeuristic1v1):
         my_speed = self._get_boosted_speed(me, my_status)
         opp_speed = self._get_boosted_speed(opp, opp_status)
 
-        # -- Score all moves with boost-aware damage --
+        # -- Score all moves with boost-aware damage (V7 core) --
         best_move = None
         max_score = -1.0
 
@@ -148,14 +99,26 @@ class HeuristicV8(BaseHeuristic1v1):
                         self._matchup_switches_by_battle[btag] = self._matchup_switches_by_battle.get(btag, 0) + 1
                     return self.create_order(switch)
 
-        # -- Attack with best move --
+        # -- Hazards: ONLY on free turns (outspeed + resist STAB) --
+        if my_speed > opp_speed and self._resists_opp_stab(me, opp):
+            hazard_order = self._try_hazards(battle)
+            if hazard_order:
+                return hazard_order
+
+        # -- Setup: ONLY at full HP + positive matchup --
+        if me.current_hp_fraction == 1.0 and self._estimate_matchup(me, opp) > 0:
+            setup_order = self._try_setup(battle, me)
+            if setup_order:
+                return setup_order
+
+        # -- Default: attack with best move --
         if best_move:
             self._record_used_move(battle.battle_tag, best_move.id)
             return self.create_order(best_move)
 
         return None
 
-    # -- Move Scoring ------------------------------------------------------
+    # -- Move Scoring (boost-aware, same as V7) ----------------------------
 
     def _score_move(self, move, me, opp, physical_ratio, special_ratio, battle, my_speed, opp_speed) -> float:
         if move.base_power <= 1:
@@ -183,7 +146,69 @@ class HeuristicV8(BaseHeuristic1v1):
 
         return float(score)
 
-    # -- Switch Decision (same as V7, NO OHKO detection) -------------------
+    # -- Hazard Logic (only on free turns) ---------------------------------
+
+    def _try_hazards(self, battle) -> object:
+        """Set hazards or clear own, only called on verified free turns."""
+        if not battle.available_moves:
+            return None
+
+        btag = battle.battle_tag
+        n_opp_remaining = 6 - len([m for m in battle.opponent_team.values() if m.fainted])
+        n_remaining = len([m for m in battle.team.values() if not m.fainted])
+
+        if n_opp_remaining >= 3:
+            for move in battle.available_moves:
+                if move.id in ENTRY_HAZARDS:
+                    condition = ENTRY_HAZARDS[move.id]
+                    if condition not in battle.opponent_side_conditions:
+                        self._hazard_sets_by_battle[btag] = self._hazard_sets_by_battle.get(btag, 0) + 1
+                        self._record_used_move(btag, move.id)
+                        return self.create_order(move)
+
+        if battle.side_conditions and n_remaining >= 2:
+            for move in battle.available_moves:
+                if move.id in ANTI_HAZARDS_MOVES:
+                    self._hazard_removals_by_battle[btag] = self._hazard_removals_by_battle.get(btag, 0) + 1
+                    self._record_used_move(btag, move.id)
+                    return self.create_order(move)
+
+        return None
+
+    # -- Setup Logic (only at full HP + positive matchup) ------------------
+
+    def _try_setup(self, battle, me) -> object:
+        """Use a boost move. Only called when at full HP with good matchup."""
+        for move in battle.available_moves or []:
+            if not move.boosts or move.target != "self":
+                continue
+            boost_sum = sum(v for v in move.boosts.values() if v > 0)
+            if boost_sum < 2:
+                continue
+            min_current = min(
+                me.boosts.get(s, 0) for s, v in move.boosts.items() if v > 0
+            )
+            if min_current >= 6:
+                continue
+            btag = battle.battle_tag
+            self._setup_uses_by_battle[btag] = self._setup_uses_by_battle.get(btag, 0) + 1
+            self._record_used_move(btag, move.id)
+            return self.create_order(move)
+
+        return None
+
+    # -- Free Turn Detection -----------------------------------------------
+
+    @staticmethod
+    def _resists_opp_stab(me, opp) -> bool:
+        """Check if we resist all of opponent's STAB types."""
+        opp_types = [t for t in opp.types if t is not None]
+        if not opp_types:
+            return False
+        max_threat = max(me.damage_multiplier(t) for t in opp_types)
+        return max_threat <= 1.0
+
+    # -- Switch Decision (same as V7) --------------------------------------
 
     def _should_switch(self, me, opp, my_status, my_speed, opp_speed, max_score, battle) -> str:
         """Return switch reason string, or empty string (falsy) if no switch needed."""
