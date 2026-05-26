@@ -147,8 +147,9 @@ class HeuristicV10(BaseHeuristic1v1):
             can_sack = (
                 me.current_hp_fraction <= SAC_HP_THRESHOLD
                 and me.current_hp_fraction > 0
-                and switch_reason != "toxic"
+                and switch_reason == "matchup"
                 and battle.available_moves
+                and max_score >= WEAK_MOVE_THRESHOLD
             )
             if can_sack:
                 pass
@@ -184,7 +185,16 @@ class HeuristicV10(BaseHeuristic1v1):
     # -- Pivot Move Detection --------------------------------------------------
 
     def _find_pivot_move(self, battle, me, opp):
-        """Return a pivot move (U-turn/Volt Switch) if it deals neutral+ damage."""
+        """Return a pivot move (U-turn/Volt Switch) if we're faster and it deals neutral+ damage.
+
+        Only pivot when faster: we attack and leave before opponent hits us.
+        When slower, opponent hits first (we take damage on bad matchup) — direct switch is better.
+        """
+        my_speed = self._get_boosted_speed(me, get_status_name(me))
+        opp_speed = self._get_boosted_speed(opp, get_status_name(opp))
+        if my_speed <= opp_speed:
+            return None
+
         for move in battle.available_moves or []:
             if move.self_switch is not True:
                 continue
