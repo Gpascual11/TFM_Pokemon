@@ -144,7 +144,13 @@ class HeuristicV10(BaseHeuristic1v1):
 
         # 3. Switch logic with sack and pivot
         if switch_reason:
-            if me.current_hp_fraction <= SAC_HP_THRESHOLD and switch_reason != "toxic":
+            can_sack = (
+                me.current_hp_fraction <= SAC_HP_THRESHOLD
+                and me.current_hp_fraction > 0
+                and switch_reason != "toxic"
+                and battle.available_moves
+            )
+            if can_sack:
                 pass
             else:
                 pivot = self._find_pivot_move(battle, me, opp)

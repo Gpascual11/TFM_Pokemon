@@ -107,9 +107,58 @@ From our existing 10k-game benchmarks:
 
 ---
 
+## Diagnostic vs Benchmark: Choosing Sample Size
+
+During development, we use tiered sample sizes depending on the goal:
+
+### Phase 1: Smoke Test (100 games per matchup)
+
+- **Purpose**: Verify code correctness — no crashes, new features fire, win rate isn't catastrophically broken.
+- **CI width**: ±10% at 95% confidence.
+- **What it CAN tell you**: Agent doesn't crash; win rate is roughly in expected range (e.g., >40% vs Tier 2).
+- **What it CANNOT tell you**: Whether a 6% improvement is real or noise.
+- **When to use**: After creating a new agent version. Quick feedback loop (~5 min runtime).
+
+### Phase 2: Validation (1,000 games per matchup)
+
+- **Purpose**: Confirm win rate trends with moderate confidence.
+- **CI width**: ±3.1% at 95% confidence.
+- **Detects**: Differences ≥6% reliably.
+- **When to use**: After smoke test passes. Confirms the agent's new features help (or at least don't hurt). Sufficient to compare against Tier 1 (Abyssal, SimpleHeuristic) where expected gaps are 5-15%.
+
+### Phase 3: Full Benchmark (10,000 games per matchup)
+
+- **Purpose**: Definitive statistical measurement for thesis results.
+- **CI width**: ±0.98% at 95% confidence.
+- **Detects**: Differences ≥2% reliably.
+- **When to use**: Final evaluation of all agents across all generations for publication.
+
+### Why 100 Games Is Not Enough for Conclusions
+
+Random battles introduce high per-game variance from team composition. Example:
+
+```
+True win rate: 50%
+100 games observed: 55%
+95% CI: [45%, 65%]
+```
+
+The observed 55% is statistically indistinguishable from 45%. At 1,000 games:
+
+```
+True win rate: 50%
+1000 games observed: 53%
+95% CI: [49.9%, 56.1%]
+```
+
+Now a 53% result is distinguishable from 47% — meaningful for detecting improvements.
+
+---
+
 ## Conclusion
 
 - **10,000 games per matchup** provides ±0.98% precision at 95% confidence.
 - **Same sample size across all generations** ensures uniform methodology and comparable results.
 - **No adjustment needed** for pool size, mechanics complexity, or generation-specific factors.
 - The only scenario where 10k is insufficient is distinguishing agents within ~1% of each other (e.g., V1 vs V2), but those agents being equivalent is itself a valid research finding.
+- **For development**: Use 100 games (smoke test) → 1,000 games (validation) → 10,000 games (final benchmark) as a progression.
