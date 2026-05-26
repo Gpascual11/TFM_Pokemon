@@ -49,9 +49,9 @@ Every battle produces a rich data row covering 7 categories:
 | Team State | 12 | fainted, remaining, HP, team composition, side conditions |
 | Tactical Tracking | 4 | voluntary/forced switches, move usage stats |
 | RNG & Luck | 6 | crits, misses, super-effective hits (both sides) |
-| Strategy (V7/V8) | 10 | hazard sets/removals, setup uses, KO checks, matchup switches |
+| Strategy (V7+) | 10 | hazard sets/removals, setup uses, KO checks, matchup switches |
 
-Strategy columns are always 0 for V1-V6 and baselines. Non-zero values in V7/V8 prove the strategy logic is actively firing.
+Strategy columns are always 0 for V1-V6 and baselines. Non-zero values in V7+ prove the strategy logic is actively firing.
 
 ---
 

@@ -66,6 +66,10 @@ The `AgentFactory` (and its alias `HeuristicFactory`) allows you to swap agents 
 | `v6` | The Stable Peak | V3 damage + weather/terrain/priority (lightweight). V3 triggers (slot 0). |
 | `v7` | The Strategist | Hazards + setup + KO check + matchup switching. Abyssal-level play. |
 | `v8` | The Meta Reader | V7 + item/ability/screen/Trick Room awareness. Beyond Abyssal. |
+| `v9` | The Optimizer | V7 boost core + tight hazards/setup on free turns. |
+| `v10` | The Disruptor | V8 core + status moves + sack logic + pivot moves. |
+| `v11` | The Adaptable | Hybrid of V9 and V10 + Gen-Aware adaptations. |
+| `v12` | The Meta Master | V11 + teampreview lead + fainted switch + Terastallize. |
 
 ### 📊 Baselines & Poke-Env Standards
 
@@ -221,11 +225,11 @@ If you notice a **~50.0% Win Rate** between `abyssal` and `simple_heuristic`, it
 ```text
 src/p01_heuristics/s01_singles/
 ├── core/
-│   ├── factory.py        <-- Agent Management (v1-v8 + baselines + LLMs)
+│   ├── factory.py        <-- Agent Management (v1-v12 + baselines + LLMs)
 │   ├── base.py           <-- BaseHeuristic1v1 (Template Method + counters)
 │   └── common.py         <-- Shared math (damage, speed, GameDataManager)
 ├── agents/
-│   ├── internal/         <-- V1-V8 heuristic implementations
+│   ├── internal/         <-- V1-V12 heuristic implementations
 │   ├── baselines/        <-- random, max_power, simple_heuristic
 │   └── llm/              <-- pokechamp, pokellmon connectors
 ├── evaluation/

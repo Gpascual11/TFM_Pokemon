@@ -1,3 +1,4 @@
+
 """Abstract base class for all 1-vs-1 heuristic strategies.
 
 Implements the Template Method pattern: ``choose_move`` orchestrates the

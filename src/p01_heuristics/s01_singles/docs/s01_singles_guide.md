@@ -6,12 +6,12 @@ This directory contains every agent implementation available in the 1v1 Singles 
 
 | Family | Labels (examples) | Implementation source | Typical use |
 |--------|-------------------|------------------------|-------------|
-| **Internal Heuristics** | `v1`–`v6` | `agents/internal/` (`HeuristicV1`–`HeuristicV6`) | Main research agents; all inherit from `BaseHeuristic1v1` and use shared math in `core/common.py`. |
+| **Internal Heuristics** | `v1`–`v12` | `agents/internal/` (`HeuristicV1`–`HeuristicV12`) | Main research agents; all inherit from `BaseHeuristic1v1` and use shared math in `core/common.py`. |
 | **poke-env Baselines** | `random`, `max_power`, `simple_heuristic` | `poke_env.player.*` + `agents/baselines/true_simple_heuristic.py` | Standard reference bots from `poke-env` (plus a local copy of `SimpleHeuristicsPlayer`). |
 | **Pokechamp Baselines** | `abyssal`, `one_step`, `safe_one_step` | external `pokechamp` repo + `agents/baselines/safe_one_step_player.py` | Rule-based agents from PokéChamp. `one_step` and `safe_one_step` both map to `SafeOneStepPlayer` to avoid LocalSim hangs. |
 | **Pokechamp LLM Agents** | `pokechamp`, `pokellmon`, `llm_vgc` | external `pokechamp` repo via `AgentFactory` | Minimax + LLM agents; configured via `--player_backend`, `--player_prompt_algo`, `--temperature`, etc. in the benchmark CLI. |
 
-All of these can be requested by **string label** (e.g. `v6`, `abyssal`, `pokechamp`) via `AgentFactory.create(...)` or the benchmark `--agents / --opponents` flags.
+All of these can be requested by **string label** (e.g. `v12`, `abyssal`, `pokechamp`) via `AgentFactory.create(...)` or the benchmark `--agents / --opponents` flags.
 
 ---
 
@@ -51,6 +51,31 @@ These represent the core research output of the project. They follow an evolutio
 
 - **Logic**: Adds a **1.2x multiplier to Priority Moves** (Quick Attack, Shadow Sneak, etc.). This makes the agent "prefer" moves that hit first, allowing it to secure KOs on low-HP targets before being hit back.
 
+### V7: The Positional Strategist
+
+- **Logic**: Incorporates Stealth Rock/Spikes entry hazards and setup moves (e.g. Swords Dance, Dragon Dance). Pre-checks for KOs with priority moves.
+- **Switching**: First version to implement a robust matchup score-based switching formula (inspired by Abyssal).
+
+### V8: The Meta-Aware Reader
+
+- **Logic**: Extends V7 by introducing item multipliers (Life Orb, Choice items), ability-specific immunities (Levitate, Flash Fire, etc.), screen damage reduction, and Trick Room speed-tier reversal.
+
+### V9: The Tight-Action Master
+
+- **Logic**: Optimizes hazard setting and setup boosts to execute ONLY on "free turns" (when the agent outspeeds and resists the opponent's STAB moves) to avoid wasted turns.
+
+### V10: The Anti-Abyssal Specialist
+
+- **Logic**: Extends V8 by adding status move utility (Toxic, Will-O-Wisp, Thunder Wave), low-HP sacrifice logic (no switching when HP ≤ 20% to prevent wasted turns), and Volt Switch/U-turn pivot moves.
+
+### V11: The Hybrid Master
+
+- **Logic**: Merges V9's tight hazards/setup with V10's tactical features, adding Gen-Aware adaptions (disables hazards/setup in Gen 1, adjusts Paralysis speed penalty for Gen 7+).
+
+### V12: The Ultimate Tactical Agent
+
+- **Logic**: The pinnacle of our Singles heuristics. Adds matchup-based lead selection (teampreview), matchup-based fainted/forced switch-in target selection, and Gen 9 Terastallization logic.
+
 ---
 
 ## 2. Baselines (`baselines/`)
@@ -75,7 +100,7 @@ These agents use Large Language Models (LLMs) to reason about the battle.
 
 ## How to add a new Agent
 
-1. Create a new file in `internal/v7.py` (or similar).
+1. Create a new file in `internal/v13.py` (or similar).
 2. Inherit from `BaseHeuristic1v1`.
 3. Implement `_select_action(self, battle)`.
 4. Register the agent in `agents/__init__.py`.

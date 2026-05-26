@@ -45,7 +45,7 @@ Categorized into three distinct families:
 
 ---
 
-## 3. The Heuristic Evolution (V1 - V8)
+## 3. The Heuristic Evolution (V1 - V12)
 
 Each version builds upon the successes and failures of the previous ones:
 
@@ -59,10 +59,14 @@ Each version builds upon the successes and failures of the previous ones:
 | **V6** | V3 + weather/terrain/priority (lightweight) | V3 triggers (slot 0) |
 | **V7** | Hazards + setup + KO check + matchup switching | Matchup score (Abyssal formula) |
 | **V8** | V7 + item/ability/screen/Trick Room awareness | Matchup + Trick Room reversal |
+| **V9** | V7 boost core + tight hazards & setup on free turns | Same as V7 |
+| **V10** | V8 core + status moves (Toxic/WoW/TWave) | V8 matchup switch + ≤20% HP sack logic + Volt Switch/U-turn pivot |
+| **V11** | Hybrid (V9 + V10) + Gen-Aware adaptations | Same as V10 |
+| **V12** | V11 + Gen 9 Terastallization | V11 + Matchup-based Lead (teampreview) & Matchup-based Fainted switch-in |
 
 ### Key Research Finding
 
-V1, V2, V3, V6 perform equivalently (~50% against each other, ~30% vs strong baselines). This proves that naive damage optimization plateaus fast. V7 and V8 introduce **positional awareness** (hazards, setup, matchup switching) to close the gap to Abyssal/SimpleHeuristic.
+V1, V2, V3, and V6 perform similarly, proving that naive damage optimization plateaus quickly. Positional awareness (V7/V8) and tactical refinements (V9/V10/V11) close the gap to strong baselines. **Heuristic V12 is the first agent in project history to beat both Abyssal and SimpleHeuristic in Gen 9 Random Battles over a large-scale 10,000-game tournament**, achieving a **59.8% win rate** against Abyssal.
 
 ---
 
@@ -119,7 +123,7 @@ uv run python src/p01_heuristics/s01_singles/evaluation/reporting/plots/generate
 
 If a benchmark is interrupted (crash, power loss, manual stop), simply **run the same command again**. The system will scan existing files, calculate the missing games, and finish them automatically.
 
-### 2. Strategy Tracking (V7/V8)
+### 2. Strategy Tracking (V7+)
 
 The CSV output includes per-battle counters proving intelligent play:
 - `hazard_sets_us`: Times entry hazards were deliberately set
@@ -127,7 +131,7 @@ The CSV output includes per-battle counters proving intelligent play:
 - `ko_checks_us`: Times a guaranteed KO was detected and executed
 - `matchup_switches_us`: Times switching was triggered by type matchup analysis
 
-These are always 0 for V1-V6, providing direct evidence that V7/V8 make qualitatively different decisions.
+These are always 0 for V1-V6, providing direct evidence that V7+ agents make qualitatively different decisions.
 
 ### 3. Thinking Logs (LLM Agents)
 

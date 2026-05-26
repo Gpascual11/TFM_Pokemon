@@ -6,11 +6,12 @@
 # Load avis_telegram from bashrc (token stays private there)
 eval "$(grep -A3 '^avis_telegram()' ~/.bashrc)"
 
-GENS="gen1randombattle gen2randombattle gen3randombattle gen4randombattle gen5randombattle gen6randombattle gen7randombattle gen8randombattle gen9randombattle"
+# GENS="gen1randombattle gen2randombattle gen3randombattle gen4randombattle gen5randombattle gen6randombattle gen7randombattle gen8randombattle gen9randombattle"
+GENS="gen8randombattle gen9randombattle"
 AGENTS="v1 v2 v3 v4 v5 v6 v7 v8 random max_power abyssal one_step safe_one_step simple_heuristic"
-N_BATTLES=10000
+N_BATTLES=100
 PORTS=8
-CONCURRENCY=30
+CONCURRENCY=20
 OUT_BASE="data/1_vs_1/benchmarks_10k"
 MAX_RETRIES=3
 MAX_TIME_PER_MATCHUP=1800  # 30 min threshold for slow alert
