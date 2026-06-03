@@ -9,8 +9,11 @@ replays/
 *.pt
 *.pth
 *.pkl
+.ruff_cache/
 
 pokemon-showdown/
+pokechamp/
+
 node_modules/
 # Data folders (keep structure, ignore files)
 data/**/*

@@ -71,6 +71,13 @@ class StatsBattle(Battle):
                 self.forced_switches_us += 1
             else:
                 self.voluntary_switches_us += 1
+        else:
+            if self.opponent_active_pokemon is None:
+                self.voluntary_switches_opp += 1
+            elif self.opponent_active_pokemon.fainted:
+                self.forced_switches_opp += 1
+            else:
+                self.voluntary_switches_opp += 1
         super().switch(pokemon_str, details, hp_status)
 
     def parse_message(self, split_message):
@@ -287,6 +294,8 @@ async def _run_streaming(
         "side_conditions_opp",
         "voluntary_switches_us",
         "forced_switches_us",
+        "voluntary_switches_opp",
+        "forced_switches_opp",
         "move_stats_us",
         "move_stats_opp",
         "crit_us",
@@ -308,6 +317,8 @@ async def _run_streaming(
         "ko_checks_opp",
         "matchup_switches_us",
         "matchup_switches_opp",
+        "terastallized_us",
+        "terastallized_opp",
         "timestamp",
     ]
 
@@ -395,6 +406,8 @@ async def _run_streaming(
                 "error_moves_opp": getattr(opponent, "_error_moves_by_battle", {}).get(bid, 0),
                 "voluntary_switches_us": getattr(b, "voluntary_switches_us", 0),
                 "forced_switches_us": getattr(b, "forced_switches_us", 0),
+                "voluntary_switches_opp": getattr(b, "voluntary_switches_opp", 0),
+                "forced_switches_opp": getattr(b, "forced_switches_opp", 0),
                 "crit_us": getattr(b, "crit_count_us", 0),
                 "crit_opp": getattr(b, "crit_count_opp", 0),
                 "miss_us": getattr(b, "miss_count_us", 0),
@@ -412,6 +425,8 @@ async def _run_streaming(
                 "ko_checks_opp": getattr(opponent, "_ko_checks_by_battle", {}).get(bid, 0),
                 "matchup_switches_us": getattr(player, "_matchup_switches_by_battle", {}).get(bid, 0),
                 "matchup_switches_opp": getattr(opponent, "_matchup_switches_by_battle", {}).get(bid, 0),
+                "terastallized_us": 1 if hasattr(b, "team") and b.team and any(mon.terastallized for mon in b.team.values()) else 0,
+                "terastallized_opp": 1 if hasattr(b, "opponent_team") and b.opponent_team and any(mon.terastallized for mon in b.opponent_team.values()) else 0,
                 "timestamp": datetime.datetime.now().isoformat(),
             }
 

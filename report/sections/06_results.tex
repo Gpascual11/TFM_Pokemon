@@ -20,52 +20,95 @@ El patró de dents de serra reflecteix el mecanisme de reinici controlat: cada $
 
 \section{Avaluació Exhaustiva al Format 1 vs 1 (Singles)}
 
-L'anàlisi sistemàtic del format \textit{Singles} va procedir a confrontar iterativament tots els agents heurístics dissenyats (des de \textit{v1} fins a \textit{v6}) i els \textit{baselines} absoluts de l'entorn.
+L'anàlisi sistemàtic del format \textit{Singles} s'ha ampliat per confrontar la línia completa d'heurístiques dissenyades (des de la versió \textit{v1} fins a la \textit{v12}) amb els agents basats en recerca de Pokechamp (\textit{abyssal}, \textit{one\_step}, \textit{safe\_one\_step}) i els baselines clàssics (\textit{random}, \textit{max\_power}, \textit{simple\_heuristic}). L'avaluació comprèn un total de 18 agents lluitant en format Round-Robin complet, a raó de 10.000 partides per matchup en cadascuna de les 9 generacions de Pokémon Showdown (sumant més de 29,16 milions de partides simulades).
 
-Les proves es van estructurar en sèries massives, llançant matrius d'enfrontaments per cada possible par. La Taula~\ref{tab:win_rate_matrix} mostra els resultats numèrics detallats d'aquesta avaluació en la Generació 9, on es consolida la superioritat de les heurístiques expertes i els agents de recerca.
+La Taula~\ref{tab:win_rate_matrix} mostra els resultats detallats de la matriu de percentatge de victòries (\textit{Win Rate}) per a la Generació 9, la qual representa l'estat de l'art del format de Singles amb mecàniques complexes.
 
 \input{tables/singles_gen9_wr}
 
+\subsubsection{Anàlisi de Dominància i la Matriu de Win-Rate}
+
+La matriu de victòries confirma la clara superioritat de l'heurística expert \textbf{v12 (The Meta Master)}. Aquest agent integra selecció de Pokémon inicial basada en matchups històrics (\textit{lead selection}), canvi de Pokémon en debilitar-se basat en tipus (\textit{fainted switch-in selection}), i ús estratègic de la \textit{Terastal·lització}. Els resultats destaquen:
+\begin{itemize}
+    \item La \textbf{v12} aconsegueix una taxa de victòria del \textbf{98,6\%} contra l'agent \textit{random} i un \textbf{90,3\%} contra \textit{max\_power}.
+    \item Supera de manera clara els millors baselines del projecte: un \textbf{59,9\%} contra \textit{abyssal} i un \textbf{59,8\%} contra \textit{simple\_heuristic}.
+    \item Manté taxes de victòria positives (superiors al 60\%) contra totes les versions heurístiques pròpies anteriors (\textit{v1} a \textit{v11}), confirmant que cada millora incremental en la línia de disseny ha aportat un increment de rendiment net.
+\end{itemize}
+
 \subsubsection{Anàlisi de l'Agressivitat: Diferencial de Fainted Pokémon}
 
-A part del win-rate, és útil observar quan de dominant és una victòria. La Taula~\ref{tab:fainted_diff} mostra el diferencial mitjà de Pokémon derrotats (Pokémon rivals debilitats - Pokémon propis debilitats). Un valor de $+6$ indicaria una victòria perfecta (\textit{sweep}), mentre que un valor proper a $0$ indica partides molt ajustades.
+Per avaluar el grau de dominància de les victòries, la Taula~\ref{tab:fainted_diff} mostra el diferencial mitjà de Pokémon debilitats per partida (definit com a $\text{Pokémon rivals fainted} - \text{Pokémon propis fainted}$).
 
 \input{tables/singles_gen9_fainted}
 
-\vspace{0.5cm}
+Un valor proper a $+6$ representa una victòria gairebé perfecta (\textit{sweep}), mentre que valors propers a $0$ reflecteixen enfrontaments molt anivellats. L'agent \textbf{v12} registra un diferencial de \textbf{+4,26} contra \textit{random} i de \textbf{+2,62} contra \textit{max\_power}, indicant victòries extremadament solvents. Fins i tot contra els oponents més durs com \textit{abyssal} i \textit{simple\_heuristic}, la \textbf{v12} manté un diferencial positiu de \textbf{+0,68} i \textbf{+0,70} respectivament, superant en mitjana a l'oponent per més de la meitat d'un Pokémon.
+
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\linewidth]{images/singles_gen9_heatmap.png}
-    \caption{Matriu de calor mostrant el percentatge de victòries (\textit{Win Rate}) de tots els encreuaments de \textit{Singles} (Gen 9) avaluant baselines, heurístiques internes (v1-v6) i agents externs de Pokechamp (Abyssal, OneStep, etc.). S'observa la superioritat del bloc inferior dret (agents experts).}
+    \includegraphics[width=0.9\linewidth]{images/singles_gen9_heatmap_10k.png}
+    \caption{Matriu de calor mostrant el percentatge de victòries (\textit{Win Rate}) de tots els encreuaments de \textit{Singles} (Gen 9) avaluant baselines, heurístiques pròpies (v1-v12) i els agents experts de Pokechamp. S'observa la forta dominància del bloc de la versió v12.}
     \label{fig:singles_heatmap}
 \end{figure}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\linewidth]{images/singles_gen9_ranking.png}
-    \caption{Ranking agregat d'agents en \textit{Singles} Generació 9. Les versions heurístiques pròpies (v1-v6) superen consistentment els baselines de \textit{random} i \textit{maxDUMMY\_UNDERSCOREpower}, mentre que els agents basats en recerca de Pokechamp (Abyssal, SafeOneStep) lideren la taula.}
-    \label{fig:singles_ranking}
-\end{figure}
+\subsubsection{Rànquing Elo Cross-Generacional (Generacions 1--9)}
+
+Per obtenir una mètrica unificada que reflecteixi la força competitiva de cada agent tenint en compte la qualitat dels oponents enfrontats, s'ha aplicat el model de Bradley-Terry via estimació per màxima versemblança (MLE) sense regularització. La Taula~\ref{tab:elo_singles_all_gens} presenta els ratings Elo calculats de forma independent per a cadascuna de les 9 generacions, ancorant el rendiment de l'agent \textit{random} a exactament 1000 punts de referència.
+
+\input{tables/elo_singles_gen9}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\linewidth]{images/singles_efficiency.png}
-    \caption{Anàlisi d'eficiència tàctica: Probabilitat de victòria vs. Durada mitjana de la batalla (torns). S'observa com els agents més complexos (v6, Abyssal) assoleixen millors resultats sense allargar excessivament la durada de les partides, demostrant una optimització en la presa de decisions.}
-    \label{fig:singles_efficiency}
-\end{figure}
-
-\subsubsection{Elo Ranking al Format Singles}
-
-Més enllà del win-rate directe, hem calculat el rànquing Elo (basat en el model Bradley-Terry) per situar tots els agents en una escala competitiva unificada. Aquest rànquing reflecteix la força relativa de cada agent considerant la qualitat dels oponents enfrontats.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\linewidth]{images/elo_singles_gen9.png}
-    \caption{Rànquing Elo dels agents en \textit{Singles} Gen 9. S'observa com el grup d'agents experts es manté per sobre dels 1000 punts de baseline.}
+    \includegraphics[width=0.9\linewidth]{images/bt_elo_ratings_10k.png}
+    \caption{Rànquing Elo Bradley-Terry dels agents de Singles a les generacions representatives 1, 5 i 9. S'evidencia la bretxa competitiva de la v12 i la seva robustesa en entorns tant clàssics com moderns.}
     \label{fig:elo_singles_gen9}
 \end{figure}
 
-\input{tables/elo_singles_gen9}
+L'anàlisi de l'Elo revela conclusions clau:
+\begin{itemize}
+    \item \textbf{La v12 és el líder indiscutible} en la generació moderna (Gen 9, 1817 Elo) i en la generació fundacional (Gen 1, 1846 Elo). A la Gen 1, supera lleugerament a \textit{simple\_heuristic} (1841 Elo) i a \textit{abyssal} (1841 Elo).
+    \item \textbf{Consistència a la Gen 5}: A la Generació 5 (l'era de la transició climàtica complexa), la \textbf{v12} s'enfronta a un metagame molt particular on el control del clima és crític. Aquí la \textbf{v12} obté 1771,2 Elo, empatant tècnicament amb \textit{simple\_heuristic} (1771,4 Elo) i superant a \textit{abyssal} (1757 Elo).
+    \item \textbf{La bretxa dels Baselines}: S'identifiquen clarament quatre nivells competitius:
+    \begin{itemize}
+        \item \textit{Tier 3 (Baselines bàsics)}: \textit{random} (1000 Elo) i \textit{max\_power} (mitjana de ~1430 Elo).
+        \item \textit{Tier 2 (Heurístiques bàsiques v1-v6)}: Agrupats estretament al voltant d'uns 1615 Elo en Gen 9 i uns 1775 Elo en Gen 1.
+        \item \textit{Tier 1 (Heurístiques avançades v7-v11)}: On la introducció del maneig de trampes d'entrada (\textit{hazards}), moviments de \textit{setup} en torns lliures i lògica de sacrifici (\textit{sack logic}) eleva el rendiment fins a la franja de 1690--1730 Elo en Gen 9.
+        \item \textit{Tier 0 (Líders de Meta)}: Dominat per la \textbf{v12}, \textit{simple\_heuristic} i \textit{abyssal}.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Anàlisi de Metagames i Dinàmiques de Joc}
+
+L'avaluació massiva a través de les 9 generacions permet extreure dinàmiques de joc històriques de Pokémon. La Figura~\ref{fig:turns_switches_by_gen} analitza la durada mitjana de les batalles (en torns) i la taxa de canvis voluntaris realitzats pels jugadors per partida.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{images/turns_switches_by_gen.png}
+    \caption{Durada mitjana de la batalla (torns) i taxa de canvis voluntaris per partida segons la generació de Pokémon Showdown. S'observa clarament l'efecte de stall de la Generació 2.}
+    \label{fig:turns_switches_by_gen}
+\end{figure}
+
+Les dades revelen dos comportaments macro-estratègics:
+\begin{itemize}
+    \item \textbf{El fenomen de Stall de la Gen 2}: La Generació 2 (\textit{gen2randombattle}) és amb diferència la més llarga de la història, amb una mitjana de \textbf{28,78 torns} per batalla, a més de registrar la taxa de canvis voluntaris més elevada de tot el dataset (\textbf{~2,5 canvis per batalla}). Això es deu al fet que pràcticament tots els Pokémon en aquest format estan equipats amb l'objecte \textit{Restes} (\textit{Leftovers}), fet que atorga recuperació passiva constant, i alhora no existeixen objectes hiper-ofensius com la \textit{Cinta Triada} o la \textit{Vidaesfera} per trencar defenses fàcilment, forçant un metagame de canvis defensius constants.
+    \item \textbf{Aceleració moderna (Gen 4--9)}: A partir de la Generació 4, la durada mitjana s'estabilitza en un rang estret de \textbf{18 a 19 torns}, sent la Generació 9 la més ràpida de totes amb només \textbf{18,27 torns} de mitjana. L'augment de moviments ofensius d'alta potència i mecàniques explosives redueix dràsticament la viabilitat de les estratègies defensives pures.
+\end{itemize}
+
+\subsection{Freqüència de Moviments i Popularitat de Pokémon}
+
+Mitjançant la projecció i l'anàlisi de freqüències dels logs de combat extrets de les 29,16 milions de partides, s'ha identificat quins són els moviments i els Pokémon més freqüents en el format de combats aleatoris. La Figura~\ref{fig:top_pokemon_moves} reflecteix aquestes distribucions.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{images/top_pokemon_moves_10k.png}
+    \caption{Distribució de freqüències dels 10 moviments més utilitzats (esquerra) i dels 10 Pokémon més convocats als equips (dreta) al llarg de tot el benchmark de Singles.}
+    \label{fig:top_pokemon_moves}
+\end{figure}
+
+Els resultats confirmen:
+\begin{itemize}
+    \item \textbf{Terratrèmol} (\textit{Earthquake}) és el moviment més executat de tot el dataset, registrant més de \textbf{2,25 milions} d'usos. La seva alta potència base (100), precisió perfecta (100\%) i excel·lent cobertura contra tipus molt comuns com Acer, Foc, Roca i Elèctric el converteixen en un moviment indispensable en qualsevol Pokémon físic.
+    \item Pokémon singulars i llegendaris com \textbf{Mew} i \textbf{Mewtwo} apareixen en més de \textbf{47.000 equips} de la mostra, sent els personatges més recurrents en les alineacions aleatòries generades per Showdown.
+\end{itemize}
 
 \section{Avaluació al Format 2 vs 2 (Doubles)}
 

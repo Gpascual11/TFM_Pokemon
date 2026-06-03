@@ -75,7 +75,12 @@ class HeuristicV5(BaseHeuristic1v1):
     @staticmethod
     def _get_boosted_stat(pokemon, stat_name: str) -> float:
         """Calculate a stat with in-battle stage boosts applied."""
-        raw_stat = pokemon.stats.get(stat_name) or pokemon.base_stats.get(stat_name, 100)
+        if pokemon.stats and pokemon.stats.get(stat_name):
+            raw_stat = pokemon.stats[stat_name]
+        elif pokemon.base_stats and pokemon.base_stats.get(stat_name):
+            raw_stat = pokemon.base_stats[stat_name]
+        else:
+            raw_stat = 100.0
         boost = pokemon.boosts.get(stat_name, 0)
 
         if boost > 0:
