@@ -829,9 +829,11 @@ class HeuristicV14(BaseHeuristic1v1):
             return endgame_order
 
         # 4. Early Game Scouting Phase (turns 1-3)
-        # Only scout when it is genuinely low-risk: the opponent can't OHKO us and
-        # our scouting move isn't badly resisted. Never scout instead of a strong
-        # attack or when we are in danger.
+        # Pivot moves (U-turn/Volt Switch) reveal the opponent's set while keeping
+        # momentum — valuable against a human. But scouting must NOT cost us a
+        # strong attack: if our best damaging move clearly out-damages the pivot,
+        # we just attack. This is the key fix for the bot-vs-bot regression, where
+        # throwing away tempo/damage to "scout" a static agent is pure loss.
         if battle.turn <= 3:
             gen = self._get_gen(battle)
             sets_db = self._load_pokemon_sets(gen)
@@ -843,15 +845,26 @@ class HeuristicV14(BaseHeuristic1v1):
             if scout_moves and safe_to_scout:
                 physical_ratio = self._stat_estimation(me, "atk") / max(self._stat_estimation(opp, "def"), 1.0)
                 special_ratio = self._stat_estimation(me, "spa") / max(self._stat_estimation(opp, "spd"), 1.0)
-                best_scout = max(
-                    scout_moves,
-                    key=lambda m: self._score_move(
-                        m, me, opp, physical_ratio, special_ratio, battle, my_speed, opp_speed
-                    ),
+                scorer = lambda m: self._score_move(  # noqa: E731
+                    m, me, opp, physical_ratio, special_ratio, battle, my_speed, opp_speed
                 )
-                # Don't scout into a heavily resisted / immune target, and only
-                # pivot if it does real chip (not a token U-turn into a wall).
-                if best_scout.base_power > 0 and opp.damage_multiplier(best_scout) >= 1.0:
+                best_scout = max(scout_moves, key=scorer)
+                # Best pure-attacking alternative (non-pivot damaging move).
+                attack_moves = [
+                    m
+                    for m in battle.available_moves
+                    if m.base_power > 0 and not m.self_switch and not self._is_ability_immune(m, opp)
+                ]
+                best_attack_score = max((scorer(m) for m in attack_moves), default=0.0)
+                scout_score = scorer(best_scout)
+                # Only scout if it does real chip (neutral+), and isn't giving up
+                # meaningful damage vs simply attacking (within 15%).
+                worth_scouting = (
+                    best_scout.base_power > 0
+                    and opp.damage_multiplier(best_scout) >= 1.0
+                    and scout_score >= best_attack_score * 0.85
+                )
+                if worth_scouting:
                     self._record_used_move(btag, best_scout.id)
                     return self.create_order(best_scout)
 
