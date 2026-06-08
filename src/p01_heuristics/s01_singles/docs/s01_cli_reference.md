@@ -50,8 +50,8 @@ uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 20 \
 ### Parameters
 
 - **`n_battles`** *(positional)*: games per matchup.
-- **`--agents <...>`**: primary agents to evaluate. If omitted, runs all registered heuristic (v1-v8) and baseline agents from `AgentFactory` (no LLMs).
-- **`--opponents <...>`**: opponent set. If omitted, runs all registered heuristic (v1-v8) and baseline agents from `AgentFactory` (no LLMs).
+- **`--agents <...>`**: primary agents to evaluate. If omitted, runs all registered heuristic (v1-v13) and baseline agents from `AgentFactory` (no LLMs).
+- **`--opponents <...>`**: opponent set. If omitted, runs all registered heuristic (v1-v13) and baseline agents from `AgentFactory` (no LLMs).
 - **`--ports N`**: number of worker ports (and processes) to use.
 - **`--start-port P`**: first port (ports are `P..P+N-1`).
 - **`--concurrency M`**: max concurrent battles per worker.

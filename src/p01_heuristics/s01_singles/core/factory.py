@@ -23,7 +23,7 @@ _POKECHAMP_ROOT = _SRC.parent / "pokechamp"
 if str(_POKECHAMP_ROOT) not in sys.path:
     sys.path.insert(0, str(_POKECHAMP_ROOT))
 
-from ..agents import get_agent_class
+from ..agents import get_agent_class  # noqa: E402
 
 
 class AgentFactory:
@@ -40,7 +40,7 @@ class AgentFactory:
     @staticmethod
     def available_internal() -> list[str]:
         """Return a list of locally developed rule-based heuristic agents."""
-        return ["v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12"]
+        return ["v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14"]
 
     @staticmethod
     def available_baselines() -> list[str]:

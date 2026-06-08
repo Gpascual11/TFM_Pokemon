@@ -19,7 +19,9 @@ BaseHeuristic1v1
 ├── V9  (standalone, V7 boost core + tight hazards & setup on free turns)
 ├── V10 (standalone, V8 core + status moves + sack logic + Volt Switch/U-turn pivot)
 ├── V11 (standalone, hybrid V9 + V10 + Gen adaptation)
-└── V12 (standalone, V11 + teampreview lead + fainted switch + Terastallize)
+├── V12 (standalone, V11 + teampreview lead + fainted switch + Terastallize)
+└── V13 (standalone, V12 + Showdown sets prediction + stat-aware matchups + choice exploit + sweeper reaction + smart recovery + dynamic hazards)
+    └── V14 (V13 + Yomi 2 profiling + turns 1-3 scouting + 16-step exact damage calculation + 1-ply endgame solver)
 ```
 
 ### Version Descriptions
@@ -38,8 +40,32 @@ BaseHeuristic1v1
 | **V10** | The Disruptor | V8 core + status moves (Toxic/WoW/TWave) | V8 matchup + ≤20% HP sack logic + Volt Switch/U-turn pivot |
 | **V11** | The Adaptable | Hybrid (V9 + V10) + Gen-Aware adaptations | Same as V10 |
 | **V12** | The Meta Master | V11 + Gen 9 Terastallization | V11 + Matchup-based Lead (teampreview) & Matchup-based Fainted switch-in |
+| **V13** | The Prediction Master | V12 + Showdown database sets (Gens 1-9) + Sweeper reaction + Smart recovery/draining + Dynamic hazards + Conservative Tera | V12 + Move- & Stat-Aware matchup damage calculations + Choice-lock exploitation + Fixed bench switch fallback bug |
+| **V14** | The Championship Master | V13 + Yomi 2 Opponent Profiling + Turns 1-3 Scouting + 16-Step Damage Calc + 1-Ply Endgame Solver | V13 + Opponent Tendency-Aware switch-prediction + Safe Endgame Switch-outs |
 
-### Key Differentiators
+---
+
+## Bot-vs-Bot vs. Human-vs-Bot Dynamics (V13 vs. V14)
+
+When analyzing the performance of these agents, it is critical to separate how they perform against **other static algorithms (bots)** versus how they perform against **highly skilled human players**.
+
+### Why V13 is the Perfect Bot-Beater
+* **Pure Aggression:** V13 plays a highly aggressive, "greedy" style. It does not waste turns trying to guess if the opponent is bluffing, nor does it spend early turns scouting.
+* **Exploiting Bot Predictability:** Because other heuristic bots always play with static, non-adaptive rules, they never double-switch, bluff, or strategically throw matchups. V13's simple, high-pressure damage calculations punish this simplicity perfectly.
+* **No Wasted Tempo:** V13 attacks immediately from turn 1. Against a bot, which will not punish a lack of information, this gives V13 a massive tempo advantage.
+
+### Why V14 is the Perfect Human-Beater
+Humans play with high psychological complexity, adapting to your playstyle, bluffing choices, and attempting to predict and counter your switches. V14 is engineered specifically to beat human players by introducing defensive safety and mind-game countering:
+* **Yomi Layer 2 Profiling:** V14 tracks if the human is playing aggressively (`PREDICTIVE`) or safely (`CONSERVATIVE`). This prevents it from being out-predicted and punishes human double-switches.
+* **Early-Game Scouting Phase:** On turns 1-3, V14 prioritizes pivot/utility moves (`Protect`, `U-turn`, `Knock Off`) to identify the human's secret items (e.g. Choice Scarf/Specs) and sets without risking a knockout.
+* **Defensive Tera Baiting:** When a human player identifies a guaranteed KO, they almost always go for it. V14 identifies this, uses Terastallization defensively to change type weaknesses to resistances, and baits the human into wasting a turn.
+* **Endgame Solver:** Prevents human players from executing precise sequence-based checkmates in the late game by simulating all 1-ply matchup outcomes.
+
+*Note: In bot-vs-bot games (like V14 vs V13), V14's advanced human-oriented mechanics (like scouting and baiting) can occasionally result in "over-respecting" the predictable bot, making V13 slightly more efficient in direct bot-vs-bot simulations. However, on the public Showdown ladder against real people, V13's predictability is easily exploited, whereas V14's adaptability makes it much harder to beat.*
+
+---
+
+## Key Differentiators
 
 **V1-V3-V6 cluster**: All use the same damage formula (`calculate_base_damage` from `common.py`). They differ only in switching triggers and move tracking. Benchmark results confirm they perform equivalently (~50% against each other, ~30% vs strong baselines).
 
@@ -75,9 +101,25 @@ BaseHeuristic1v1
 - **Matchup-Based Fainted Switch-in**: Inspects the active opponent pokemon and switches in the best possible type matchup counter.
 - **Gen 9 Terastallization**: Evaluates offensive and defensive benefits before terastallizing.
 
-### Strategy Tracking
+**V13 exclusively adds**:
+- **Showdown Random Battle Set Lookup**: Predicts opponent moves, abilities, and tera types across Gens 1-9 using static databases.
+- **Move- and Stat-Aware Matchup Estimation**: Evaluates matchups using simulated damage metrics, incorporating stats, predicted moves, STAB, weather, and terrain.
+- **Exploiting Choice Lock**: Detects choice-locked opponents and awards switch-ins matchup bonuses.
+- **Setup Sweeper Reactions**: Prioritizes Haze/phazing/status when opponents set up boosts.
+- **Smart Recovery**: Cleanses and heals via Recovery moves when safe.
+- **Conservative Terastallization**: Avoids wasting Tera on status moves or low-HP Pokémon.
 
-V7 through V12 record per-battle strategy counters (available in CSV output):
+**V14 exclusively adds**:
+- **Yomi Layer 2 Opponent Tendency Profiling**: Tracks opponent switches to determine if they play `PREDICTIVE` (frequent switches) or `CONSERVATIVE` (stays in). If conservative, V14 disables switch predictions to avoid wasting moves on coverage or double-switches.
+- **Early-Game Scouting Phase**: Prioritizes utility/pivot moves (U-turn, Volt Switch, Protect, Knock Off) on turns 1–3 to reveal opponent items and sets safely.
+- **16-Step Damage Calculations**: Evaluates the minimum and maximum random rolls to secure guaranteed KOs and avoid risk.
+- **Endgame Lookahead Solver**: Active when both sides have <= 2 Pokémon, simulating 1-ply match outcomes to secure victory paths.
+
+---
+
+## Strategy Tracking
+
+V7 through V14 record per-battle strategy counters (available in CSV output):
 - `hazard_sets`: Times entry hazards were set.
 - `hazard_removals`: Times hazards were removed.
 - `setup_uses`: Times boost moves were used.

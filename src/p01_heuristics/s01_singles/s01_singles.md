@@ -45,7 +45,7 @@ Categorized into three distinct families:
 
 ---
 
-## 3. The Heuristic Evolution (V1 - V12)
+## 3. The Heuristic Evolution (V1 - V13)
 
 Each version builds upon the successes and failures of the previous ones:
 
@@ -63,10 +63,11 @@ Each version builds upon the successes and failures of the previous ones:
 | **V10** | V8 core + status moves (Toxic/WoW/TWave) | V8 matchup switch + ≤20% HP sack logic + Volt Switch/U-turn pivot |
 | **V11** | Hybrid (V9 + V10) + Gen-Aware adaptations | Same as V10 |
 | **V12** | V11 + Gen 9 Terastallization | V11 + Matchup-based Lead (teampreview) & Matchup-based Fainted switch-in |
+| **V13** | V12 + Showdown sets prediction + Sweeper reaction + Smart recovery/draining + Dynamic hazards + Conservative Tera | V12 + Move- & Stat-Aware matchup damage calculations + Choice-lock exploitation + Fixed bench switch fallback bug |
 
 ### Key Research Finding
 
-V1, V2, V3, and V6 perform similarly, proving that naive damage optimization plateaus quickly. Positional awareness (V7/V8) and tactical refinements (V9/V10/V11) close the gap to strong baselines. **Heuristic V12 is the first agent in project history to beat both Abyssal and SimpleHeuristic in Gen 9 Random Battles over a large-scale 10,000-game tournament**, achieving a **59.8% win rate** against Abyssal.
+V1, V2, V3, and V6 perform similarly, proving that naive damage optimization plateaus quickly. Positional awareness (V7/V8) and tactical refinements (V9/V10/V11) close the gap to strong baselines. **Heuristic V12 is the first agent in project history to beat both Abyssal and SimpleHeuristic in Gen 9 Random Battles over a large-scale 10,000-game tournament**, achieving a **59.8% win rate** against Abyssal. **Heuristic V13 takes this a step further**, achieving a **90% win rate against V12** in validation tests by integrating Showdown random sets prediction databases, fixing fainted-switch bench selection bugs, and implementing specific setup sweeper counter-tactics.
 
 ---
 

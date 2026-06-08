@@ -558,7 +558,7 @@ class Pokemon:
         if isinstance(type_or_move, Move):
             type_or_move = type_or_move.type
         return type_or_move.damage_multiplier(
-            self._type_1, self._type_2, type_chart=self._data.type_chart
+            self.type_1, self.type_2, type_chart=self._data.type_chart
         )
 
     @property
@@ -1342,7 +1342,7 @@ class Pokemon:
         :return: The pokemon's types, as a tuple.
         :rtype: Tuple[PokemonType, Optional[PokemonType]]
         """
-        return self.type_1, self._type_2
+        return self.type_1, self.type_2
 
     @property
     def weight(self) -> float:

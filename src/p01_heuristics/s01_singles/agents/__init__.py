@@ -26,7 +26,7 @@ def get_agent_class(name: str) -> type:
                 module = __import__(f"p02_search.s01_singles.agents.internal.v7_minimax", fromlist=["HeuristicV7Minimax"])
                 return getattr(module, "HeuristicV7Minimax")
             version = int(name[1:])
-            if 1 <= version <= 12:
+            if 1 <= version <= 14:
                 module = __import__(f"p01_heuristics.s01_singles.agents.internal.v{version}", fromlist=[f"HeuristicV{version}"])
                 return getattr(module, f"HeuristicV{version}")
         except ValueError:
