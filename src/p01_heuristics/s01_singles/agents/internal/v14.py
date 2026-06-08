@@ -50,14 +50,24 @@ ANTI_HAZARDS_MOVES = {"rapidspin", "defog", "tidyup", "courtchange"}
 
 ABILITY_IMMUNITIES = {
     "flashfire": "FIRE",
+    "wellbakedbody": "FIRE",
     "levitate": "GROUND",
+    "eartheater": "GROUND",
     "voltabsorb": "ELECTRIC",
     "lightningrod": "ELECTRIC",
+    "motordrive": "ELECTRIC",
     "waterabsorb": "WATER",
     "stormdrain": "WATER",
     "dryskin": "WATER",
     "sapsipper": "GRASS",
-    "motordrive": "ELECTRIC",
+}
+
+# Abilities that halve incoming damage of a given type (do not nullify it).
+ABILITY_HALF_DAMAGE = {
+    "thickfat": ("FIRE", "ICE"),
+    "heatproof": ("FIRE",),
+    "waterbubble": ("FIRE",),
+    "purifyingsalt": ("GHOST",),
 }
 
 RECOVERY_MOVES = {"recover", "roost", "slackoff", "softboiled", "moonlight", "synthesis", "milkdrink", "shoreup"}
@@ -413,7 +423,7 @@ class HeuristicV14(BaseHeuristic1v1):
         if not battle.available_moves or me is None or opp is None:
             return None
 
-        opp_hp = opp.current_hp if opp.current_hp is not None else (opp.current_hp_fraction * 300.0)
+        opp_hp = self._current_hp(opp)
         if opp_hp <= 0:
             return None
 
@@ -447,12 +457,15 @@ class HeuristicV14(BaseHeuristic1v1):
         if not battle.available_switches:
             return None
 
+        # Only absorb when we're healthy (already-statused mons gain nothing).
+        if get_status_name(me) != "HEALTHY":
+            return None
+
         gen = self._get_gen(battle)
         sets_db = self._load_pokemon_sets(gen)
         clean_opp_name = opp.species.lower().replace(" ", "").replace("-", "").replace("_", "")
         predicted_moves = sets_db.get(clean_opp_name, {}).get("moves", [])
         revealed_moves = [m.id for m in opp.moves.values()]
-        all_opp_moves = list(set(predicted_moves + revealed_moves))
 
         status_moves_to_check = {
             "spore": "SLP",
@@ -465,13 +478,22 @@ class HeuristicV14(BaseHeuristic1v1):
             "glare": "PAR",
         }
 
+        # Confidence gate: only react to a status move the opponent has actually
+        # revealed, or one we strongly predict while they sit at high HP (the
+        # classic "they'll click status on the switch" read). This stops the bot
+        # from fleeing every turn on a mere database guess.
         predicted_status_type = None
-        for m_id in all_opp_moves:
+        for m_id in revealed_moves:
             if m_id in status_moves_to_check:
                 predicted_status_type = status_moves_to_check[m_id]
                 break
+        if predicted_status_type is None and opp.current_hp_fraction >= 0.8 and battle.turn <= 6:
+            for m_id in predicted_moves:
+                if m_id in status_moves_to_check:
+                    predicted_status_type = status_moves_to_check[m_id]
+                    break
 
-        if not predicted_status_type or get_status_name(me) is not None:
+        if predicted_status_type is None:
             return None
 
         is_vulnerable = False
@@ -489,6 +511,12 @@ class HeuristicV14(BaseHeuristic1v1):
             s_types = [t.name for t in switch_in.types if t]
             s_ability = str(getattr(switch_in, "ability", "")).lower()
             immune = False
+
+            # The absorber must not be walking into a KO from the opponent's
+            # attacking moves — otherwise dodging status just loses a Pokémon.
+            in_dmg = self._estimate_max_damage(opp, switch_in, gen, sets_db)
+            if in_dmg >= self._current_hp(switch_in) * 0.9:
+                continue
 
             if predicted_status_type == "SLP":
                 if "GRASS" in s_types or s_ability in {"vitalspirit", "insomnia", "overcoat"}:
@@ -521,19 +549,26 @@ class HeuristicV14(BaseHeuristic1v1):
         btag = battle.battle_tag
 
         # If the opponent can KO us, they will likely just attack. Do not predict a switch.
-        me_hp = me.current_hp if me.current_hp is not None else (me.current_hp_fraction * 300.0)
+        me_hp = self._current_hp(me)
         gen = self._get_gen(battle)
         sets_db = self._load_pokemon_sets(gen)
         opp_max_dmg = self._estimate_max_damage(opp, me, gen, sets_db)
         if opp_max_dmg >= me_hp:
             return None
 
-        # Yomi Layer 2 Check: If opponent behavior profile is Conservative, bypass switch predictions
-        if self._opponent_tendency.get(btag) == "CONSERVATIVE":
+        # Yomi Layer 2: Only gamble on a switch read once we have positively
+        # observed the human bailing from bad matchups (PREDICTIVE). With an
+        # unknown or CONSERVATIVE profile we just click our best move — guessing
+        # a switch that doesn't come hands the opponent a free turn.
+        if self._opponent_tendency.get(btag) != "PREDICTIVE":
+            return None
+
+        # Don't start a mind-game on the turn we just switched in.
+        if self._just_switched_in(battle):
             return None
 
         active_matchup = self._estimate_matchup(me, opp, battle)
-        if active_matchup < 0.6:
+        if active_matchup < 0.8:
             return None
 
         predicted_switch_in = None
@@ -566,23 +601,15 @@ class HeuristicV14(BaseHeuristic1v1):
             if setup_order:
                 return setup_order
 
+        # Best response: a damaging pivot move (U-turn/Volt Switch). This is the
+        # ideal punish — we hit the incoming switch AND keep momentum, with no
+        # tempo loss if we read wrong, so it's the only "switch-style" play we
+        # allow on a prediction.
         for move in battle.available_moves or []:
             if move.self_switch is True and move.base_power > 0:
                 if not self._is_ability_immune(move, predicted_switch_in):
                     if predicted_switch_in.damage_multiplier(move) >= 1.0:
                         return move
-
-        best_my_counter = None
-        best_my_counter_score = -999.0
-        for switch_in in battle.available_switches:
-            score = self._estimate_matchup(switch_in, predicted_switch_in, battle)
-            if score > best_my_counter_score:
-                best_my_counter_score = score
-                best_my_counter = switch_in
-
-        if best_my_counter and best_my_counter_score > 0.5 and self._is_switch_allowed(battle, best_my_counter):
-            self._matchup_switches_by_battle[btag] = self._matchup_switches_by_battle.get(btag, 0) + 1
-            return best_my_counter
 
         best_prediction_move = None
         max_prediction_score = -1.0
@@ -646,6 +673,48 @@ class HeuristicV14(BaseHeuristic1v1):
 
         return None
 
+    # -- Guaranteed KO Detection ----------------------------------------------
+
+    def _find_guaranteed_ko(self, battle, me, opp, my_speed, opp_speed):
+        """Return a move that guarantees a KO this turn, or None.
+
+        Prioritizes moves that KO *before* the opponent acts (we outspeed, or the
+        move has priority). This is the single most important play in the game and
+        must be checked before scouting, switching, or status — clicking the kill
+        is almost never wrong against a human.
+        """
+        if not battle.available_moves or opp is None or opp.fainted:
+            return None
+        opp_hp = self._current_hp(opp)
+        if opp_hp <= 0:
+            return None
+
+        # Among moves that guarantee the KO, pick the most *reliable* one: rank by
+        # accuracy first, then by how cleanly it overkills. A 100%-acc KO beats a
+        # 80%-acc bigger hit — whiffing a kill is exactly what loses games to humans.
+        safe_ko = None  # KOs before the opponent moves
+        risky_ko = None  # KOs but opponent likely moves first
+        best_safe_key = (-1.0, -1.0)
+        best_risky_key = (-1.0, -1.0)
+        for move in battle.available_moves:
+            if move.category not in [MoveCategory.PHYSICAL, MoveCategory.SPECIAL]:
+                continue
+            if self._is_ability_immune(move, opp) or opp.damage_multiplier(move) == 0.0:
+                continue
+            dmg_min, _ = self._calculate_exact_damage_range(move, me, opp, battle)
+            if dmg_min < opp_hp:
+                continue
+            accuracy = move.accuracy if isinstance(move.accuracy, (int, float)) else 1.0
+            key = (accuracy, dmg_min)
+            moves_first = my_speed > opp_speed or move.entry.get("priority", 0) > 0
+            if moves_first:
+                if key > best_safe_key:
+                    best_safe_key, safe_ko = key, move
+            else:
+                if key > best_risky_key:
+                    best_risky_key, risky_ko = key, move
+        return safe_ko or risky_ko
+
     # -- Endgame Minimax Solver -----------------------------------------------
 
     def _run_endgame_solver(self, battle, me, opp):
@@ -656,7 +725,7 @@ class HeuristicV14(BaseHeuristic1v1):
         if my_remaining > 2 or opp_remaining > 2:
             return None
 
-        opp_hp = opp.current_hp if opp.current_hp is not None else (opp.current_hp_fraction * 300.0)
+        opp_hp = self._current_hp(opp)
 
         # Check if we have a guaranteed KO on their active Pokémon
         best_ko_move = None
@@ -671,7 +740,7 @@ class HeuristicV14(BaseHeuristic1v1):
             return self.create_order(best_ko_move)
 
         # Check if they outspeed and hold a guaranteed KO on us
-        my_hp = me.current_hp if me.current_hp is not None else (me.current_hp_fraction * 300.0)
+        my_hp = self._current_hp(me)
         gen = self._get_gen(battle)
         sets_db = self._load_pokemon_sets(gen)
         opp_max_dmg = self._estimate_max_damage(opp, me, gen, sets_db)
@@ -687,11 +756,7 @@ class HeuristicV14(BaseHeuristic1v1):
             if battle.available_switches:
                 for switch_in in battle.available_switches:
                     switch_in_max_dmg = self._estimate_max_damage(opp, switch_in, gen, sets_db)
-                    switch_in_hp = (
-                        switch_in.current_hp
-                        if switch_in.current_hp is not None
-                        else (switch_in.current_hp_fraction * 300.0)
-                    )
+                    switch_in_hp = self._current_hp(switch_in)
                     if switch_in_max_dmg < switch_in_hp:
                         return self.create_order(switch_in)
 
@@ -750,17 +815,32 @@ class HeuristicV14(BaseHeuristic1v1):
         my_speed = self._get_boosted_speed(me, my_status, format_str)
         opp_speed = self._get_boosted_speed(opp, opp_status, format_str)
 
-        # 2. Endgame Minimax Solver
+        # 2. Guaranteed KO — always take the kill before anything else.
+        ko_move = self._find_guaranteed_ko(battle, me, opp, my_speed, opp_speed)
+        if ko_move:
+            self._ko_checks_by_battle[btag] = self._ko_checks_by_battle.get(btag, 0) + 1
+            self._record_used_move(btag, ko_move.id)
+            tera = self._should_terastallize(battle, ko_move)
+            return self.create_order(ko_move, terastallize=tera)
+
+        # 3. Endgame Minimax Solver
         endgame_order = self._run_endgame_solver(battle, me, opp)
         if endgame_order:
             return endgame_order
 
-        # 3. Early Game Scouting Phase (turns 1-3)
+        # 4. Early Game Scouting Phase (turns 1-3)
+        # Only scout when it is genuinely low-risk: the opponent can't OHKO us and
+        # our scouting move isn't badly resisted. Never scout instead of a strong
+        # attack or when we are in danger.
         if battle.turn <= 3:
+            gen = self._get_gen(battle)
+            sets_db = self._load_pokemon_sets(gen)
+            opp_threat = self._estimate_max_damage(opp, me, gen, sets_db)
+            safe_to_scout = opp_threat < self._current_hp(me) * 0.6
             scout_moves = [
                 m for m in battle.available_moves if m.id in {"uturn", "voltswitch", "flipturn", "knockoff", "protect"}
             ]
-            if scout_moves:
+            if scout_moves and safe_to_scout:
                 physical_ratio = self._stat_estimation(me, "atk") / max(self._stat_estimation(opp, "def"), 1.0)
                 special_ratio = self._stat_estimation(me, "spa") / max(self._stat_estimation(opp, "spd"), 1.0)
                 best_scout = max(
@@ -769,21 +849,23 @@ class HeuristicV14(BaseHeuristic1v1):
                         m, me, opp, physical_ratio, special_ratio, battle, my_speed, opp_speed
                     ),
                 )
-                if best_scout.base_power > 0 and opp.damage_multiplier(best_scout) > 0:
+                # Don't scout into a heavily resisted / immune target, and only
+                # pivot if it does real chip (not a token U-turn into a wall).
+                if best_scout.base_power > 0 and opp.damage_multiplier(best_scout) >= 1.0:
                     self._record_used_move(btag, best_scout.id)
                     return self.create_order(best_scout)
 
-        # 4. Opponent Setup Sweeper Check
+        # 5. Opponent Setup Sweeper Check
         setup_reaction = self._handle_opponent_setup_sweeper(battle, me, opp, my_speed, opp_speed)
         if setup_reaction:
             return setup_reaction
 
-        # 5. Status Absorption Check
+        # 6. Status Absorption Check
         absorber = self._try_status_absorption(battle, me, opp)
         if absorber:
             return self.create_order(absorber)
 
-        # 6. Score all damaging moves
+        # 7. Score all damaging moves
         best_move = None
         max_score = -1.0
 
@@ -803,7 +885,7 @@ class HeuristicV14(BaseHeuristic1v1):
         # Check if we can outspeed and KO the opponent
         can_ko_opp = False
         if opp and not opp.fainted:
-            opp_hp = opp.current_hp if opp.current_hp is not None else (opp.current_hp_fraction * 300.0)
+            opp_hp = self._current_hp(opp)
             if opp_hp > 0:
                 for move in battle.available_moves or []:
                     if self._is_ability_immune(move, opp):
@@ -818,7 +900,7 @@ class HeuristicV14(BaseHeuristic1v1):
                             can_ko_opp = True
                             break
 
-        # 7. Check Switch triggers
+        # 8. Check Switch triggers
         switch_reason = ""
         if battle.available_switches and not can_ko_opp:
             switch_reason = self._should_switch(me, opp, my_status, my_speed, opp_speed, max_score, battle)
@@ -846,22 +928,22 @@ class HeuristicV14(BaseHeuristic1v1):
                         self._matchup_switches_by_battle[btag] = self._matchup_switches_by_battle.get(btag, 0) + 1
                     return self.create_order(switch)
 
-        # 8. Smart Recovery Check (stalls counted)
+        # 9. Smart Recovery Check (stalls counted)
         recovery_moves = [m for m in battle.available_moves if m.id in RECOVERY_MOVES]
-        if recovery_moves and me.current_hp_fraction <= 0.6:
+        if recovery_moves and me.current_hp_fraction <= 0.55:
             gen = self._get_gen(battle)
             sets_db = self._load_pokemon_sets(gen)
             opp_max_dmg = self._estimate_max_damage(opp, me, gen, sets_db)
-            opp_max_dmg_fraction = opp_max_dmg / 300.0
+            my_hp = self._current_hp(me)
 
             opp_out_recovery = self._is_opp_out_of_recovery(battle, opp)
-            if opp_max_dmg_fraction < me.current_hp_fraction and not opp_out_recovery:
+            # Only heal if the opponent's strongest hit can't break our recovery
+            # (we'd net positive HP) and they aren't out of recovery PP themselves.
+            if opp_max_dmg < my_hp * 0.5 and not opp_out_recovery:
                 can_ko = False
                 if best_move and best_move.base_power > 0:
-                    best_dmg = self._score_move(
-                        best_move, me, opp, physical_ratio, special_ratio, battle, my_speed, opp_speed
-                    )
-                    if (best_dmg / 300.0) >= opp.current_hp_fraction:
+                    dmg_min, _ = self._calculate_exact_damage_range(best_move, me, opp, battle)
+                    if dmg_min >= self._current_hp(opp):
                         can_ko = True
 
                 if not can_ko:
@@ -869,7 +951,7 @@ class HeuristicV14(BaseHeuristic1v1):
                     self._record_used_move(btag, rec_move.id)
                     return self.create_order(rec_move)
 
-        # 9. Hazards Check
+        # 10. Hazards Check
         if not is_gen1:
             active_matchup = self._estimate_matchup(me, opp, battle)
             opp_likely_to_switch = active_matchup > 1.0
@@ -879,20 +961,20 @@ class HeuristicV14(BaseHeuristic1v1):
                 if hazard_order:
                     return hazard_order
 
-        # 10. Setup Check
+        # 11. Setup Check
         if not is_gen1 and me.current_hp_fraction == 1.0 and self._estimate_matchup(me, opp, battle) > 0:
             setup_order = self._try_setup(battle, me, my_speed, opp_speed)
             if setup_order:
                 return setup_order
 
-        # 11. Status Moves Logic
+        # 12. Status Moves Logic
         if max_score < STATUS_MOVE_THRESHOLD and opp.current_hp_fraction >= HIGH_HP_FRACTION:
             status_move = self._find_best_status_move(battle, me, opp, my_speed, opp_speed)
             if status_move:
                 self._record_used_move(btag, status_move.id)
                 return self.create_order(status_move)
 
-        # 12. Attack with best move (Predictive Punish check)
+        # 13. Attack with best move (Predictive Punish check)
         if best_move:
             punish_play = self._predict_and_punish_switch(
                 battle, me, opp, best_move, physical_ratio, special_ratio, my_speed, opp_speed
@@ -975,9 +1057,9 @@ class HeuristicV14(BaseHeuristic1v1):
             gen = self._get_gen(battle)
             sets_db = self._load_pokemon_sets(gen)
             opp_max_dmg = self._estimate_max_damage(opp, me, gen, sets_db)
-            
-            me_hp = me.current_hp if me.current_hp is not None else (me.current_hp_fraction * 300.0)
-            
+
+            me_hp = self._current_hp(me)
+
             # If opponent outspeeds us, they hit us first. If they can 2HKO us, setup is suicidal.
             if opp_speed > my_speed:
                 if opp_max_dmg >= me_hp * 0.45:
@@ -1089,11 +1171,15 @@ class HeuristicV14(BaseHeuristic1v1):
         if eff == 0.0:
             return 0.0, 0.0
 
+        ability_mult = self._ability_damage_multiplier(defender, move.type.name)
+        if ability_mult == 0.0:
+            return 0.0, 0.0
+
         stab = 1.5 if move.type in attacker.types else 1.0
         level = attacker.level if attacker.level else 80
 
         base_dmg = ((2 * level / 5 + 2) * move.base_power * ratio) / 50 + 2
-        score = base_dmg * stab * eff
+        score = base_dmg * stab * eff * ability_mult
         score = self._apply_weather_mod(score, move, battle)
         score = self._apply_terrain_mod(score, move, battle)
 
@@ -1113,11 +1199,15 @@ class HeuristicV14(BaseHeuristic1v1):
         if effectiveness == 0.0:
             return 0.0
 
+        ability_mult = self._ability_damage_multiplier(opp, move.type.name)
+        if ability_mult == 0.0:
+            return 0.0
+
         stab = 1.5 if move.type in me.types else 1.0
         accuracy = move.accuracy if isinstance(move.accuracy, (int, float)) else 1.0
         expected_hits = move.expected_hits if hasattr(move, "expected_hits") else 1.0
 
-        score = move.base_power * ratio * effectiveness * stab * accuracy * expected_hits
+        score = move.base_power * ratio * effectiveness * stab * accuracy * expected_hits * ability_mult
 
         score = self._apply_weather_mod(score, move, battle)
         score = self._apply_terrain_mod(score, move, battle)
@@ -1147,50 +1237,78 @@ class HeuristicV14(BaseHeuristic1v1):
     # -- Switch Decisions (Wincon Preservation triggers) ----------------------
 
     def _should_switch(self, me, opp, my_status, my_speed, opp_speed, max_score, battle) -> str:
+        """Decide whether to switch out. Threat-aware with hysteresis.
+
+        Philosophy: a hard switch costs a turn of momentum (the opponent gets a
+        free hit), so we only do it when staying in is clearly losing AND the
+        bench has a clearly better answer. A Pokémon that just came in holds its
+        ground unless it is in real danger — this kills the infinite switch loop.
+        """
+        # Toxic poison gets worse every turn: bail before it snowballs.
         if my_status == "TOX" and me.status_counter > 2:
             return "toxic"
 
+        gen = self._get_gen(battle)
+        sets_db = self._load_pokemon_sets(gen)
+        opp_max_dmg = self._estimate_max_damage(opp, me, gen, sets_db)
+        my_hp = self._current_hp(me)
+        incoming_ratio = opp_max_dmg / max(my_hp, 1.0)
+
+        # Best bench answer to the *current* opponent, discounted by the entry-
+        # hazard chip each candidate would eat on the way in. This is what stops
+        # the bot from repeatedly pivoting a Rock-weak mon into its own rocks.
+        my_hazards = getattr(battle, "side_conditions", {})
         best_bench_score = -999.0
         for s in battle.available_switches:
+            if not self._is_switch_allowed(battle, s):
+                continue
             bench_score = self._estimate_matchup(s, opp, battle)
+            chip = self._switch_in_hazard_fraction(s, my_hazards)
+            if chip > 0:
+                bench_score -= chip * HP_FRACTION_COEFF * 2.0
             if bench_score > best_bench_score:
                 best_bench_score = bench_score
 
         active_matchup = self._estimate_matchup(me, opp, battle)
 
-        # If the bench is not significantly better, and we are not completely shut down, don't switch.
-        if best_bench_score <= active_matchup + 0.2 and max_score >= 10.0:
+        # In real danger: opponent outspeeds us and threatens a (near) OHKO.
+        danger = incoming_ratio >= 0.55 and (opp_speed > my_speed or incoming_ratio >= 0.9)
+
+        # Hysteresis: don't bounce a freshly switched-in Pokémon back out on a
+        # marginal read. Only re-switch if we're now in genuine danger.
+        if self._just_switched_in(battle) and not danger:
             return ""
 
-        if max_score < WEAK_MOVE_THRESHOLD and my_speed < opp_speed:
+        # Severe stat drops make us dead weight — leave if anything better exists.
+        crippled = (
+            me.boosts.get("def", 0) <= -3
+            or me.boosts.get("spd", 0) <= -3
+            or (me.boosts.get("atk", 0) <= -3 and self._is_physical_attacker(me))
+            or (me.boosts.get("spa", 0) <= -3 and not self._is_physical_attacker(me))
+        )
+        if crippled and best_bench_score > active_matchup + 0.3:
+            return "matchup"
+
+        # Outsped with no meaningful offense: pivot to someone who matters.
+        if max_score < WEAK_MOVE_THRESHOLD and my_speed < opp_speed and best_bench_score > active_matchup + 0.4:
             return "weak"
 
+        # A hard switch needs a clearly better answer to be worth the lost tempo.
+        if best_bench_score <= active_matchup + 0.8:
+            return ""
+
+        # Win-condition preservation: pull our win-con out of a losing spot early.
         btag = battle.battle_tag
         roles = self._roles_by_battle.get(btag, {})
-        is_wincon = roles.get(me.species.lower()) == "WIN_CON"
-
-        if is_wincon and active_matchup < 0.2 and not me.fainted:
-            if best_bench_score > 0.5:
-                return "matchup"
-
-        if best_bench_score > 0.5:
-            if active_matchup < 0.1:
-                return "matchup"
-            if max_score < STATUS_MOVE_THRESHOLD:
-                return "matchup"
-
-        if active_matchup < -0.8 and best_bench_score > active_matchup + 0.6:
+        if roles.get(me.species.lower()) == "WIN_CON" and active_matchup < 0.0 and best_bench_score > 0.5:
             return "matchup"
 
-        if me.boosts.get("def", 0) <= -3 or me.boosts.get("spd", 0) <= -3:
+        # Clearly losing the matchup and the bench is clearly better.
+        if active_matchup < -0.3 and best_bench_score > 0.3:
             return "matchup"
 
-        if me.boosts.get("atk", 0) <= -3 and self._is_physical_attacker(me):
-            return "matchup"
-        if me.boosts.get("spa", 0) <= -3 and not self._is_physical_attacker(me):
-            return "matchup"
-
-        if active_matchup < SWITCH_OUT_MATCHUP_THRESHOLD:
+        # Threatened with a KO and the bench tanks it far better.
+        if danger and best_bench_score > active_matchup + 1.0:
             return "matchup"
 
         return ""
@@ -1200,6 +1318,19 @@ class HeuristicV14(BaseHeuristic1v1):
         atk = mon.base_stats.get("atk", 100) if mon.base_stats else 100
         spa = mon.base_stats.get("spa", 100) if mon.base_stats else 100
         return atk >= spa
+
+    def _just_switched_in(self, battle) -> bool:
+        """True if our active Pokémon entered the field on the previous turn.
+
+        Used as a hysteresis brake: a Pokémon that *just* came in should not be
+        immediately switched back out again on a marginal matchup read, which is
+        the main cause of the 'keeps switching forever' loop.
+        """
+        btag = battle.battle_tag
+        history = getattr(self, "_active_history_by_battle", {}).get(btag, [])
+        if len(history) < 2:
+            return False
+        return history[-1][1] != history[-2][1]
 
     def _is_switch_allowed(self, battle, target) -> bool:
         if target is None:
@@ -1219,7 +1350,25 @@ class HeuristicV14(BaseHeuristic1v1):
                     return False
         return True
 
-    # -- Switch Targets (Choice Exploitations) ---------------------------------
+    # -- Switch Targets (Choice Exploitations & Team Threat Reasoning) ----------
+
+    def _worst_team_matchup(self, candidate, battle, exclude=None):
+        """How threatened *candidate* is by the rival's *worst* remaining Pokémon.
+
+        Models a human's whole-team pressure rather than just the active foe:
+        we look at every revealed, non-fainted opponent and return the lowest
+        matchup score the candidate has against any of them. A switch-in that
+        hard-walls the active mon but is OHKO'd by an obvious teammate should not
+        be picked blindly — this is the 'reason about their team' upgrade.
+        """
+        worst = None
+        for o in battle.opponent_team.values():
+            if o.fainted or (exclude is not None and o is exclude):
+                continue
+            score = self._estimate_matchup(candidate, o, battle)
+            if worst is None or score < worst:
+                worst = score
+        return worst if worst is not None else 0.0
 
     def _get_best_switch(self, battle, opp, allowed_only=False):
         best = None
@@ -1235,8 +1384,24 @@ class HeuristicV14(BaseHeuristic1v1):
         if not switches:
             return None
 
+        my_hazards = getattr(battle, "side_conditions", {})
         for pokemon in switches:
+            # Primary: matchup vs the Pokémon we're actually switching into.
             score = self._estimate_matchup(pokemon, opp, battle)
+
+            # Secondary: don't pick something the rest of their team trivially
+            # blows up. Weighted lightly so the active matchup still dominates,
+            # but enough to break ties toward a pick with no glaring weakness.
+            worst_vs_team = self._worst_team_matchup(pokemon, battle, exclude=opp)
+            if worst_vs_team < -0.5:
+                score += worst_vs_team * 0.25
+
+            # Penalise switching a hazard-vulnerable mon into our own side's
+            # entry hazards (Stealth Rock / Spikes). Scaled to the same units as
+            # the matchup HP term so a Rock-weak mon isn't picked into 25% chip.
+            chip = self._switch_in_hazard_fraction(pokemon, my_hazards)
+            if chip > 0:
+                score -= chip * HP_FRACTION_COEFF * 2.0
 
             if is_choice_locked:
                 all_resisted = True
@@ -1315,7 +1480,7 @@ class HeuristicV14(BaseHeuristic1v1):
             gen = self._get_gen(battle)
             sets_db = self._load_pokemon_sets(gen)
             opp_max_dmg = self._estimate_max_damage(opp_active, active, gen, sets_db)
-            opp_max_dmg_fraction = opp_max_dmg / 300.0
+            opp_max_dmg_fraction = opp_max_dmg / max(self._estimate_max_hp(active), 1.0)
 
             tera_type = self._get_tera_type(active)
             if tera_type is None:
@@ -1427,14 +1592,8 @@ class HeuristicV14(BaseHeuristic1v1):
             except Exception:
                 continue
 
-            ability = getattr(defender, "ability", None)
-            is_immune = False
-            if ability:
-                ability_str = str(ability).lower().replace(" ", "").replace("-", "")
-                immune_type = ABILITY_IMMUNITIES.get(ability_str)
-                if immune_type and m_type_str == immune_type:
-                    is_immune = True
-            if is_immune:
+            ability_mult = self._ability_damage_multiplier(defender, m_type_str)
+            if ability_mult == 0.0:
                 continue
 
             eff = defender.damage_multiplier(m_type)
@@ -1447,7 +1606,7 @@ class HeuristicV14(BaseHeuristic1v1):
 
             level = attacker.level if attacker.level else 80
             base_dmg = ((2 * level / 5 + 2) * bp * ratio) / 50 + 2
-            dmg = base_dmg * eff * stab
+            dmg = base_dmg * eff * stab * ability_mult
             if dmg > max_dmg:
                 max_dmg = dmg
 
@@ -1480,11 +1639,75 @@ class HeuristicV14(BaseHeuristic1v1):
         score -= opponent.current_hp_fraction * HP_FRACTION_COEFF
 
         # If opponent outspeeds and can OHKO us, apply a severe penalty
-        mon_hp = mon.current_hp if mon.current_hp is not None else (mon.current_hp_fraction * 300.0)
+        mon_hp = self._current_hp(mon)
         if opp_speed > my_speed and max_defensive >= mon_hp:
             score -= 10.0
 
         return score
+
+    # -- HP Estimation ---------------------------------------------------------
+
+    @staticmethod
+    def _estimate_max_hp(mon) -> float:
+        """Estimate a Pokémon's real max HP.
+
+        For our own Pokémon poke-env exposes the true ``max_hp``. For the
+        opponent it only exposes an HP percentage, so we reconstruct the stat
+        from base HP and level (31 IV / 84 EV spread, matching random battles).
+        This is critical: the old code assumed every Pokémon had 300 HP, which
+        made the bot hallucinate KOs on fat walls (Blissey, Toxapex, ...).
+        """
+        real_max = getattr(mon, "max_hp", None)
+        if real_max:
+            return float(real_max)
+        base_hp = mon.base_stats.get("hp", 100) if mon.base_stats else 100
+        if base_hp == 1:  # Shedinja
+            return 1.0
+        level = mon.level if getattr(mon, "level", None) else 80
+        return ((2 * base_hp + 31 + 21) * level / 100.0) + level + 10
+
+    def _current_hp(self, mon) -> float:
+        """Return the Pokémon's current HP on the same scale as the damage model."""
+        frac = mon.current_hp_fraction if mon.current_hp_fraction is not None else 1.0
+        return frac * self._estimate_max_hp(mon)
+
+    @staticmethod
+    def _switch_in_hazard_fraction(mon, side_conditions) -> float:
+        """Estimate the HP fraction *mon* loses on switching into our hazards.
+
+        Switching into Stealth Rock / Spikes repeatedly is the single biggest way
+        a heuristic throws games against a hazard-stacking human. We price that
+        chip in so the bot stops sacking its own HP on needless pivots. Heavy-Duty
+        Boots and Magic Guard negate all entry-hazard chip.
+        """
+        if not side_conditions:
+            return 0.0
+
+        item = str(getattr(mon, "item", "") or "").lower().replace(" ", "").replace("-", "")
+        ability = str(getattr(mon, "ability", "") or "").lower().replace(" ", "").replace("-", "")
+        if item == "heavydutyboots" or ability == "magicguard":
+            return 0.0
+
+        types = [t.name for t in mon.types if t is not None]
+        grounded = "FLYING" not in types and ability != "levitate" and item != "airballoon"
+
+        chip = 0.0
+
+        # Stealth Rock: 12.5% scaled by Rock-type effectiveness against the mon.
+        if SideCondition.STEALTH_ROCK in side_conditions:
+            try:
+                rock = PokemonType.from_name("ROCK")
+                mult = mon.damage_multiplier(rock)
+            except Exception:
+                mult = 1.0
+            chip += 0.125 * mult
+
+        if grounded:
+            spikes_layers = side_conditions.get(SideCondition.SPIKES, 0)
+            if spikes_layers:
+                chip += {1: 1 / 8, 2: 1 / 6, 3: 1 / 4}.get(spikes_layers, 1 / 4)
+
+        return chip
 
     # -- Stat Calculations -----------------------------------------------------
 
@@ -1526,6 +1749,24 @@ class HeuristicV14(BaseHeuristic1v1):
         if immune_type and move.type.name == immune_type:
             return True
         return False
+
+    @staticmethod
+    def _ability_damage_multiplier(defender, move_type_name: str) -> float:
+        """Damage multiplier from the *defender's* ability against a move type.
+
+        Returns 0.0 (immunity, e.g. Earth Eater vs Ground), 0.5 (resist ability,
+        e.g. Thick Fat vs Fire/Ice), or 1.0 (no effect). Lets the damage model
+        respect abilities that aren't captured by the raw type chart.
+        """
+        ability = getattr(defender, "ability", None)
+        if not ability:
+            return 1.0
+        ability_str = str(ability).lower().replace(" ", "").replace("-", "")
+        if ABILITY_IMMUNITIES.get(ability_str) == move_type_name:
+            return 0.0
+        if move_type_name in ABILITY_HALF_DAMAGE.get(ability_str, ()):
+            return 0.5
+        return 1.0
 
     @staticmethod
     def _apply_weather_mod(damage: float, move, battle) -> float:
