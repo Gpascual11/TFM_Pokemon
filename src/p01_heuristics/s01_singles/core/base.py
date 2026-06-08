@@ -9,7 +9,11 @@ only need to implement ``_select_action``.
 from __future__ import annotations
 
 import abc
+import datetime
+import json
 import logging
+import os
+from pathlib import Path
 
 from poke_env.player import Player
 
@@ -42,6 +46,11 @@ class BaseHeuristic1v1(Player, abc.ABC):
         self._ko_checks_by_battle: dict[str, int] = {}
         self._matchup_switches_by_battle: dict[str, int] = {}
 
+        # Per-turn decision logging (opt-in via TFM_DECISION_LOG_DIR env var).
+        # Off by default so benchmarks stay fast; the online runner sets it so
+        # every turn's options + chosen action are recorded for later analysis.
+        self._decision_log_dir = os.environ.get("TFM_DECISION_LOG_DIR")
+
     def reset_battles(self) -> None:
         """Clear both the poke-env battle history and our custom move tracking."""
         super().reset_battles()
@@ -67,22 +76,88 @@ class BaseHeuristic1v1(Player, abc.ABC):
         btag = battle.battle_tag
         self._total_decisions_by_battle[btag] = self._total_decisions_by_battle.get(btag, 0) + 1
 
+        order = None
+        source = "fallback"
         try:
-            early = self._pre_move_hook(battle)
-            if early is not None:
-                return early
-
-            order = self._select_action(battle)
+            order = self._pre_move_hook(battle)
             if order is not None:
-                return order
+                source = "pre_move_hook"
+            else:
+                order = self._select_action(battle)
+                if order is not None:
+                    source = "select_action"
         except Exception as e:
             logger.error(f"Error in {self.__class__.__name__} logic: {e}", exc_info=True)
             self._error_moves_by_battle[btag] = self._error_moves_by_battle.get(btag, 0) + 1
-            return self.choose_random_move(battle)
+            order = self.choose_random_move(battle)
+            source = "error"
 
-        # If we reach here, no specific order was selected (graceful fallback)
-        self._fallback_moves_by_battle[btag] = self._fallback_moves_by_battle.get(btag, 0) + 1
-        return self.choose_random_move(battle)
+        if order is None:
+            # No specific order was selected (graceful fallback).
+            self._fallback_moves_by_battle[btag] = self._fallback_moves_by_battle.get(btag, 0) + 1
+            order = self.choose_random_move(battle)
+            source = "fallback"
+
+        if self._decision_log_dir:
+            self._log_decision(battle, order, source)
+        return order
+
+    @staticmethod
+    def _describe_order(order) -> dict:
+        """Summarise a BattleOrder into a plain dict (move id or switch target)."""
+        info: dict = {"type": "unknown", "id": None, "terastallize": False}
+        if order is None:
+            return info
+        chosen = getattr(order, "order", None)
+        info["terastallize"] = bool(getattr(order, "terastallize", False))
+        # A move order exposes `.id`; a switch order's `chosen` is a Pokemon.
+        if hasattr(chosen, "base_power"):  # Move
+            info["type"] = "move"
+            info["id"] = getattr(chosen, "id", None)
+        elif hasattr(chosen, "species"):  # Pokemon (switch)
+            info["type"] = "switch"
+            info["id"] = chosen.species.lower()
+        return info
+
+    def _log_decision(self, battle, order, source: str) -> None:
+        """Append one JSONL record capturing the turn's options and chosen action.
+
+        Written to ``<TFM_DECISION_LOG_DIR>/<battle_id>.jsonl`` (one file per
+        battle, appended per turn). Best-effort: never let logging break a game.
+        """
+        try:
+            btag = battle.battle_tag
+            me = battle.active_pokemon
+            opp = battle.opponent_active_pokemon
+
+            record = {
+                "battle_id": btag,
+                "turn": battle.turn,
+                "ts": datetime.datetime.now().isoformat(timespec="seconds"),
+                "source": source,
+                "active": me.species.lower() if me else None,
+                "active_hp": round(me.current_hp_fraction, 3) if me else None,
+                "active_status": (me.status.name if me and me.status else None),
+                "active_boosts": ({k: v for k, v in me.boosts.items() if v} if me else {}),
+                "opp_active": opp.species.lower() if opp else None,
+                "opp_hp": round(opp.current_hp_fraction, 3) if opp else None,
+                "opp_status": (opp.status.name if opp and opp.status else None),
+                "available_moves": [m.id for m in (battle.available_moves or [])],
+                "available_switches": [s.species.lower() for s in (battle.available_switches or [])],
+                "force_switch": bool(battle.force_switch),
+                "can_tera": bool(getattr(battle, "can_tera", False)),
+                "weather": (next(iter(battle.weather), None).name if battle.weather else None),
+                "chosen": self._describe_order(order),
+            }
+
+            log_dir = Path(self._decision_log_dir)
+            log_dir.mkdir(parents=True, exist_ok=True)
+            # Sanitise battle tag for use as a filename.
+            safe = btag.replace("/", "_").replace("\\", "_").lstrip("-") or "battle"
+            with open(log_dir / f"{safe}.jsonl", "a", encoding="utf-8") as f:
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        except Exception as e:  # pragma: no cover - logging must never crash play
+            logger.debug(f"decision log skipped: {e}")
 
     def _pre_move_hook(self, battle):
         """Optional hook executed before the main heuristic.

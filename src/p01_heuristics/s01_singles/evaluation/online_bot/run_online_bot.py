@@ -462,6 +462,10 @@ async def main():
     STATE_FILE = log_dir / "online_bot_state.json"
     HISTORY_FILE = log_dir / "battle_history.csv"
     log_dir.mkdir(parents=True, exist_ok=True)
+    # Enable per-turn decision logging for the agent (one JSONL per battle under
+    # <log_dir>/decisions/). Must be set BEFORE the agent is instantiated, since
+    # BaseHeuristic1v1 reads this env var in __init__.
+    os.environ["TFM_DECISION_LOG_DIR"] = str(log_dir / "decisions")
     # Seed the in-memory dedup set from any prior CSV so stop/resume never
     # double-logs a battle across separate runs during the week.
     load_logged_battles()
