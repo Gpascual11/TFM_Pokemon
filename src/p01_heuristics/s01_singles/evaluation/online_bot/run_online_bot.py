@@ -189,9 +189,32 @@ OFFICIAL_SERVER = ServerConfiguration(
 
 
 # State and History Files
-STATE_FILE = Path("/home/sirp/Documents/MUDS/TFM_Pokemon/data/1_vs_1/logs/online_bot_state.json")
-HISTORY_FILE = Path("/home/sirp/Documents/MUDS/TFM_Pokemon/data/1_vs_1/logs/battle_history.csv")
+# Default to a repo-relative location so the script is portable across machines
+# (the previous hardcoded /home/sirp/... path only worked on one computer).
+# Overridable per-run via --log-dir or the TFM_LOG_DIR env var (set in main()).
+_DEFAULT_LOG_DIR = _ROOT_DIR / "data" / "1_vs_1" / "logs"
+STATE_FILE = _DEFAULT_LOG_DIR / "online_bot_state.json"
+HISTORY_FILE = _DEFAULT_LOG_DIR / "battle_history.csv"
 LOGGED_BATTLES = set()
+
+
+def load_logged_battles():
+    """Populate LOGGED_BATTLES from the existing history CSV.
+
+    The dedup set lives only in memory, so without this a restart mid-week would
+    re-log any finished battle still held in the agent's battle dict. Reading the
+    persisted CSV on startup makes logging idempotent across stop/resume cycles.
+    """
+    if not HISTORY_FILE.exists():
+        return
+    try:
+        with open(HISTORY_FILE, newline="") as f:
+            for row in csv.DictReader(f):
+                bid = row.get("battle_id")
+                if bid:
+                    LOGGED_BATTLES.add(bid)
+    except Exception:
+        pass
 
 def save_state(agent_name, battle_format, target_games, games_played):
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -267,6 +290,7 @@ def log_battle(battle, agent_name, agent):
     file_exists = HISTORY_FILE.exists()
     fieldnames = [
         "battle_id", "format", "heuristic", "opponent", "winner", "won", "turns",
+        "rating_us", "rating_opp",
         "decisions_us", "decisions_opp", "fallback_moves_us", "fallback_moves_opp",
         "error_moves_us", "error_moves_opp", "fainted_us", "remaining_pokemon_us",
         "total_hp_us", "fainted_opp", "remaining_pokemon_opp", "total_hp_opp",
@@ -279,9 +303,9 @@ def log_battle(battle, agent_name, agent):
         "matchup_switches_us", "matchup_switches_opp", "terastallized_us", "terastallized_opp",
         "timestamp"
     ]
-    
+
     opp_name = battle.opponent_username if hasattr(battle, "opponent_username") else "Unknown"
-    
+
     row = {
         "battle_id": battle.battle_tag,
         "format": getattr(battle, "_format", ""),
@@ -290,6 +314,11 @@ def log_battle(battle, agent_name, agent):
         "winner": agent_name if battle.won else opp_name,
         "won": 1 if battle.won else 0,
         "turns": battle.turn,
+        # Ladder Elo at the time of this battle — the primary metric vs humans.
+        # poke-env exposes these on the Battle once Showdown sends the |rated| /
+        # rating messages; default to "" when unrated (e.g. accept-challenge mode).
+        "rating_us": getattr(battle, "rating", "") or "",
+        "rating_opp": getattr(battle, "opponent_rating", "") or "",
         "decisions_us": getattr(agent, "_total_decisions_by_battle", {}).get(battle.battle_tag, 0),
         "decisions_opp": 0,
         "fallback_moves_us": getattr(agent, "_fallback_moves_by_battle", {}).get(battle.battle_tag, 0),
@@ -407,17 +436,35 @@ async def main():
         help="Showdown battle format (default: gen9randombattle)"
     )
     parser.add_argument(
-        "--games", 
-        type=int, 
-        default=10, 
+        "--games",
+        type=int,
+        default=10,
         help="Number of games to play in ladder mode (default: 10)"
+    )
+    parser.add_argument(
+        "--log-dir",
+        type=str,
+        default=None,
+        help="Directory for state/history logs. Defaults to <repo>/data/1_vs_1/logs_<agent> "
+             "(override with this flag or the TFM_LOG_DIR env var).",
     )
     args = parser.parse_args()
 
     global STATE_FILE, HISTORY_FILE
-    log_dir = Path(f"/home/sirp/Documents/MUDS/TFM_Pokemon/data/1_vs_1/logs_{args.agent}")
+    # Portable, per-agent log directory. Precedence: --log-dir > TFM_LOG_DIR env >
+    # repo-relative default. All runs of the same agent share one appending CSV.
+    if args.log_dir:
+        log_dir = Path(args.log_dir).expanduser()
+    elif os.environ.get("TFM_LOG_DIR"):
+        log_dir = Path(os.environ["TFM_LOG_DIR"]).expanduser() / f"logs_{args.agent}"
+    else:
+        log_dir = _ROOT_DIR / "data" / "1_vs_1" / f"logs_{args.agent}"
     STATE_FILE = log_dir / "online_bot_state.json"
     HISTORY_FILE = log_dir / "battle_history.csv"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    # Seed the in-memory dedup set from any prior CSV so stop/resume never
+    # double-logs a battle across separate runs during the week.
+    load_logged_battles()
 
     # Get password from arguments or environment variable
     password = args.password or os.environ.get("SHOWDOWN_PASSWORD")
