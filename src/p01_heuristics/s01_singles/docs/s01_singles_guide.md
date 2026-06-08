@@ -6,7 +6,7 @@ This directory contains every agent implementation available in the 1v1 Singles 
 
 | Family | Labels (examples) | Implementation source | Typical use |
 |--------|-------------------|------------------------|-------------|
-| **Internal Heuristics** | `v1`–`v12` | `agents/internal/` (`HeuristicV1`–`HeuristicV12`) | Main research agents; all inherit from `BaseHeuristic1v1` and use shared math in `core/common.py`. |
+| **Internal Heuristics** | `v1`–`v13` | `agents/internal/` (`HeuristicV1`–`HeuristicV13`) | Main research agents; all inherit from `BaseHeuristic1v1` and use shared math in `core/common.py`. |
 | **poke-env Baselines** | `random`, `max_power`, `simple_heuristic` | `poke_env.player.*` + `agents/baselines/true_simple_heuristic.py` | Standard reference bots from `poke-env` (plus a local copy of `SimpleHeuristicsPlayer`). |
 | **Pokechamp Baselines** | `abyssal`, `one_step`, `safe_one_step` | external `pokechamp` repo + `agents/baselines/safe_one_step_player.py` | Rule-based agents from PokéChamp. `one_step` and `safe_one_step` both map to `SafeOneStepPlayer` to avoid LocalSim hangs. |
 | **Pokechamp LLM Agents** | `pokechamp`, `pokellmon`, `llm_vgc` | external `pokechamp` repo via `AgentFactory` | Minimax + LLM agents; configured via `--player_backend`, `--player_prompt_algo`, `--temperature`, etc. in the benchmark CLI. |
@@ -74,7 +74,11 @@ These represent the core research output of the project. They follow an evolutio
 
 ### V12: The Ultimate Tactical Agent
 
-- **Logic**: The pinnacle of our Singles heuristics. Adds matchup-based lead selection (teampreview), matchup-based fainted/forced switch-in target selection, and Gen 9 Terastallization logic.
+- **Logic**: Adds matchup-based lead selection (teampreview), matchup-based fainted/forced switch-in target selection, and Gen 9 Terastallization logic.
+
+### V13: The Prediction Master
+
+- **Logic**: Integrates dynamic opponent moveset prediction using the Showdown static databases (Gen 1-9 sets). It adds move- and stat-aware matchup damage estimation, choice lock exploitation, specific reactions to opponent setup sweepers (Haze/phazing/status), smart recovery (healing below 60% HP), and dynamic hazard execution. Also fixes the fainted switch-in fallback selection bugs.
 
 ---
 
@@ -100,7 +104,7 @@ These agents use Large Language Models (LLMs) to reason about the battle.
 
 ## How to add a new Agent
 
-1. Create a new file in `internal/v13.py` (or similar).
+1. Create a new file in `internal/v14.py` (or similar).
 2. Inherit from `BaseHeuristic1v1`.
 3. Implement `_select_action(self, battle)`.
 4. Register the agent in `agents/__init__.py`.
