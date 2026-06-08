@@ -1,6 +1,6 @@
 # Pokémon Showdown Online Bot Runner
 
-This utility allows you to run any heuristic agent (like `v12`) on the official Smogon Pokémon Showdown server to test its capabilities against real human players or directly challenge it yourself.
+This utility allows you to run any heuristic agent (like `v13`) on the official Smogon Pokémon Showdown server to test its capabilities against real human players or directly challenge it yourself.
 
 ---
 
@@ -34,7 +34,7 @@ In this mode, the bot connects to the server and registers with the matchmaking 
 
 * **Play a batch of 20 games**:
   ```bash
-  uv run python src/p01_heuristics/s01_singles/evaluation/online_bot/run_online_bot.py --username "YourBotUsername" --password "YourBotPassword" --mode ladder --games 20 --agent v12
+  uv run python src/p01_heuristics/s01_singles/evaluation/online_bot/run_online_bot.py --username "YourBotUsername" --password "YourBotPassword" --mode ladder --games 20 --agent v13
   ```
 
 ---
