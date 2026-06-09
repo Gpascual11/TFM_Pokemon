@@ -60,9 +60,9 @@ class PokemonType(Enum):
         if (
             self == PokemonType.THREE_QUESTION_MARKS
             or type_1 == PokemonType.THREE_QUESTION_MARKS
-            or type_1 == 'STELLAR'
-            or type_2 == 'STELLAR'
-            or self.name == 'STELLAR'
+            or type_1 == PokemonType.STELLAR
+            or type_2 == PokemonType.STELLAR
+            or self == PokemonType.STELLAR
         ):
             return 1
 
