@@ -1322,7 +1322,7 @@ class Pokemon:
         :return: The pokemon's first type.
         :rtype: PokemonType
         """
-        if self._terastallized and self._terastallized_type is not None:
+        if self._terastallized and self._terastallized_type is not None and self._terastallized_type != PokemonType.STELLAR:
             return self._terastallized_type
         return self._type_1
 
@@ -1332,7 +1332,7 @@ class Pokemon:
         :return: The pokemon's second type.
         :rtype: Optional[PokemonType]
         """
-        if self._terastallized:
+        if self._terastallized and self._terastallized_type != PokemonType.STELLAR:
             return None
         return self._type_2
 

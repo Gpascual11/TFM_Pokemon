@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from poke_env.data import GenData
+
 try:
     from poke_env.environment.move_category import MoveCategory
     from poke_env.environment.pokemon_type import PokemonType
@@ -72,6 +73,33 @@ ABILITY_HALF_DAMAGE = {
 
 RECOVERY_MOVES = {"recover", "roost", "slackoff", "softboiled", "moonlight", "synthesis", "milkdrink", "shoreup"}
 DRAINING_MOVES = {"gigadrain", "drainpunch", "hornleech", "bitterblade", "drainingkiss", "leechlife", "paraboliccharge"}
+
+UNKNOCKABLE_ITEMS = {
+    "hearthflamemask",
+    "wellspringmask",
+    "cornerstonemask",
+    "rustedsword",
+    "rustedshield",
+    "griseouscore",
+    "griseousorb",
+    "insectplate",
+    "dreadplate",
+    "dracoplate",
+    "zapplate",
+    "pixieplate",
+    "fistplate",
+    "flameplate",
+    "skyplate",
+    "spookyplate",
+    "meadowplate",
+    "earthplate",
+    "icicleplate",
+    "toxicplate",
+    "mindplate",
+    "stoneplate",
+    "ironplate",
+    "splashplate",
+}
 
 _POKEMON_SETS_CACHE: dict[int, dict] = {}
 
@@ -396,12 +424,21 @@ class HeuristicV14(BaseHeuristic1v1):
         last_matchup = self._last_turn_matchup.get(btag)
         if last_matchup is not None and last_opp is not None:
             if last_opp != opp_name:
-                # Opponent switched out of a bad matchup
-                if last_matchup < 0.6:
-                    self._opponent_tendency[btag] = "PREDICTIVE"
+                # Check if the previous active opponent Pokemon fainted (forced switch)
+                last_opp_fainted = False
+                for p in battle.opponent_team.values():
+                    p_name = p.species.lower().replace(" ", "").replace("-", "")
+                    if p_name == last_opp:
+                        if p.fainted:
+                            last_opp_fainted = True
+                        break
+                # Only profile as PREDICTIVE if they voluntarily switched out of a bad matchup
+                if not last_opp_fainted:
+                    if last_matchup > 0.6:
+                        self._opponent_tendency[btag] = "PREDICTIVE"
             else:
-                # Opponent stayed in during a bad matchup
-                if last_matchup < 0.6:
+                # Opponent stayed in during a bad matchup (for them)
+                if last_matchup > 0.6:
                     self._opponent_tendency[btag] = "CONSERVATIVE"
 
     def _is_opp_out_of_recovery(self, battle, opp) -> bool:
@@ -413,6 +450,34 @@ class HeuristicV14(BaseHeuristic1v1):
             if m_id in counts and counts[m_id] >= 8:
                 return True
         return False
+
+    def _is_fakeout_usable(self, battle) -> bool:
+        """Checks if Fake Out or First Impression is usable on this turn."""
+        btag = battle.battle_tag
+        history = getattr(self, "_active_history_by_battle", {}).get(btag, [])
+        if not history:
+            return True
+        if len(history) == 1:
+            return True
+        if history[-1][1] != history[-2][1]:
+            return True
+        return False
+
+    @staticmethod
+    def _has_knockable_item(pokemon) -> bool:
+        if pokemon is None:
+            return False
+        item = getattr(pokemon, "item", None)
+        if item is None:
+            return False
+        item_str = str(item).lower().replace(" ", "").replace("-", "")
+        if item_str in {"", "none"}:
+            return False
+        if item_str == "unknown_item":
+            return True
+        if item_str in UNKNOCKABLE_ITEMS:
+            return False
+        return True
 
     # -- Priority KO Hook (V10 core) ------------------------------------------
 
@@ -427,7 +492,14 @@ class HeuristicV14(BaseHeuristic1v1):
         if opp_hp <= 0:
             return None
 
-        priority_moves = [m for m in battle.available_moves if m.entry.get("priority", 0) > 0 and m.base_power > 0]
+        priority_moves = [
+            m
+            for m in battle.available_moves
+            if m.entry.get("priority", 0) > 0
+            and m.base_power > 0
+            and m.id not in {"suckerpunch", "thunderclap"}
+            and (m.id not in {"fakeout", "firstimpression"} or self._is_fakeout_usable(battle))
+        ]
         if not priority_moves:
             return None
 
@@ -463,8 +535,6 @@ class HeuristicV14(BaseHeuristic1v1):
 
         gen = self._get_gen(battle)
         sets_db = self._load_pokemon_sets(gen)
-        clean_opp_name = opp.species.lower().replace(" ", "").replace("-", "").replace("_", "")
-        predicted_moves = sets_db.get(clean_opp_name, {}).get("moves", [])
         revealed_moves = [m.id for m in opp.moves.values()]
 
         status_moves_to_check = {
@@ -487,11 +557,6 @@ class HeuristicV14(BaseHeuristic1v1):
             if m_id in status_moves_to_check:
                 predicted_status_type = status_moves_to_check[m_id]
                 break
-        if predicted_status_type is None and opp.current_hp_fraction >= 0.8 and battle.turn <= 6:
-            for m_id in predicted_moves:
-                if m_id in status_moves_to_check:
-                    predicted_status_type = status_moves_to_check[m_id]
-                    break
 
         if predicted_status_type is None:
             return None
@@ -509,7 +574,7 @@ class HeuristicV14(BaseHeuristic1v1):
 
         for switch_in in battle.available_switches:
             s_types = [t.name for t in switch_in.types if t]
-            s_ability = str(getattr(switch_in, "ability", "")).lower()
+            s_ability = str(getattr(switch_in, "ability", "")).lower().replace(" ", "").replace("-", "")
             immune = False
 
             # The absorber must not be walking into a KO from the opponent's
@@ -697,6 +762,10 @@ class HeuristicV14(BaseHeuristic1v1):
         best_safe_key = (-1.0, -1.0)
         best_risky_key = (-1.0, -1.0)
         for move in battle.available_moves:
+            if move.id in {"fakeout", "firstimpression"} and not self._is_fakeout_usable(battle):
+                continue
+            if move.id in {"suckerpunch", "thunderclap"}:
+                continue
             if move.category not in [MoveCategory.PHYSICAL, MoveCategory.SPECIAL]:
                 continue
             if self._is_ability_immune(move, opp) or opp.damage_multiplier(move) == 0.0:
@@ -920,11 +989,7 @@ class HeuristicV14(BaseHeuristic1v1):
 
         if switch_reason:
             can_sack = (
-                me.current_hp_fraction <= SAC_HP_THRESHOLD
-                and me.current_hp_fraction > 0
-                and switch_reason == "matchup"
-                and battle.available_moves
-                and max_score >= WEAK_MOVE_THRESHOLD
+                me.current_hp_fraction <= SAC_HP_THRESHOLD and me.current_hp_fraction > 0 and battle.available_moves
             )
             if can_sack:
                 pass
@@ -952,7 +1017,7 @@ class HeuristicV14(BaseHeuristic1v1):
             opp_out_recovery = self._is_opp_out_of_recovery(battle, opp)
             # Only heal if the opponent's strongest hit can't break our recovery
             # (we'd net positive HP) and they aren't out of recovery PP themselves.
-            if opp_max_dmg < my_hp * 0.5 and not opp_out_recovery:
+            if opp_max_dmg < my_hp and not opp_out_recovery:
                 can_ko = False
                 if best_move and best_move.base_power > 0:
                     dmg_min, _ = self._calculate_exact_damage_range(best_move, me, opp, battle)
@@ -969,7 +1034,8 @@ class HeuristicV14(BaseHeuristic1v1):
             active_matchup = self._estimate_matchup(me, opp, battle)
             opp_likely_to_switch = active_matchup > 1.0
             is_free_turn = my_speed > opp_speed and self._resists_opp_stab(me, opp)
-            if is_free_turn or battle.turn == 1 or opp_likely_to_switch:
+            is_dangerous_lead = opp_speed > my_speed and not self._resists_opp_stab(me, opp)
+            if is_free_turn or (battle.turn == 1 and not is_dangerous_lead) or opp_likely_to_switch:
                 hazard_order = self._try_hazards(battle)
                 if hazard_order:
                     return hazard_order
@@ -1191,10 +1257,42 @@ class HeuristicV14(BaseHeuristic1v1):
         stab = 1.5 if move.type in attacker.types else 1.0
         level = attacker.level if attacker.level else 80
 
-        base_dmg = ((2 * level / 5 + 2) * move.base_power * ratio) / 50 + 2
+        bp = move.base_power
+        if move.id == "knockoff" and self._has_knockable_item(defender):
+            bp = bp * 1.5
+
+        base_dmg = ((2 * level / 5 + 2) * bp * ratio) / 50 + 2
         score = base_dmg * stab * eff * ability_mult
         score = self._apply_weather_mod(score, move, battle)
         score = self._apply_terrain_mod(score, move, battle)
+
+        # Apply attacker item damage modifiers
+        item = str(getattr(attacker, "item", "") or "").lower().replace(" ", "").replace("-", "")
+        if item == "lifeorb":
+            score *= 1.3
+        else:
+            type_boosters = {
+                "charcoal": "FIRE",
+                "mysticwater": "WATER",
+                "magnet": "ELECTRIC",
+                "miracleseed": "GRASS",
+                "nevermeltice": "ICE",
+                "blackbelt": "FIGHTING",
+                "poisonbarb": "POISON",
+                "softsand": "GROUND",
+                "sharpbeak": "FLYING",
+                "twistedspoon": "PSYCHIC",
+                "silverpowder": "BUG",
+                "hardstone": "ROCK",
+                "spelltag": "GHOST",
+                "dragonfang": "DRAGON",
+                "blackglasses": "DARK",
+                "metalcoat": "STEEL",
+                "silkscarf": "NORMAL",
+                "pixieplate": "FAIRY",
+            }
+            if type_boosters.get(item) == move.type.name:
+                score *= 1.2
 
         return score * 0.85, score
 
@@ -1202,6 +1300,8 @@ class HeuristicV14(BaseHeuristic1v1):
 
     def _score_move(self, move, me, opp, physical_ratio, special_ratio, battle, my_speed, opp_speed) -> float:
         if move.base_power <= 1:
+            return 0.0
+        if move.id in {"fakeout", "firstimpression"} and not self._is_fakeout_usable(battle):
             return 0.0
 
         ratio = physical_ratio if move.category == MoveCategory.PHYSICAL else special_ratio
@@ -1220,13 +1320,51 @@ class HeuristicV14(BaseHeuristic1v1):
         accuracy = move.accuracy if isinstance(move.accuracy, (int, float)) else 1.0
         expected_hits = move.expected_hits if hasattr(move, "expected_hits") else 1.0
 
-        score = move.base_power * ratio * effectiveness * stab * accuracy * expected_hits * ability_mult
+        bp = move.base_power
+        if move.id == "knockoff" and self._has_knockable_item(opp):
+            bp = bp * 1.5
+
+        score = bp * ratio * effectiveness * stab * accuracy * expected_hits * ability_mult
 
         score = self._apply_weather_mod(score, move, battle)
         score = self._apply_terrain_mod(score, move, battle)
 
+        # Apply attacker item damage modifiers
+        item = str(getattr(me, "item", "") or "").lower().replace(" ", "").replace("-", "")
+        if item == "lifeorb":
+            score *= 1.3
+        else:
+            type_boosters = {
+                "charcoal": "FIRE",
+                "mysticwater": "WATER",
+                "magnet": "ELECTRIC",
+                "miracleseed": "GRASS",
+                "nevermeltice": "ICE",
+                "blackbelt": "FIGHTING",
+                "poisonbarb": "POISON",
+                "softsand": "GROUND",
+                "sharpbeak": "FLYING",
+                "twistedspoon": "PSYCHIC",
+                "silverpowder": "BUG",
+                "hardstone": "ROCK",
+                "spelltag": "GHOST",
+                "dragonfang": "DRAGON",
+                "blackglasses": "DARK",
+                "metalcoat": "STEEL",
+                "silkscarf": "NORMAL",
+                "pixieplate": "FAIRY",
+            }
+            if type_boosters.get(item) == move.type.name:
+                score *= 1.2
+
         if move.entry.get("priority", 0) > 0 and my_speed < opp_speed:
             score *= 1.3
+
+        if move.id in {"suckerpunch", "thunderclap"}:
+            if my_speed >= opp_speed:
+                score *= 0.4
+            else:
+                score *= 0.85
 
         if move.id in DRAINING_MOVES and me.current_hp_fraction < 0.9:
             score *= 1.15
@@ -1306,10 +1444,6 @@ class HeuristicV14(BaseHeuristic1v1):
         if max_score < WEAK_MOVE_THRESHOLD and my_speed < opp_speed and best_bench_score > active_matchup + 0.4:
             return "weak"
 
-        # A hard switch needs a clearly better answer to be worth the lost tempo.
-        if best_bench_score <= active_matchup + 0.8:
-            return ""
-
         # Win-condition preservation: pull our win-con out of a losing spot early.
         btag = battle.battle_tag
         roles = self._roles_by_battle.get(btag, {})
@@ -1324,7 +1458,11 @@ class HeuristicV14(BaseHeuristic1v1):
         if danger and best_bench_score > active_matchup + 1.0:
             return "matchup"
 
-        return ""
+        # General fallback: a hard switch needs a clearly better answer to be worth the lost tempo.
+        if best_bench_score <= active_matchup + 0.8:
+            return ""
+
+        return "matchup"
 
     @staticmethod
     def _is_physical_attacker(mon) -> bool:
@@ -1354,8 +1492,8 @@ class HeuristicV14(BaseHeuristic1v1):
         history = self._active_history_by_battle.get(btag, [])
         opp_history = self._opp_active_history_by_battle.get(btag, [])
         if len(history) >= 2 and len(opp_history) >= 2:
-            our_switched_last_turn = (history[-2][1] != history[-1][1])
-            opp_switched_last_turn = (opp_history[-2][1] != opp_history[-1][1])
+            our_switched_last_turn = history[-2][1] != history[-1][1]
+            opp_switched_last_turn = opp_history[-2][1] != opp_history[-1][1]
             if our_switched_last_turn and not opp_switched_last_turn:
                 target_name = target.species.lower() if hasattr(target, "species") else str(target).lower()
                 recent_names = {h[1] for h in history[-3:-1]}
@@ -1527,7 +1665,26 @@ class HeuristicV14(BaseHeuristic1v1):
             if active.current_hp_fraction < 0.30 and n_alive > 1:
                 return False
 
-            offensive_tera_score = opp_active.damage_multiplier(move.type)
+            # Calculate exact offensive STAB/efficiency factor change when terastallizing
+            original_stab = 1.5 if move.type in active.types else 1.0
+            new_stab = 1.0
+            if move.type == tera_type:
+                new_stab = 2.0 if tera_type in active.types else 1.5
+            elif move.type in active.types:
+                new_stab = 1.0
+            else:
+                new_stab = original_stab
+
+            original_eff = opp_active.damage_multiplier(move)
+            new_eff = original_eff
+            if move.id == "terablast":
+                original_eff = opp_active.damage_multiplier(PokemonType.NORMAL)
+                new_eff = opp_active.damage_multiplier(tera_type)
+
+            if original_eff * original_stab == 0:
+                offensive_tera_score = 1.0
+            else:
+                offensive_tera_score = (new_eff * new_stab) / (original_eff * original_stab)
 
             def_scores_inv = [1.0 / (m if m > 0 else 0.125) for m in def_scores]
             defensive_score = min(def_scores_inv) if def_scores_inv else 1.0
@@ -1584,6 +1741,35 @@ class HeuristicV14(BaseHeuristic1v1):
                 level = attacker.level if attacker.level else 80
                 base_dmg = ((2 * level / 5 + 2) * 80.0 * ratio) / 50 + 2
                 dmg = base_dmg * eff * 1.5
+
+                # Apply attacker item damage modifiers
+                item = str(getattr(attacker, "item", "") or "").lower().replace(" ", "").replace("-", "")
+                if item == "lifeorb":
+                    dmg *= 1.3
+                else:
+                    type_boosters = {
+                        "charcoal": "FIRE",
+                        "mysticwater": "WATER",
+                        "magnet": "ELECTRIC",
+                        "miracleseed": "GRASS",
+                        "nevermeltice": "ICE",
+                        "blackbelt": "FIGHTING",
+                        "poisonbarb": "POISON",
+                        "softsand": "GROUND",
+                        "sharpbeak": "FLYING",
+                        "twistedspoon": "PSYCHIC",
+                        "silverpowder": "BUG",
+                        "hardstone": "ROCK",
+                        "spelltag": "GHOST",
+                        "dragonfang": "DRAGON",
+                        "blackglasses": "DARK",
+                        "metalcoat": "STEEL",
+                        "silkscarf": "NORMAL",
+                        "pixieplate": "FAIRY",
+                    }
+                    if type_boosters.get(item) == t.name:
+                        dmg *= 1.2
+
                 if dmg > max_dmg:
                     max_dmg = dmg
             return max_dmg
@@ -1595,6 +1781,9 @@ class HeuristicV14(BaseHeuristic1v1):
             bp = m_data.get("basePower", 0)
             if bp <= 0:
                 continue
+
+            if m_id == "knockoff" and self._has_knockable_item(defender):
+                bp = bp * 1.5
 
             m_type_str = m_data.get("type", "").upper()
             if not m_type_str:
@@ -1620,6 +1809,35 @@ class HeuristicV14(BaseHeuristic1v1):
             level = attacker.level if attacker.level else 80
             base_dmg = ((2 * level / 5 + 2) * bp * ratio) / 50 + 2
             dmg = base_dmg * eff * stab * ability_mult
+
+            # Apply attacker item damage modifiers
+            item = str(getattr(attacker, "item", "") or "").lower().replace(" ", "").replace("-", "")
+            if item == "lifeorb":
+                dmg *= 1.3
+            else:
+                type_boosters = {
+                    "charcoal": "FIRE",
+                    "mysticwater": "WATER",
+                    "magnet": "ELECTRIC",
+                    "miracleseed": "GRASS",
+                    "nevermeltice": "ICE",
+                    "blackbelt": "FIGHTING",
+                    "poisonbarb": "POISON",
+                    "softsand": "GROUND",
+                    "sharpbeak": "FLYING",
+                    "twistedspoon": "PSYCHIC",
+                    "silverpowder": "BUG",
+                    "hardstone": "ROCK",
+                    "spelltag": "GHOST",
+                    "dragonfang": "DRAGON",
+                    "blackglasses": "DARK",
+                    "metalcoat": "STEEL",
+                    "silkscarf": "NORMAL",
+                    "pixieplate": "FAIRY",
+                }
+                if type_boosters.get(item) == m_type_str:
+                    dmg *= 1.2
+
             if dmg > max_dmg:
                 max_dmg = dmg
 
@@ -1734,7 +1952,20 @@ class HeuristicV14(BaseHeuristic1v1):
             multiplier = 2.0 / (2.0 - boost)
         else:
             multiplier = 1.0
-        return ((2.0 * base + 31.0) + 5.0) * multiplier
+        val = ((2.0 * base + 31.0) + 5.0) * multiplier
+
+        # Apply item stat boosts if the item is known/revealed
+        item = str(getattr(mon, "item", "") or "").lower().replace(" ", "").replace("-", "")
+        if item:
+            if stat == "atk" and item == "choiceband":
+                val *= 1.5
+            elif stat == "spa" and item == "choicespecs":
+                val *= 1.5
+            elif stat == "spd" and item == "assaultvest":
+                val *= 1.5
+            elif (stat == "def" or stat == "spd") and item == "eviolite":
+                val *= 1.5
+        return val
 
     def _get_boosted_speed(self, mon, status: str, format_str: str) -> float:
         base = mon.base_stats.get("spe", 100) if mon.base_stats else 100
