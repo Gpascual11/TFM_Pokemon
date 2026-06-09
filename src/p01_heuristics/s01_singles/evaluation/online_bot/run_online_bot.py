@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# ruff: noqa: E402, E501, I001
 """Online Bot Runner for testing Heuristic Agents on the public Pokémon Showdown server."""
 
 import argparse
@@ -16,20 +17,24 @@ from pathlib import Path
 SHUTDOWN_REQUESTED = False
 ACTIVE_AGENT = None
 
+
 def sigint_handler(signum, frame):
     global SHUTDOWN_REQUESTED
     SHUTDOWN_REQUESTED = True
-    
+
     # Check if there are active battles
     has_active_battle = False
     if ACTIVE_AGENT is not None:
         has_active_battle = any(not b.finished for b in ACTIVE_AGENT.battles.values())
-        
+
     if not has_active_battle:
         print("\n👋 No active battles. Exiting immediately.")
         sys.exit(0)
     else:
-        print("\n⚠️  [Interrupt] Shutdown requested! The bot will exit after the current battle finishes to avoid forfeiting.")
+        print(
+            "\n⚠️  [Interrupt] Shutdown requested! The bot will exit after the current battle finishes to avoid forfeiting."
+        )
+
 
 # Register the SIGINT signal handler
 signal.signal(signal.SIGINT, sigint_handler)
@@ -55,6 +60,7 @@ from p01_heuristics.s01_singles.agents import get_agent_class
 from poke_env.player.player import Player
 from poke_env.data import GenData
 from poke_env.environment.battle import Battle
+
 
 class StatsBattle(Battle):
     """A Battle subclass that tracks advanced metrics for research analysis."""
@@ -147,9 +153,11 @@ class StatsBattle(Battle):
 # Patch the Player class to use our StatsBattle
 async def patched_create_battle(self, split_message):
     format_str = split_message[1]
-    is_valid_format = (
-        format_str == self._format or 
-        (format_str.startswith("gen") and "randombattle" in format_str and "doubles" not in format_str and "blitz" not in format_str)
+    is_valid_format = format_str == self._format or (
+        format_str.startswith("gen")
+        and "randombattle" in format_str
+        and "doubles" not in format_str
+        and "blitz" not in format_str
     )
     if is_valid_format and len(split_message) >= 2:
         battle_tag = "-".join(split_message)[1:]
@@ -173,6 +181,8 @@ async def patched_create_battle(self, split_message):
             self._battle_semaphore.release()
             self._battle_start_condition.notify_all()
             self._battles[battle_tag] = battle
+        if self._start_timer_on_battle_start:
+            await self.ps_client.send_message("/timer on", battle.battle_tag)
         return battle
     return await self._original_create_battle(split_message)
 
@@ -182,10 +192,7 @@ if not hasattr(Player, "_original_create_battle"):
     Player._create_battle = patched_create_battle
 
 # Configuration for official Smogon server
-OFFICIAL_SERVER = ServerConfiguration(
-    "sim3.psim.us", 
-    "https://play.pokemonshowdown.com/action.php"
-)
+OFFICIAL_SERVER = ServerConfiguration("sim3.psim.us", "https://play.pokemonshowdown.com/action.php")
 
 
 # State and History Files
@@ -216,17 +223,14 @@ def load_logged_battles():
     except Exception:
         pass
 
+
 def save_state(agent_name, battle_format, target_games, games_played):
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    state = {
-        "agent": agent_name,
-        "format": battle_format,
-        "target_games": target_games,
-        "games_played": games_played
-    }
+    state = {"agent": agent_name, "format": battle_format, "target_games": target_games, "games_played": games_played}
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=4)
-        
+
+
 def load_state(agent_name, battle_format):
     if STATE_FILE.exists():
         try:
@@ -237,13 +241,15 @@ def load_state(agent_name, battle_format):
         except Exception:
             pass
     return None
-    
+
+
 def clear_state():
     if STATE_FILE.exists():
         try:
             STATE_FILE.unlink()
         except Exception:
             pass
+
 
 def _format_side_conditions(side_conditions):
     if not side_conditions:
@@ -259,6 +265,7 @@ def _format_side_conditions(side_conditions):
         else:
             parts.append(name)
     return "|".join(sorted(parts))
+
 
 def _format_team_detailed(team):
     if not team:
@@ -278,30 +285,71 @@ def _format_team_detailed(team):
         mons.append(f"{m.species}({','.join(details[1:])})")
     return "|".join(sorted(mons))
 
+
 def _serialize_counts(counts):
     if not counts:
         return ""
     return "|".join([f"{k}:{v}" for k, v in sorted(counts.items(), key=lambda x: x[1], reverse=True)])
 
+
 def log_battle(battle, agent_name, agent):
     if battle.battle_tag in LOGGED_BATTLES:
         return
-    
+
     file_exists = HISTORY_FILE.exists()
     fieldnames = [
-        "battle_id", "format", "heuristic", "opponent", "winner", "won", "turns",
-        "rating_us", "rating_opp",
-        "decisions_us", "decisions_opp", "fallback_moves_us", "fallback_moves_opp",
-        "error_moves_us", "error_moves_opp", "fainted_us", "remaining_pokemon_us",
-        "total_hp_us", "fainted_opp", "remaining_pokemon_opp", "total_hp_opp",
-        "team_us", "team_opp", "side_conditions_us", "side_conditions_opp",
-        "voluntary_switches_us", "forced_switches_us", "voluntary_switches_opp", "forced_switches_opp",
-        "move_stats_us", "move_stats_opp", "crit_us", "crit_opp", "miss_us", "miss_opp",
-        "supereffective_us", "supereffective_opp", "hp_perc_us", "hp_perc_opp",
-        "hazard_sets_us", "hazard_sets_opp", "hazard_removals_us", "hazard_removals_opp",
-        "setup_uses_us", "setup_uses_opp", "ko_checks_us", "ko_checks_opp",
-        "matchup_switches_us", "matchup_switches_opp", "terastallized_us", "terastallized_opp",
-        "timestamp"
+        "battle_id",
+        "format",
+        "heuristic",
+        "opponent",
+        "winner",
+        "won",
+        "turns",
+        "rating_us",
+        "rating_opp",
+        "decisions_us",
+        "decisions_opp",
+        "fallback_moves_us",
+        "fallback_moves_opp",
+        "error_moves_us",
+        "error_moves_opp",
+        "fainted_us",
+        "remaining_pokemon_us",
+        "total_hp_us",
+        "fainted_opp",
+        "remaining_pokemon_opp",
+        "total_hp_opp",
+        "team_us",
+        "team_opp",
+        "side_conditions_us",
+        "side_conditions_opp",
+        "voluntary_switches_us",
+        "forced_switches_us",
+        "voluntary_switches_opp",
+        "forced_switches_opp",
+        "move_stats_us",
+        "move_stats_opp",
+        "crit_us",
+        "crit_opp",
+        "miss_us",
+        "miss_opp",
+        "supereffective_us",
+        "supereffective_opp",
+        "hp_perc_us",
+        "hp_perc_opp",
+        "hazard_sets_us",
+        "hazard_sets_opp",
+        "hazard_removals_us",
+        "hazard_removals_opp",
+        "setup_uses_us",
+        "setup_uses_opp",
+        "ko_checks_us",
+        "ko_checks_opp",
+        "matchup_switches_us",
+        "matchup_switches_opp",
+        "terastallized_us",
+        "terastallized_opp",
+        "timestamp",
     ]
 
     opp_name = battle.opponent_username if hasattr(battle, "opponent_username") else "Unknown"
@@ -346,42 +394,62 @@ def log_battle(battle, agent_name, agent):
         "ko_checks_opp": 0,
         "matchup_switches_us": getattr(agent, "_matchup_switches_by_battle", {}).get(battle.battle_tag, 0),
         "matchup_switches_opp": 0,
-        "terastallized_us": 1 if hasattr(battle, "team") and battle.team and any(mon.terastallized for mon in battle.team.values()) else 0,
-        "terastallized_opp": 1 if hasattr(battle, "opponent_team") and battle.opponent_team and any(mon.terastallized for mon in battle.opponent_team.values()) else 0,
-        "timestamp": datetime.datetime.now().isoformat()
+        "terastallized_us": 1
+        if hasattr(battle, "team") and battle.team and any(mon.terastallized for mon in battle.team.values())
+        else 0,
+        "terastallized_opp": 1
+        if hasattr(battle, "opponent_team")
+        and battle.opponent_team
+        and any(mon.terastallized for mon in battle.opponent_team.values())
+        else 0,
+        "timestamp": datetime.datetime.now().isoformat(),
     }
-    
+
     row["move_stats_us"] = _serialize_counts(getattr(battle, "move_counts_us", {}))
     row["move_stats_opp"] = _serialize_counts(getattr(battle, "move_counts_opp", {}))
-    
+
     if hasattr(battle, "team") and battle.team:
         fainted = sum(mon.fainted for mon in battle.team.values())
-        row.update({
-            "fainted_us": fainted,
-            "remaining_pokemon_us": len(battle.team) - fainted,
-            "total_hp_us": round(sum(mon.current_hp_fraction for mon in battle.team.values() if not mon.fainted), 3),
-            "hp_perc_us": round(sum(mon.current_hp_fraction for mon in battle.team.values()) / len(battle.team), 3) if len(battle.team) > 0 else 0,
-            "team_us": _format_team_detailed(battle.team),
-            "side_conditions_us": _format_side_conditions(getattr(battle, "side_conditions", {}))
-        })
+        row.update(
+            {
+                "fainted_us": fainted,
+                "remaining_pokemon_us": len(battle.team) - fainted,
+                "total_hp_us": round(
+                    sum(mon.current_hp_fraction for mon in battle.team.values() if not mon.fainted), 3
+                ),
+                "hp_perc_us": round(sum(mon.current_hp_fraction for mon in battle.team.values()) / len(battle.team), 3)
+                if len(battle.team) > 0
+                else 0,
+                "team_us": _format_team_detailed(battle.team),
+                "side_conditions_us": _format_side_conditions(getattr(battle, "side_conditions", {})),
+            }
+        )
     if hasattr(battle, "opponent_team") and battle.opponent_team:
         fainted = sum(mon.fainted for mon in battle.opponent_team.values())
-        row.update({
-            "fainted_opp": fainted,
-            "remaining_pokemon_opp": len(battle.opponent_team) - fainted,
-            "total_hp_opp": round(sum(mon.current_hp_fraction for mon in battle.opponent_team.values() if not mon.fainted), 3),
-            "hp_perc_opp": round(sum(mon.current_hp_fraction for mon in battle.opponent_team.values()) / len(battle.opponent_team), 3) if len(battle.opponent_team) > 0 else 0,
-            "team_opp": _format_team_detailed(battle.opponent_team),
-            "side_conditions_opp": _format_side_conditions(getattr(battle, "opponent_side_conditions", {}))
-        })
-        
+        row.update(
+            {
+                "fainted_opp": fainted,
+                "remaining_pokemon_opp": len(battle.opponent_team) - fainted,
+                "total_hp_opp": round(
+                    sum(mon.current_hp_fraction for mon in battle.opponent_team.values() if not mon.fainted), 3
+                ),
+                "hp_perc_opp": round(
+                    sum(mon.current_hp_fraction for mon in battle.opponent_team.values()) / len(battle.opponent_team), 3
+                )
+                if len(battle.opponent_team) > 0
+                else 0,
+                "team_opp": _format_team_detailed(battle.opponent_team),
+                "side_conditions_opp": _format_side_conditions(getattr(battle, "opponent_side_conditions", {})),
+            }
+        )
+
     HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(HISTORY_FILE, "a", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         if not file_exists:
             writer.writeheader()
         writer.writerow(row)
-        
+
     LOGGED_BATTLES.add(battle.battle_tag)
 
 
@@ -394,7 +462,7 @@ class ChallengeAcceptingPlayer:
     async def run(self):
         print(f"🤖 Bot '{self.agent.username}' is online and listening for challenges...")
         while True:
-            # Sit and wait. poke-env handles challenges in the background 
+            # Sit and wait. poke-env handles challenges in the background
             # if we use the player's internal listener or run it asynchronously.
             await asyncio.sleep(1)
 
@@ -405,48 +473,31 @@ async def main():
         os.chdir(str(_POKECHAMP))
 
     parser = argparse.ArgumentParser(description="Run a Showdown Bot on the official Smogon server.")
+    parser.add_argument("--agent", type=str, default="v12", help="Heuristic agent version to run (default: v12)")
+    parser.add_argument("--username", type=str, required=True, help="Registered Pokémon Showdown username")
     parser.add_argument(
-        "--agent", 
-        type=str, 
-        default="v12", 
-        help="Heuristic agent version to run (default: v12)"
+        "--password", type=str, help="Password for your registered username (can also set SHOWDOWN_PASSWORD env var)"
     )
     parser.add_argument(
-        "--username", 
-        type=str, 
-        required=True, 
-        help="Registered Pokémon Showdown username"
-    )
-    parser.add_argument(
-        "--password", 
-        type=str, 
-        help="Password for your registered username (can also set SHOWDOWN_PASSWORD env var)"
-    )
-    parser.add_argument(
-        "--mode", 
-        type=str, 
-        choices=["ladder", "accept"], 
+        "--mode",
+        type=str,
+        choices=["ladder", "accept"],
         default="accept",
-        help="Run mode: 'ladder' to play public matches, 'accept' to wait and accept friend challenges (default: accept)"
+        help="Run mode: 'ladder' to play public matches, 'accept' to wait and accept friend challenges (default: accept)",
     )
     parser.add_argument(
-        "--format", 
-        type=str, 
-        default="gen9randombattle", 
-        help="Showdown battle format (default: gen9randombattle)"
+        "--format", type=str, default="gen9randombattle", help="Showdown battle format (default: gen9randombattle)"
     )
+    parser.add_argument("--games", type=int, default=10, help="Number of games to play in ladder mode (default: 10)")
     parser.add_argument(
-        "--games",
-        type=int,
-        default=10,
-        help="Number of games to play in ladder mode (default: 10)"
+        "--concurrency", type=int, default=1, help="Max number of concurrent battles to play in parallel (default: 1)"
     )
     parser.add_argument(
         "--log-dir",
         type=str,
         default=None,
         help="Directory for state/history logs. Defaults to <repo>/data/1_vs_1/logs_<agent> "
-             "(override with this flag or the TFM_LOG_DIR env var).",
+        "(override with this flag or the TFM_LOG_DIR env var).",
     )
     args = parser.parse_args()
 
@@ -473,11 +524,13 @@ async def main():
     # Get password from arguments or environment variable
     password = args.password or os.environ.get("SHOWDOWN_PASSWORD")
     if not password:
-        print("⚠️  Warning: No password provided. Running unauthenticated (challenges only, cannot register or play ladder).")
-    
+        print(
+            "⚠️  Warning: No password provided. Running unauthenticated (challenges only, cannot register or play ladder)."
+        )
+
     # Configure account and server
     account_config = AccountConfiguration(args.username, password)
-    
+
     # Instantiate the agent class dynamically
     try:
         AgentCls = get_agent_class(args.agent)
@@ -496,22 +549,23 @@ async def main():
     logger.addHandler(file_handler)
 
     print(f"Initializing {args.agent} agent...")
-    
+
     # Instantiate player
     agent = AgentCls(
         server_configuration=OFFICIAL_SERVER,
         account_configuration=account_config,
         save_replays=str(log_dir / "replays"),
         battle_format=args.format,
-        max_concurrent_battles=1,
+        max_concurrent_battles=args.concurrency,
+        start_timer_on_battle_start=True,
     )
 
     # Patch to accept challenges for any gen1-9 random battle
     def is_valid_challenge_format(fmt_str: str) -> bool:
         return (
-            fmt_str.startswith("gen") 
-            and "randombattle" in fmt_str 
-            and "doubles" not in fmt_str 
+            fmt_str.startswith("gen")
+            and "randombattle" in fmt_str
+            and "doubles" not in fmt_str
             and "blitz" not in fmt_str
         )
 
@@ -531,6 +585,7 @@ async def main():
                 await self._challenge_queue.put(user)
 
     import types
+
     agent._handle_challenge_request = types.MethodType(patched_handle_challenge_request, agent)
     agent._update_challenges = types.MethodType(patched_update_challenges, agent)
     agent.ps_client._handle_challenge_request = agent._handle_challenge_request
@@ -549,15 +604,47 @@ async def main():
                     while cleaned and cleaned[0] in "+%@*&~!★☆":
                         cleaned = cleaned[1:]
                     if cleaned.lower() == self.username.lower() and cleaned != self.username:
-                        from poke_env.data import AccountConfiguration
+                        from poke_env import AccountConfiguration
+
                         new_config = AccountConfiguration(cleaned, self._account_configuration.password)
                         self._account_configuration = new_config
                         if hasattr(agent, "_account_configuration"):
                             agent._account_configuration = new_config
-                        self.logger.info(f"Dynamically normalized client username casing from {self.username} to {cleaned}")
+                        self.logger.info(
+                            f"Dynamically normalized client username casing from {self.username} to {cleaned}"
+                        )
         await original_handle_message(message)
 
     agent.ps_client._handle_message = types.MethodType(patched_handle_message, agent.ps_client)
+
+    # Patch agent.ladder to respect SIGINT / SHUTDOWN_REQUESTED
+    async def patched_ladder(self, n_games: int):
+        from poke_env.concurrency import handle_threaded_coroutines
+        await handle_threaded_coroutines(self._patched_ladder(n_games))
+
+    async def _patched_ladder(self, n_games: int):
+        from time import perf_counter
+        await self.ps_client.logged_in.wait()
+        start_time = perf_counter()
+
+        for _ in range(n_games):
+            if SHUTDOWN_REQUESTED:
+                break
+            async with self._battle_start_condition:
+                await self.ps_client.search_ladder_game(self._format, self.next_team)
+                await self._battle_start_condition.wait()
+                while self._battle_count_queue.full():
+                    async with self._battle_end_condition:
+                        await self._battle_end_condition.wait()
+                await self._battle_semaphore.acquire()
+        await self._battle_count_queue.join()
+        self.logger.info(
+            "Laddering finished in %fs",
+            perf_counter() - start_time,
+        )
+
+    agent.ladder = types.MethodType(patched_ladder, agent)
+    agent._patched_ladder = types.MethodType(_patched_ladder, agent)
 
     global ACTIVE_AGENT
     ACTIVE_AGENT = agent
@@ -566,7 +653,7 @@ async def main():
         if not password:
             print("❌ Error: You must provide a password to log in and play on the public ladder.")
             sys.exit(1)
-            
+
         # Try to load previous state to resume
         state = load_state(args.agent, args.format)
         if state:
@@ -580,37 +667,47 @@ async def main():
             games_to_play = total
             games_played_offset = 0
             save_state(args.agent, args.format, total, 0)
-            
+
         print(f"🚀 Playing {games_to_play} ladder games in {args.format} (Total target: {total})...")
-        
-        for i in range(games_to_play):
-            if SHUTDOWN_REQUESTED:
-                print("🛑 Interrupted: Exiting ladder loop as requested.")
-                break
-                
-            current_game_num = games_played_offset + i + 1
-            print(f"⚔️  Starting battle {current_game_num}/{total}...")
-            try:
-                await agent.ladder(1)
-            except Exception as e:
-                print(f"❌ Battle failed: {e}")
-            
-            # Save state after battle completes
+
+        # Periodically log finished battles and update state in the background
+        async def log_watcher():
+            while not SHUTDOWN_REQUESTED:
+                finished_count = len([b for b in agent.battles.values() if b.finished])
+                current_game_num = min(games_played_offset + finished_count, total)
+                save_state(args.agent, args.format, total, current_game_num)
+
+                for battle in list(agent.battles.values()):
+                    if battle.finished:
+                        log_battle(battle, args.agent, agent)
+                await asyncio.sleep(5)
+
+        watcher_task = asyncio.create_task(log_watcher())
+
+        try:
+            await agent.ladder(games_to_play)
+        except Exception as e:
+            print(f"❌ Ladder run failed: {e}")
+        finally:
+            watcher_task.cancel()
+            # Log final state and any remaining battles on exit
+            finished_count = len([b for b in agent.battles.values() if b.finished])
+            current_game_num = min(games_played_offset + finished_count, total)
             save_state(args.agent, args.format, total, current_game_num)
-            
-            # Log completed battles
             for battle in list(agent.battles.values()):
                 if battle.finished:
                     log_battle(battle, args.agent, agent)
-                    
+
         # Check if we finished all games
         final_state = load_state(args.agent, args.format)
         if final_state and final_state["games_played"] >= final_state["target_games"]:
             print("✅ All scheduled games completed successfully.")
             clear_state()
         elif final_state:
-            print(f"⚠️ Session paused. Run the script again to resume the remaining {total - final_state['games_played']} games.")
-            
+            print(
+                f"⚠️ Session paused. Run the script again to resume the remaining {total - final_state['games_played']} games."
+            )
+
     elif args.mode == "accept":
         # Periodically log any finished battles in the background
         async def log_watcher():
@@ -619,9 +716,9 @@ async def main():
                     if battle.finished:
                         log_battle(battle, args.agent, agent)
                 await asyncio.sleep(5)
-                
+
         watcher_task = asyncio.create_task(log_watcher())
-        
+
         print(f"🟢 Bot logged in as {args.username}.")
         print("To battle the bot, open Pokémon Showdown, search for your bot's username, and send a challenge.")
         try:
