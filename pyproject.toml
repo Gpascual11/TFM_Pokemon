@@ -1,71 +1,114 @@
 [project]
-name = "tfm"
-version = "0.1.0"
-description = "Reinforcement learning and heuristic strategies for competitive Pokémon battles using poke-env"
+name = "tfm-pokemon"
+version = "0.2.0"
+description = "Paradigm comparison of AI decision-making for competitive Pokémon (gen9randombattle): rule-based heuristics, adversarial search (minimax + MCTS), imitation learning (XGBoost), and reinforcement learning (PPO)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "datasets>=4.7.0",
-    "ipykernel>=7.2.0",
+    # --- Battle environment (CRITICAL VERSION LOCK) ---
+    # poke-env 0.11.0 is the version all experiments were run on (2.5M+ games).
+    # DO NOT upgrade to 0.12+ or 0.15+ — breaking API changes will break v1-v14.
+    # The pokechamp/ subfolder has its own poke_env fork (adds LocalSim for MCTS).
+    # See SETUP.md for full explanation of the two-version situation.
+    "poke-env>=0.11.0,<0.12.0",
+
+    # --- Data / ML core ---
+    "datasets>=4.7.0",          # Hugging Face - for replay download pipeline
+    "xgboost>=3.2.0",           # Imitation learning classifier (tested: 3.2.0)
+    "scikit-learn>=1.8.0",      # Preprocessing, metrics (tested: 1.8.0)
+    "numpy>=2.0.0",             # Core numerics (tested: 2.4.2)
+    "pandas>=3.0.0",            # Benchmark result analysis (tested: 3.0.0)
+    "polars>=1.38.1",           # Fast CSV parsing for large benchmark datasets
+    "scipy>=1.17.0",            # Statistical tests for benchmark results
+
+    # --- Visualization ---
     "matplotlib>=3.10.8",
-    "nbconvert>=7.17.0",
-    "pandas>=3.0.0",
-    "poke-env>=0.11.0",
-    "polars>=1.38.1",
-    "scikit-learn>=1.8.0",
-    "scipy>=1.17.0",
     "seaborn>=0.13.2",
+
+    # --- Utility ---
+    "tqdm>=4.67.3",             # Progress bars
+    "tabulate>=0.9.0",          # Benchmark result tables
+    "termcolor>=3.3.0",         # Colored terminal output
+    "orjson>=3.10.15",          # Fast JSON — required by pokechamp LocalSim
+    "requests>=2.32.3",         # HTTP calls for replay download
+
+    # --- Notebook / reporting ---
+    "ipykernel>=7.2.0",
+    "nbconvert>=7.17.0",
+
+    # --- Build ---
     "setuptools>=82.0.0",
-    "tabulate>=0.9.0",
-    "termcolor>=3.3.0",
-    "tqdm>=4.67.3",
-    "xgboost>=3.2.0",
 ]
 
 [project.optional-dependencies]
+# RL training (PPO with stable-baselines3)
+# Install: uv sync --extra rl
 rl = [
-    "gymnasium>=0.29.1",
-    "sb3-contrib>=2.4.0",
-    "stable-baselines3>=2.4.0",
-    "torch>=2.5.1",
+    "gymnasium>=1.0.0",             # Env interface for PPO (tested: 1.2.3)
+    "stable-baselines3>=2.4.0",     # PPO implementation (tested: 2.7.1)
+    "sb3-contrib>=2.4.0",           # Masked PPO (action masking)
+    "torch>=2.5.1",                 # CPU or GPU depending on machine
+    "tensorboard>=2.18.0",          # Training curve visualization
 ]
+
+# GPU-accelerated RL (RTX 2080 / CUDA 12.8)
+# Install: uv sync --extra gpu
+# For PyTorch CUDA wheels, see SETUP.md — requires --index-url
 gpu = [
-    "gymnasium>=0.29.1",
-    "sb3-contrib>=2.4.0",
+    "gymnasium>=1.0.0",
     "stable-baselines3>=2.4.0",
+    "sb3-contrib>=2.4.0",
     "tensorboard>=2.18.0",
-    "torch>=2.5.1",
+    "torch>=2.5.1",                 # CUDA build installed via index-url, see SETUP.md
     "torchaudio>=2.5.1",
     "torchvision>=0.20.1",
 ]
+
+# pokechamp LLM agents (abyssal, pokellmon, pokechamp-minimax benchmarks)
+# Requires: pokechamp/ subdirectory to be present (already cloned)
+# Install: uv sync --extra pokechamp
 pokechamp = [
-    "anthropic>=0.84.0",
-    "google-genai>=1.65.0",
-    "huggingface-hub>=0.28.1",
-    "mcp>=1.26.0",
-    "ollama>=0.4.7",
-    "openai>=2.24.0",
-    "orjson>=3.10.15",
+    "anthropic>=0.84.0",            # Claude API (for pokellmon-claude)
+    "google-genai>=1.65.0",         # Gemini API (for pokellmon-gemini)
+    "huggingface-hub>=0.28.1",      # Model downloads
+    "mcp>=1.26.0",                  # Model Context Protocol
+    "ollama>=0.4.7",                # Local LLM inference (free alternative to APIs)
+    "openai>=2.24.0",               # GPT API (for pokellmon-gpt)
+    "orjson>=3.10.15",              # Fast JSON (also used by LocalSim)
     "pyfiglet>=1.0.4",
-    "requests>=2.32.3",
-    "rich>=14.3.3",
-    "termcolor>=2.5.0",
+    "rich>=14.3.3",                 # Pretty output for pokechamp CLI
     "torch>=2.5.1",
-    "transformers>=4.50.0",
+    "transformers>=4.50.0",         # HuggingFace transformers (local LLMs)
     "websockets>=14.2.0",
 ]
 
-# PyTorch index: choose per machine (run from project root).
-# CPU (other computer):
-#   uv lock --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
-#   uv sync --all-extras --group dev --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
-# GPU (this computer; use cu121 if your CUDA is 12.1):
-#   uv lock --index-url https://download.pytorch.org/whl/cu124 --extra-index-url https://pypi.org/simple
-#   uv sync --all-extras --group dev --index-url https://download.pytorch.org/whl/cu124 --extra-index-url https://pypi.org/simple
+# -----------------------------------------------------------------------
+# PyTorch index configuration — run manually on each machine:
+#
+# GPU (CUDA 12.8, RTX 2080 — this machine):
+#   uv sync --extra gpu --index https://download.pytorch.org/whl/cu128
+#
+# GPU (CUDA 12.4, other machines):
+#   uv sync --extra gpu --index https://download.pytorch.org/whl/cu124
+#
+# CPU only (no GPU):
+#   uv sync --extra rl --index https://download.pytorch.org/whl/cpu
+#
+# After switching, regenerate lockfile:
+#   uv lock --index https://download.pytorch.org/whl/cu128
+# -----------------------------------------------------------------------
 
 [dependency-groups]
 dev = [
-    "ruff>=0.15.2",
-    "ty>=0.0.19",
+    "ruff>=0.15.2",    # Linter + formatter
+    "ty>=0.0.19",      # Type checker
+]
+
+[tool.uv]
+# Prevent accidental poke-env upgrades beyond 0.11.x
+# All 2.5M+ benchmark games were run on poke-env 0.11.0.
+# The pokechamp poke_env fork (~0.9-era) is used for LocalSim only.
+override-dependencies = [
+    "poke-env>=0.11.0,<0.12.0",
 ]
 
 [tool.ruff]
@@ -73,11 +116,9 @@ line-length = 120
 target-version = "py312"
 
 [tool.ruff.lint]
-# Select rules:
-# E: pycodestyle errors
-# F: Pyflakes
-# I: isort (import sorting)
-# UP: pyupgrade
-# B: flake8-bugbear
+# E: pycodestyle errors | F: Pyflakes | I: isort | UP: pyupgrade | B: flake8-bugbear
 select = ["E", "F", "I", "UP", "B"]
-ignore = []
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # function calls in default arguments
+]
