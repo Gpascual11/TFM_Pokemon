@@ -1,270 +1,171 @@
-# TFM Pokemon AI Platform
+# TFM Pokémon — AI Paradigm Comparison for Competitive Battles
 
-End-to-end research platform for competitive Pokemon AI, built around three complementary approaches:
-
-1. **Heuristic AI** (expert rules and engineered decision logic)
-2. **Deep Reinforcement Learning** (neural policies trained by self-play and curriculum)
-3. **Hugging Face game analysis + imitation learning** (learn from high-Elo human replays)
-
-This repository is designed to run large local benchmarks using Pokemon Showdown + `poke-env`, then turn results into research-grade metrics and plots.
+Research platform for comparing AI decision-making paradigms in **gen9randombattle** (Pokémon Showdown), built as a Master's thesis (TFM) in Data Science.
 
 ---
 
-## 1) Project Mission
+## Research Question
 
-The goal is not only to build one strong bot, but to compare **different AI paradigms** under the same simulator and evaluation framework:
+> *Which AI paradigm gets closest to human-level play in a complex partially-observable stochastic game, using gen9randombattle as the benchmark domain?*
 
-- How far can hand-crafted battle logic go?
-- How much can policy learning improve with RL?
-- Can we imitate expert human behavior from replay data?
-- Which paradigm is more robust across opponents and formats?
-
-That comparison is the core value of the project.
+The thesis is a **paradigm comparison study** — not an attempt to build the best bot in the world, but to rigorously measure how different AI approaches scale to a game with hidden information, stochastic outcomes, and a large action space.
 
 ---
 
-## 2) High-Level Architecture
+## Five AI Paradigms
 
-### Core stack
-- **Battle engine:** Local `pokemon-showdown` server instances.
-- **Client framework:** `poke-env`.
-- **Python environment:** `uv` + Python 3.12.
-- **Data/analysis:** Pandas, Matplotlib/Seaborn, Polars, XGBoost, SB3.
+| Paradigm | Implementation | Status |
+|---|---|---|
+| **Rule-based heuristics** | v1–v14 (14 agents, progressively stronger) | ✅ Done |
+| **Adversarial search** | v15 Minimax + v16 Information Set MCTS | 🔨 Building |
+| **Imitation learning** | XGBoost trained on 1800+ Elo human replays | ⚠️ Fix needed (wrong format) |
+| **Reinforcement learning** | PPO (MaskablePPO, curriculum training) | ⚠️ Bug to fix |
+| **LLM reasoning** | pokellmon (chain-of-thought, via pokechamp) | 📋 Planned |
 
-### Execution model
-- Parallel battle execution over multiple local ports (`8000+`).
-- Subprocess-based workers to isolate memory during long runs.
-- CSV-first outputs for reproducible reporting.
-- Resume-friendly benchmark behavior (re-run same command to complete missing work).
+All paradigms are evaluated head-to-head in 10,000-game benchmarks under a unified framework.
 
 ---
 
-## 3) Repository Map
+## Heuristic Agent Progression (v1–v14)
 
-- `src/p01_heuristics/` -> rule-based agents and benchmark/reporting engine
-- `src/p04_rl_models/` -> RL environment, training curriculum, RL evaluation
-- `src/p03_ml_baseline/` -> Hugging Face replay download, EDA, feature extraction, XGBoost training
-- `src/p05_scripts/` -> Pokemon Showdown launch scripts for local multi-port infrastructure
-- `data/` -> benchmark outputs, datasets, generated artifacts
-- `report/` -> thesis/report assets
-- `docs/` + `SETUP.md` -> setup/dev workflows
+| Agent | Strategy added |
+|---|---|
+| `v1` | Random baseline |
+| `v2–v4` | Greedy damage selection, type effectiveness, STAB |
+| `v5–v8` | Entry hazards, stat boosts, status moves, pivot moves |
+| `v9–v11` | Opponent modeling, choice lock detection, setup counter-play |
+| `v12` | Team preview sorting, Terastallization, matchup-based switches |
+| `v13` | Showdown sets DB, exact damage estimation, smart recovery |
+| `v14` | Team roles, Yomi opponent tracking, exact 16-step damage rolls, endgame solver |
+
+**Online validation (v14):** 40.8% win rate across 98 games vs real humans on the Showdown ladder (~1151 Elo). A naive bot achieves ~5%.
 
 ---
 
-## 4) Setup (New Machine)
+## Adversarial Search
 
-## Requirements
-- Node.js 18+
-- Python 3.12
-- `uv`
+### v15 — Minimax
+1-ply game tree using v14's evaluator. Improvements over a naive minimax:
+- Uses the Showdown sets database to predict unrevealed opponent moves
+- Speed-aware damage resolution (sequential, not simultaneous)
+- Switches included as minimax options
 
-### 4.1 Clone and install Showdown
+### v16 — Information Set MCTS
+Monte Carlo Tree Search with opponent state sampling. Why it fits Pokémon better than minimax:
+- Pokémon is a **partially-observable** game — opponent's full team and moves are hidden
+- MCTS samples probable opponent configurations from the Showdown DB per simulation
+- Uses `LocalSim` (from the pokechamp repo) as the rollout engine — no server needed
+- This is the correct algorithm class for imperfect-information games
 
-```bash
-git clone https://github.com/smogon/pokemon-showdown.git
-cd pokemon-showdown
-npm install
+---
+
+## Infrastructure
+
+- **Battle server:** Local Pokemon Showdown instances (Node.js)
+- **Client library:** poke-env `0.11.0` (pinned — see `SETUP.md`)
+- **Concurrency:** 8 servers × 25 concurrent games = 200 simultaneous battles
+- **Throughput:** ~2.5 million games in 50 hours on this machine
+- **Hardware:** Ryzen 7 5700X3D · 32 GB RAM · RTX 2080 (CUDA 12.8)
+- **Python:** 3.12 managed via `uv`
+
+---
+
+## Repository Structure
+
+```
+TFM_Pokemon/
+├── THESIS_PLAN.md              ← Full thesis roadmap and phase-by-phase guide
+├── SETUP.md                    ← Installation instructions
+├── pyproject.toml              ← Dependencies (poke-env pinned to 0.11.x)
+│
+├── pokechamp/                  ← pokechamp repo (LLM agents + LocalSim for MCTS)
+│   └── poke_env/player/local_simulation.py   ← MCTS rollout engine
+├── pokemon-showdown/           ← Local battle simulator server
+│
+├── src/
+│   ├── p01_heuristics/
+│   │   ├── s01_singles/        ← v1–v14 agents + benchmark engine + online bot
+│   │   └── s02_doubles/        ← v1–v5 doubles agents (exploratory)
+│   ├── p02_search/
+│   │   └── s01_singles/        ← v15 minimax (building), v16 MCTS (planned)
+│   ├── p03_ml_baseline/        ← Imitation learning: download → extract → train → agent
+│   ├── p04_rl_models/          ← PPO: environment, curriculum training, evaluation
+│   └── p05_scripts/            ← Showdown server launch scripts
+│
+└── data/
+    ├── 1_vs_1/
+    │   ├── benchmarks_all_10k/gen9randombattle/   ← 326 benchmark CSVs (v1–v12)
+    │   └── logs_v14/battle_history.csv            ← Online bot results
+    └── models/                 ← PPO checkpoints
 ```
 
-### 4.2 Python environment
+---
 
+## Setup
+
+See [`SETUP.md`](SETUP.md) for full installation instructions.
+
+**Quick start (heuristics + benchmarks only — no GPU required):**
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
 uv python install 3.12
-uv sync
+uv sync                          # base deps: poke-env, xgboost, pandas, etc.
+cd pokemon-showdown && npm install && node build && cd ..
+bash src/p05_scripts/p05_launch_custom_servers.sh 8
 ```
 
-Optional extras (RL/GPU/tooling):
-
+**For RL training (GPU):**
 ```bash
-uv sync --all-extras --group dev
+uv sync --extra gpu --index https://download.pytorch.org/whl/cu128
 ```
 
-### 4.3 Launch local Showdown servers
-
-From repo root:
-
+**For pokechamp LLM agents:**
 ```bash
-bash src/p05_scripts/p05_launch_custom_servers.sh 4
-```
-
-This starts ports `8000-8003`.
-
----
-
-## 5) Pillar A: Heuristic AI
-
-Heuristics are deterministic/rule-based policies that score legal actions using battle math and strategic rules.
-
-## How it works
-- Agent families are exposed through a string-label factory (`v1`-`v6`, baselines, LLM labels).
-- Singles and doubles have independent evaluation pipelines.
-- Core benchmark engine distributes matchups across ports and merges CSV outputs.
-- Latest heuristic evolution adds richer field awareness, defensive pivoting, and priority valuation.
-
-## Main locations
-- Singles: `src/p01_heuristics/s01_singles/`
-- Doubles: `src/p01_heuristics/s02_doubles/`
-
-## Run: Singles matrix benchmark
-
-```bash
-uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 1000 \
-  --ports 4 \
-  --concurrency 10
-```
-
-## Run: Doubles benchmark
-
-```bash
-uv run python src/p01_heuristics/s02_doubles/evaluation/engine/benchmark.py 10000 \
-  --ports 8 \
-  --battle-format gen9randomdoublesbattle
-```
-
-## Reporting
-
-```bash
-uv run python -m src.p01_heuristics.s01_singles.evaluation.reporting.plots.generate_heatmap \
-  --data-dir data/1_vs_1/benchmarks/unified \
-  --output heatmap.png
+uv sync --extra pokechamp
 ```
 
 ---
 
-## 6) Pillar B: Deep Reinforcement Learning
+## Key Technical Decisions
 
-RL uses a neural policy (`MaskablePPO`) that learns from interaction instead of fixed rules.
-
-## How it works
-- `s01_env/vectorizer.py` converts battle states into numeric tensors.
-- `s01_env/pokemon_env.py` maps policy actions to legal Showdown orders.
-- Action masking prevents illegal moves/switches.
-- Curriculum training progresses from easy opponents to stronger ones.
-
-## RL training curriculum
-1. `train_p1_base.py` -> basic combat competence (vs random)
-2. `train_p1_5_tune.py` -> stronger tactical pressure
-3. `train_p2_transfer.py` -> transfer to harder heuristic opponents
-4. `train_p3_gauntlet.py` -> mixed-opponent generalization
-
-## Run: Example RL phase
-
-```bash
-uv run python -m src.p04_rl_models.s02_training.train_p1_base \
-  --timesteps 1000000 \
-  --ports 8000 8001 8002 8003
-```
-
-## RL evaluation
-
-```bash
-uv run python src/p04_rl_models/s03_evaluation/run_benchmarks.py
-uv run python src/p04_rl_models/s03_evaluation/benchmark_rl.py --games 1000 --ports 4
-uv run python src/p04_rl_models/s03_evaluation/generate_rl_report.py
-```
-
-Outputs are stored under `src/p04_rl_models/s03_evaluation/results/`.
+| Decision | Rationale |
+|---|---|
+| **gen9randombattle exclusively** | Controlled format — heuristics, IL pipeline, and Showdown DB all calibrated for this format |
+| **poke-env pinned to 0.11.0** | 2.5M+ games on this version; 0.15 has breaking API changes |
+| **LocalSim from pokechamp fork** | Standard poke-env has no local simulator; pokechamp adds it for MCTS rollouts |
+| **Information Set MCTS over minimax** | Correctly handles Pokémon's hidden information; minimax assumes full knowledge |
+| **Bot-vs-bot as primary benchmark** | Reproducible, 10k games in ~12 min; online games are validation only |
+| **No VGC / no gen9ou** | Different action space / requires team-building — out of thesis scope |
 
 ---
 
-## 7) Pillar C: Hugging Face Replay Analysis + Imitation Learning
+## Benchmark Results (gen9randombattle, 10k games each)
 
-This track learns from human expert gameplay data.
+All results in `data/1_vs_1/benchmarks_all_10k/gen9randombattle/` (326 CSV files).
 
-## How it works
-1. Download filtered high-Elo replays from Hugging Face datasets.
-2. Run EDA to understand distributions, action behavior, and feature quality.
-3. Convert battle logs into tabular supervised features.
-4. Train XGBoost models to predict decisions.
-5. Integrate trained models as online agents for benchmark comparisons.
-
-## Run: Download dataset
-
-```bash
-uv run python src/p03_ml_baseline/s01_download/download_dataset.py
-```
-
-## Run: EDA
-
-```bash
-uv run python src/p03_ml_baseline/s02_eda/gen9ou/eda_pokemon_battles.py
-uv run python src/p03_ml_baseline/s02_eda/gen9random/eda_pokemon_battles.py
-```
-
-## Run: Feature extraction + model training
-
-```bash
-uv run python src/p03_ml_baseline/s03_training/gen9ou/extract_ml_features.py
-uv run python src/p03_ml_baseline/s03_training/gen9ou/train_ml_baseline.py
-
-uv run python src/p03_ml_baseline/s03_training/gen9random/extract_ml_features.py
-uv run python src/p03_ml_baseline/s03_training/gen9random/train_ml_baseline.py
-```
-
-Produced artifacts are saved in `src/p03_ml_baseline/s03_training/models/`.
+The complete paradigm comparison matrix (v15, v16 MCTS, XGBoost IL, PPO) is pending — see [`THESIS_PLAN.md`](THESIS_PLAN.md) for the full roadmap.
 
 ---
 
-## 8) Unified Experiment Workflow
-
-For reliable thesis-grade experiments:
-
-1. Start local servers (`p05_scripts`).
-2. Run heuristic baselines and collect benchmark CSVs.
-3. Train/evaluate RL policies and export RL benchmark summaries.
-4. Build imitation-learning models from Hugging Face replay data.
-5. Compare all paradigms on shared metrics (win rate, turns, survivability, etc.).
-6. Generate plots/tables for report sections.
-
----
-
-## 9) Hardware Tuning (Your Machine)
-
-For `AMD Ryzen 7 5700X3D` (16 threads) + `32 GB RAM`:
-
-- Heuristic singles starting point: `--ports 4 --concurrency 10`
-- Scale up gradually to `--ports 6-8` if stable.
-- Doubles and long sweeps: monitor RAM and restart servers periodically.
-- RL: use multiple ports for throughput, but keep an eye on simulator bottlenecks.
-- LLM or heavy external backends: keep ports/concurrency low.
-
-If instability appears:
-- Reduce concurrency first.
-- Then reduce number of ports.
-- Run smaller chunks and merge results later.
-
----
-
-## 10) Quality and Reproducibility
-
-Use these checks before large experiment batches:
+## Developer Tools
 
 ```bash
-uv run ruff format .
-uv run ruff check .
-uv run ty check
-```
+uv run ruff format .    # auto-format
+uv run ruff check .     # lint
+uv run ty check src/    # type check
 
-Best practices:
-- Always run commands from repo root.
-- Prefer `uv run python -m ...` when modules depend on package-relative imports.
-- Keep benchmark commands and output directories consistent for reproducibility.
+# Always run from project root with uv:
+uv run python src/...
+```
 
 ---
 
-## 11) Practical Entry Points
+## Docs
 
-If you are new to the codebase:
-
-- Start with heuristics:
-  - `src/p01_heuristics/s01_singles/README.md`
-  - `src/p01_heuristics/s01_singles/docs/CLI_REFERENCE.md`
-- Then RL:
-  - `src/p04_rl_models/p04_rl_models_overview.md`
-  - `src/p04_rl_models/s02_training/p02_s02_training_guide.md`
-- Then Hugging Face + ML baseline:
-  - `src/p03_ml_baseline/README_ML_BASELINE.md`
-  - `src/p03_ml_baseline/s02_eda/README_eda.md`
-
-This path gives the fastest understanding of both architecture and execution.
+| File | Contents |
+|---|---|
+| [`THESIS_PLAN.md`](THESIS_PLAN.md) | Research question, paradigm comparison, phase-by-phase implementation plan |
+| [`SETUP.md`](SETUP.md) | Full installation guide (Python, Showdown, extras, poke-env version notes) |
+| [`CONTEXT.md`](CONTEXT.md) | Detailed module inventory and benchmark data catalog |
+| `src/p01_heuristics/s01_singles/agents/internal/s01_agents_reference.md` | Strategy genealogy v1–v14 |
+| `src/p04_rl_models/s02_training/p02_s02_training_guide.md` | PPO curriculum guide |
+| `src/p03_ml_baseline/README_ML_BASELINE.md` | Imitation learning pipeline |

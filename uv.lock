@@ -9,6 +9,9 @@ resolution-markers = [
     "sys_platform == 'darwin'",
 ]
 
+[manifest]
+overrides = [{ name = "poke-env", specifier = ">=0.11.0,<0.12.0" }]
+
 [[package]]
 name = "absl-py"
 version = "2.4.0"
@@ -2206,17 +2209,20 @@ wheels = [
 ]
 
 [[package]]
-name = "tfm"
-version = "0.1.0"
+name = "tfm-pokemon"
+version = "0.2.0"
 source = { virtual = "." }
 dependencies = [
     { name = "datasets" },
     { name = "ipykernel" },
     { name = "matplotlib" },
     { name = "nbconvert" },
+    { name = "numpy" },
+    { name = "orjson" },
     { name = "pandas" },
     { name = "poke-env" },
     { name = "polars" },
+    { name = "requests" },
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "seaborn" },
@@ -2246,9 +2252,7 @@ pokechamp = [
     { name = "openai" },
     { name = "orjson" },
     { name = "pyfiglet" },
-    { name = "requests" },
     { name = "rich" },
-    { name = "termcolor" },
     { name = "torch" },
     { name = "transformers" },
     { name = "websockets" },
@@ -2257,6 +2261,7 @@ rl = [
     { name = "gymnasium" },
     { name = "sb3-contrib" },
     { name = "stable-baselines3" },
+    { name = "tensorboard" },
     { name = "torch" },
 ]
 
@@ -2271,21 +2276,23 @@ requires-dist = [
     { name = "anthropic", marker = "extra == 'pokechamp'", specifier = ">=0.84.0" },
     { name = "datasets", specifier = ">=4.7.0" },
     { name = "google-genai", marker = "extra == 'pokechamp'", specifier = ">=1.65.0" },
-    { name = "gymnasium", marker = "extra == 'gpu'", specifier = ">=0.29.1" },
-    { name = "gymnasium", marker = "extra == 'rl'", specifier = ">=0.29.1" },
+    { name = "gymnasium", marker = "extra == 'gpu'", specifier = ">=1.0.0" },
+    { name = "gymnasium", marker = "extra == 'rl'", specifier = ">=1.0.0" },
     { name = "huggingface-hub", marker = "extra == 'pokechamp'", specifier = ">=0.28.1" },
     { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "matplotlib", specifier = ">=3.10.8" },
     { name = "mcp", marker = "extra == 'pokechamp'", specifier = ">=1.26.0" },
     { name = "nbconvert", specifier = ">=7.17.0" },
+    { name = "numpy", specifier = ">=2.0.0" },
     { name = "ollama", marker = "extra == 'pokechamp'", specifier = ">=0.4.7" },
     { name = "openai", marker = "extra == 'pokechamp'", specifier = ">=2.24.0" },
+    { name = "orjson", specifier = ">=3.10.15" },
     { name = "orjson", marker = "extra == 'pokechamp'", specifier = ">=3.10.15" },
     { name = "pandas", specifier = ">=3.0.0" },
-    { name = "poke-env", specifier = ">=0.11.0" },
+    { name = "poke-env", specifier = ">=0.11.0,<0.12.0" },
     { name = "polars", specifier = ">=1.38.1" },
     { name = "pyfiglet", marker = "extra == 'pokechamp'", specifier = ">=1.0.4" },
-    { name = "requests", marker = "extra == 'pokechamp'", specifier = ">=2.32.3" },
+    { name = "requests", specifier = ">=2.32.3" },
     { name = "rich", marker = "extra == 'pokechamp'", specifier = ">=14.3.3" },
     { name = "sb3-contrib", marker = "extra == 'gpu'", specifier = ">=2.4.0" },
     { name = "sb3-contrib", marker = "extra == 'rl'", specifier = ">=2.4.0" },
@@ -2297,8 +2304,8 @@ requires-dist = [
     { name = "stable-baselines3", marker = "extra == 'rl'", specifier = ">=2.4.0" },
     { name = "tabulate", specifier = ">=0.9.0" },
     { name = "tensorboard", marker = "extra == 'gpu'", specifier = ">=2.18.0" },
+    { name = "tensorboard", marker = "extra == 'rl'", specifier = ">=2.18.0" },
     { name = "termcolor", specifier = ">=3.3.0" },
-    { name = "termcolor", marker = "extra == 'pokechamp'", specifier = ">=2.5.0" },
     { name = "torch", marker = "extra == 'gpu'", specifier = ">=2.5.1" },
     { name = "torch", marker = "extra == 'pokechamp'", specifier = ">=2.5.1" },
     { name = "torch", marker = "extra == 'rl'", specifier = ">=2.5.1" },

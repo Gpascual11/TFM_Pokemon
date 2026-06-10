@@ -47,19 +47,40 @@ _P01_DIR = _S01_DIR.parent
 _SRC_DIR = _P01_DIR.parent
 _ROOT_DIR = _SRC_DIR.parent
 
-# Always inject pokechamp fork FIRST so its poke_env overrides site-packages
-_POKECHAMP = _ROOT_DIR / "pokechamp"
-if _POKECHAMP.exists() and str(_POKECHAMP) not in sys.path:
-    sys.path.insert(0, str(_POKECHAMP))
-
 if str(_SRC_DIR) not in sys.path:
     sys.path.insert(0, str(_SRC_DIR))
+
+# Inject pokechamp fork ONLY for pokechamp-based agents that need LocalSim.
+# Heuristic agents v1-v14 use standard poke-env 0.11.0 — no injection needed.
+# Injecting unconditionally triggers: baselines.py → LocalSim → GPTPlayer → openai
+_POKECHAMP_AGENTS = {"pokechamp", "pokellmon", "abyssal", "max_power", "one_step"}
+_POKECHAMP = _ROOT_DIR / "pokechamp"
+
+# Parse agent argument early to determine if we need the pokechamp fork
+# before importing poke_env
+agent_name = "v12"
+for arg in sys.argv:
+    if arg.startswith("--agent="):
+        agent_name = arg.split("=", 1)[1]
+        break
+else:
+    for i, arg in enumerate(sys.argv):
+        if arg == "--agent" and i + 1 < len(sys.argv):
+            agent_name = sys.argv[i+1]
+            break
+
+if agent_name in _POKECHAMP_AGENTS and _POKECHAMP.exists() and str(_POKECHAMP) not in sys.path:
+    sys.path.insert(0, str(_POKECHAMP))
 
 from poke_env import AccountConfiguration, ServerConfiguration
 from p01_heuristics.s01_singles.agents import get_agent_class
 from poke_env.player.player import Player
 from poke_env.data import GenData
-from poke_env.environment.battle import Battle
+
+try:
+    from poke_env.environment.battle import Battle
+except ModuleNotFoundError:
+    from poke_env.battle import Battle
 
 
 class StatsBattle(Battle):
@@ -192,7 +213,16 @@ if not hasattr(Player, "_original_create_battle"):
     Player._create_battle = patched_create_battle
 
 # Configuration for official Smogon server
-OFFICIAL_SERVER = ServerConfiguration("sim3.psim.us", "https://play.pokemonshowdown.com/action.php")
+if hasattr(ServerConfiguration, "_fields") and "websocket_url" in ServerConfiguration._fields:
+    OFFICIAL_SERVER = ServerConfiguration(
+        "wss://sim3.psim.us/showdown/websocket",
+        "https://play.pokemonshowdown.com/action.php"
+    )
+else:
+    OFFICIAL_SERVER = ServerConfiguration(
+        "sim3.psim.us",
+        "https://play.pokemonshowdown.com/action.php"
+    )
 
 
 # State and History Files
@@ -294,6 +324,9 @@ def _serialize_counts(counts):
 
 def log_battle(battle, agent_name, agent):
     if battle.battle_tag in LOGGED_BATTLES:
+        return
+
+    if battle.won and battle.turn < 6:
         return
 
     file_exists = HISTORY_FILE.exists()
@@ -673,7 +706,10 @@ async def main():
         # Periodically log finished battles and update state in the background
         async def log_watcher():
             while not SHUTDOWN_REQUESTED:
-                finished_count = len([b for b in agent.battles.values() if b.finished])
+                finished_count = len([
+                    b for b in agent.battles.values() 
+                    if b.finished and not (b.won and b.turn < 6)
+                ])
                 current_game_num = min(games_played_offset + finished_count, total)
                 save_state(args.agent, args.format, total, current_game_num)
 
@@ -685,13 +721,24 @@ async def main():
         watcher_task = asyncio.create_task(log_watcher())
 
         try:
-            await agent.ladder(games_to_play)
+            while not SHUTDOWN_REQUESTED:
+                state = load_state(args.agent, args.format)
+                completed = state["games_played"] if state else games_played_offset
+                if completed >= total:
+                    break
+                games_to_play = total - completed
+                games_played_offset = completed
+                print(f"🎮 Starting batch of {games_to_play} ladder games...")
+                await agent.ladder(games_to_play)
         except Exception as e:
             print(f"❌ Ladder run failed: {e}")
         finally:
             watcher_task.cancel()
             # Log final state and any remaining battles on exit
-            finished_count = len([b for b in agent.battles.values() if b.finished])
+            finished_count = len([
+                b for b in agent.battles.values() 
+                if b.finished and not (b.won and b.turn < 6)
+            ])
             current_game_num = min(games_played_offset + finished_count, total)
             save_state(args.agent, args.format, total, current_game_num)
             for battle in list(agent.battles.values()):

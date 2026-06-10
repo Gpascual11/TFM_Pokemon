@@ -388,6 +388,11 @@ class HeuristicV14(BaseHeuristic1v1):
             self._opponent_tendency = {}
         if not hasattr(self, "_last_turn_matchup"):
             self._last_turn_matchup = {}
+        if not hasattr(self, "_opp_vol_switches"):
+            self._opp_vol_switches = {}
+
+        if btag not in self._opp_vol_switches:
+            self._opp_vol_switches[btag] = 0
 
         opp = battle.opponent_active_pokemon
         if opp is None:
@@ -434,11 +439,12 @@ class HeuristicV14(BaseHeuristic1v1):
                         break
                 # Only profile as PREDICTIVE if they voluntarily switched out of a bad matchup
                 if not last_opp_fainted:
-                    if last_matchup > 0.6:
+                    self._opp_vol_switches[btag] += 1
+                    if last_matchup > 0.4:
                         self._opponent_tendency[btag] = "PREDICTIVE"
             else:
                 # Opponent stayed in during a bad matchup (for them)
-                if last_matchup > 0.6:
+                if last_matchup > 0.4:
                     self._opponent_tendency[btag] = "CONSERVATIVE"
 
     def _is_opp_out_of_recovery(self, battle, opp) -> bool:
@@ -479,6 +485,52 @@ class HeuristicV14(BaseHeuristic1v1):
             return False
         return True
 
+    def _is_grassy_terrain_active(self, battle) -> bool:
+        if not battle or not battle.fields:
+            return False
+        for field in battle.fields:
+            if "GRASSY" in str(field).upper():
+                return True
+        return False
+
+    def _get_move_priority(self, move, battle) -> int:
+        base_priority = move.entry.get("priority", 0) if move.entry else 0
+        me = battle.active_pokemon
+        if not me:
+            return base_priority
+
+        # Grassy Glide in Grassy Terrain
+        if move.id == "grassyglide" and self._is_grassy_terrain_active(battle):
+            return max(base_priority, 1)
+
+        # Gale Wings in Gen 7+ requires 100% HP
+        ability_str = str(getattr(me, "ability", "")).lower().replace(" ", "").replace("-", "")
+        if ability_str == "galewings" and me.current_hp_fraction == 1.0 and move.type.name == "FLYING":
+            return max(base_priority, 1)
+
+        # Prankster
+        if ability_str == "prankster" and move.category not in [MoveCategory.PHYSICAL, MoveCategory.SPECIAL]:
+            opp = battle.opponent_active_pokemon
+            if opp:
+                opp_types = [t.name for t in opp.types if t is not None]
+                is_opp_dark = "DARK" in opp_types
+                gen = self._get_gen(battle)
+                if gen >= 7 and is_opp_dark:
+                    return base_priority
+            return max(base_priority, 1)
+
+        # Triage
+        if ability_str == "triage":
+            is_healing = (
+                move.id in RECOVERY_MOVES
+                or move.id in DRAINING_MOVES
+                or move.id in {"rest", "milkdrink", "healbell", "wish", "healingwish", "lunardance"}
+            )
+            if is_healing:
+                return max(base_priority, 3)
+
+        return base_priority
+
     # -- Priority KO Hook (V10 core) ------------------------------------------
 
     def _pre_move_hook(self, battle):
@@ -495,7 +547,7 @@ class HeuristicV14(BaseHeuristic1v1):
         priority_moves = [
             m
             for m in battle.available_moves
-            if m.entry.get("priority", 0) > 0
+            if self._get_move_priority(m, battle) > 0
             and m.base_power > 0
             and m.id not in {"suckerpunch", "thunderclap"}
             and (m.id not in {"fakeout", "firstimpression"} or self._is_fakeout_usable(battle))
@@ -622,10 +674,13 @@ class HeuristicV14(BaseHeuristic1v1):
             return None
 
         # Yomi Layer 2: Only gamble on a switch read once we have positively
-        # observed the human bailing from bad matchups (PREDICTIVE). With an
-        # unknown or CONSERVATIVE profile we just click our best move — guessing
-        # a switch that doesn't come hands the opponent a free turn.
-        if self._opponent_tendency.get(btag) != "PREDICTIVE":
+        # observed the human bailing from bad matchups (PREDICTIVE).
+        is_predictive = (
+            self._opponent_tendency.get(btag) == "PREDICTIVE"
+            or self._opp_vol_switches.get(btag, 0) >= 1
+            or getattr(battle, "voluntary_switches_opp", 0) >= 1
+        )
+        if not is_predictive:
             return None
 
         # Don't start a mind-game on the turn we just switched in.
@@ -633,7 +688,7 @@ class HeuristicV14(BaseHeuristic1v1):
             return None
 
         active_matchup = self._estimate_matchup(me, opp, battle)
-        if active_matchup < 0.8:
+        if active_matchup < 0.5:
             return None
 
         predicted_switch_in = None
@@ -657,7 +712,7 @@ class HeuristicV14(BaseHeuristic1v1):
         is_gen1 = "gen1" in format_str
 
         if not is_gen1:
-            hazard_order = self._try_hazards(battle)
+            hazard_order = self._try_hazard_laying(battle)
             if hazard_order:
                 return hazard_order
 
@@ -775,7 +830,7 @@ class HeuristicV14(BaseHeuristic1v1):
                 continue
             accuracy = move.accuracy if isinstance(move.accuracy, (int, float)) else 1.0
             key = (accuracy, dmg_min)
-            moves_first = my_speed > opp_speed or move.entry.get("priority", 0) > 0
+            moves_first = my_speed > opp_speed or self._get_move_priority(move, battle) > 0
             if moves_first:
                 if key > best_safe_key:
                     best_safe_key, safe_ko = key, move
@@ -978,7 +1033,7 @@ class HeuristicV14(BaseHeuristic1v1):
                         continue
                     dmg_min, _ = self._calculate_exact_damage_range(move, me, opp, battle)
                     if dmg_min >= opp_hp:
-                        if my_speed > opp_speed or move.entry.get("priority", 0) > 0:
+                        if my_speed > opp_speed or self._get_move_priority(move, battle) > 0:
                             can_ko_opp = True
                             break
 
@@ -1031,17 +1086,23 @@ class HeuristicV14(BaseHeuristic1v1):
 
         # 10. Hazards Check
         if not is_gen1:
+            # 10a. Try Clearing Hazards
+            clear_order = self._try_hazard_clearing(battle, me, opp)
+            if clear_order:
+                return clear_order
+
+            # 10b. Try Laying Hazards
             active_matchup = self._estimate_matchup(me, opp, battle)
-            opp_likely_to_switch = active_matchup > 1.0
+            opp_likely_to_switch = active_matchup >= 0.5
             is_free_turn = my_speed > opp_speed and self._resists_opp_stab(me, opp)
             is_dangerous_lead = opp_speed > my_speed and not self._resists_opp_stab(me, opp)
             if is_free_turn or (battle.turn == 1 and not is_dangerous_lead) or opp_likely_to_switch:
-                hazard_order = self._try_hazards(battle)
+                hazard_order = self._try_hazard_laying(battle)
                 if hazard_order:
                     return hazard_order
 
         # 11. Setup Check
-        if not is_gen1 and me.current_hp_fraction == 1.0 and self._estimate_matchup(me, opp, battle) > 0:
+        if not is_gen1 and me.current_hp_fraction >= 0.60 and self._estimate_matchup(me, opp, battle) > 0:
             setup_order = self._try_setup(battle, me, my_speed, opp_speed)
             if setup_order:
                 return setup_order
@@ -1102,31 +1163,65 @@ class HeuristicV14(BaseHeuristic1v1):
 
     # -- Hazard Logic ---------------------------------------------------------
 
-    def _try_hazards(self, battle) -> object:
+    def _try_hazard_clearing(self, battle, me, opp) -> object:
+        if not battle.available_moves or me is None or opp is None:
+            return None
+
+        has_hazards = any(c in battle.side_conditions for c in ENTRY_HAZARDS.values())
+        n_bench_alive = len([m for m in battle.team.values() if not m.fainted and m != me])
+        if not has_hazards or n_bench_alive == 0:
+            return None
+
+        clear_moves = [m for m in battle.available_moves if m.id in ANTI_HAZARDS_MOVES]
+        if not clear_moves:
+            return None
+
+        # Check if opponent can OHKO us
+        gen = self._get_gen(battle)
+        sets_db = self._load_pokemon_sets(gen)
+        opp_max_dmg = self._estimate_max_damage(opp, me, gen, sets_db)
+        my_hp = self._current_hp(me)
+        if opp_max_dmg >= my_hp:
+            return None
+
+        # Prioritize moves: tidyup > rapidspin > courtchange > defog
+        clear_priority = {"tidyup": 4, "rapidspin": 3, "courtchange": 2, "defog": 1}
+        best_move = max(clear_moves, key=lambda m: clear_priority.get(m.id, 0))
+
+        btag = battle.battle_tag
+        self._hazard_removals_by_battle[btag] = self._hazard_removals_by_battle.get(btag, 0) + 1
+        self._record_used_move(btag, best_move.id)
+        return self.create_order(best_move)
+
+    def _try_hazard_laying(self, battle) -> object:
         if not battle.available_moves:
             return None
 
         btag = battle.battle_tag
         n_opp_remaining = 6 - len([m for m in battle.opponent_team.values() if m.fainted])
-        n_remaining = len([m for m in battle.team.values() if not m.fainted])
+        if n_opp_remaining < 3:
+            return None
 
-        if n_opp_remaining >= 3:
-            for move in battle.available_moves:
-                if move.id in ENTRY_HAZARDS:
-                    condition = ENTRY_HAZARDS[move.id]
-                    if condition not in battle.opponent_side_conditions:
-                        self._hazard_sets_by_battle[btag] = self._hazard_sets_by_battle.get(btag, 0) + 1
-                        self._record_used_move(btag, move.id)
-                        return self.create_order(move)
+        hazard_moves = [m for m in battle.available_moves if m.id in ENTRY_HAZARDS]
+        if not hazard_moves:
+            return None
 
-        if battle.side_conditions and n_remaining >= 2:
-            for move in battle.available_moves:
-                if move.id in ANTI_HAZARDS_MOVES:
-                    self._hazard_removals_by_battle[btag] = self._hazard_removals_by_battle.get(btag, 0) + 1
-                    self._record_used_move(btag, move.id)
-                    return self.create_order(move)
+        usable_hazards = []
+        for m in hazard_moves:
+            condition = ENTRY_HAZARDS[m.id]
+            if condition not in battle.opponent_side_conditions:
+                usable_hazards.append(m)
 
-        return None
+        if not usable_hazards:
+            return None
+
+        # Prioritize: stealthrock > stickyweb > spikes > toxicspikes
+        hazard_priority = {"stealthrock": 4, "stickyweb": 3, "spikes": 2, "toxicspikes": 1}
+        best_hazard = max(usable_hazards, key=lambda m: hazard_priority.get(m.id, 0))
+
+        self._hazard_sets_by_battle[btag] = self._hazard_sets_by_battle.get(btag, 0) + 1
+        self._record_used_move(btag, best_hazard.id)
+        return self.create_order(best_hazard)
 
     # -- Setup Logic ----------------------------------------------------------
 
@@ -1217,12 +1312,12 @@ class HeuristicV14(BaseHeuristic1v1):
                 priority = 2
 
             elif status_name == "PAR":
-                if "GROUND" in opp_types or "ELECTRIC" in opp_types or my_speed >= opp_speed:
+                if "GROUND" in opp_types or "ELECTRIC" in opp_types:
                     continue
                 opp_ability = str(getattr(opp, "ability", "")).lower()
-                if "guts" in opp_ability:
+                if "guts" in opp_ability or "limber" in opp_ability:
                     continue
-                priority = 1
+                priority = 2.5 if opp_speed > my_speed else 1
 
             if priority > best_priority:
                 best_priority = priority
@@ -1357,7 +1452,7 @@ class HeuristicV14(BaseHeuristic1v1):
             if type_boosters.get(item) == move.type.name:
                 score *= 1.2
 
-        if move.entry.get("priority", 0) > 0 and my_speed < opp_speed:
+        if self._get_move_priority(move, battle) > 0 and my_speed < opp_speed:
             score *= 1.3
 
         if move.id in {"suckerpunch", "thunderclap"}:
@@ -1660,7 +1755,8 @@ class HeuristicV14(BaseHeuristic1v1):
             max_def_tera_multiplier = max(def_tera_scores) if def_tera_scores else 1.0
 
             if is_about_to_faint and max_def_multiplier > 1.0 and max_def_tera_multiplier <= 0.5:
-                return True
+                if active.current_hp_fraction >= 0.40 or n_alive == 1:
+                    return True
 
             if active.current_hp_fraction < 0.30 and n_alive > 1:
                 return False
@@ -1692,7 +1788,33 @@ class HeuristicV14(BaseHeuristic1v1):
             def_tera_scores_inv = [1.0 / (m if m > 0 else 0.125) for m in def_tera_scores]
             defensive_tera_score = min(def_tera_scores_inv) if def_tera_scores_inv else 1.0
 
-            return offensive_tera_score * (defensive_tera_score / defensive_score) > 1.0
+            # Check if Tera converts a non-KO move into a KO
+            opp_hp = self._current_hp(opp_active)
+            dmg_min, _ = self._calculate_exact_damage_range(move, active, opp_active, battle)
+            not_ko_without_tera = dmg_min < opp_hp
+            ko_with_tera = dmg_min * offensive_tera_score >= opp_hp
+            converts_to_ko = not_ko_without_tera and ko_with_tera
+
+            has_offensive_boosts = (
+                active.boosts.get("atk", 0) >= 1
+                or active.boosts.get("spa", 0) >= 1
+                or active.boosts.get("spe", 0) >= 1
+            )
+
+            is_offensive_worthwhile = (
+                n_alive == 1
+                or has_offensive_boosts
+                or converts_to_ko
+            )
+
+            if is_offensive_worthwhile:
+                net_ratio = offensive_tera_score * (defensive_tera_score / defensive_score)
+                if converts_to_ko and net_ratio > 1.0:
+                    return True
+                if net_ratio > 1.2:
+                    return True
+
+            return False
         except Exception:
             return False
 
