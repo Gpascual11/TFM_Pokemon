@@ -46,7 +46,7 @@ v1 (Random)              ← DONE ✅
 | Online bot v14 | Running, 98 games | `data/1_vs_1/logs_v14/battle_history.csv` |
 | PPO models (Feb 2026) | Trained but weak | `data/models/models_22_02_26/` |
 | v7 minimax (old) | Exists, weak | `src/p02_search/s01_singles/agents/internal/v7_minimax.py` |
-| IL pipeline structure | Exists, wrong data | `src/p03_ml_baseline/` |
+| IL pipeline structure | Exists, wrong data | `src/p02_imitation_learning/` |
 | 8-server parallel infra | Working | `src/p05_scripts/` |
 | Doubles heuristics v1–v5 | Exists | `src/p01_heuristics/s02_doubles/` |
 
@@ -128,7 +128,7 @@ uv run python <script>
 ---
 
 ### Phase 1 — Fix Imitation Learning (~1 week)
-**Path:** `src/p03_ml_baseline/`
+**Path:** `src/p02_imitation_learning/`
 
 #### What it is
 XGBoost classifier trained to imitate human move choices. Given the current battle state as features, predict which move a 1800+ Elo player would pick.
@@ -139,18 +139,18 @@ The existing model was trained on **gen9ou** expert replays and tested on **gen9
 #### Exact fix
 ```bash
 # Step 1: Download gen9randombattle replays (NOT gen9ou)
-uv run python src/p03_ml_baseline/s01_download/download_dataset.py \
+uv run python src/p02_imitation_learning/s01_download/download_dataset.py \
     --gamemode gen9randombattle \
     --min-elo 1800 \
     --start 2025-01 \
     --end 2026-04
 
 # Step 2: Extract features from new replays
-uv run python src/p03_ml_baseline/s03_training/extract_ml_features.py \
+uv run python src/p02_imitation_learning/s03_training/extract_ml_features.py \
     --format gen9randombattle
 
 # Step 3: Train XGBoost
-uv run python src/p03_ml_baseline/s03_training/train_ml_baseline.py \
+uv run python src/p02_imitation_learning/s03_training/train_ml_baseline.py \
     --format gen9randombattle
 
 # Step 4: Benchmark the trained model
@@ -158,10 +158,10 @@ uv run python src/p03_ml_baseline/s03_training/train_ml_baseline.py \
 ```
 
 #### Key implementation files
-- `src/p03_ml_baseline/s01_download/download_dataset.py` — change `--gamemode` arg
-- `src/p03_ml_baseline/s03_training/extract_ml_features.py` — feature extraction
-- `src/p03_ml_baseline/s04_agent/ml_baseline.py` — the agent wrapper
-- `src/p03_ml_baseline/s04_agent/ml_advanced.py` — advanced features version
+- `src/p02_imitation_learning/s01_download/download_dataset.py` — change `--gamemode` arg
+- `src/p02_imitation_learning/s03_training/extract_ml_features.py` — feature extraction
+- `src/p02_imitation_learning/s04_agent/ml_baseline.py` — the agent wrapper
+- `src/p02_imitation_learning/s04_agent/ml_advanced.py` — advanced features version
 
 #### What to expect
 - Target win rate: 40–55% vs v12/v13 after fixing the data
@@ -593,25 +593,39 @@ When MCTS (v16) is built, run 100 online games with it too. Compare:
 
 ---
 
-## 6. Academic Framing for Each Paradigm
+## 6. Marc Acadèmic i Explicació dels Paradigmes (Academic Framing)
 
-### Rule-based heuristics (v1–v14)
-> "Hand-crafted expert systems that encode domain knowledge directly as decision rules. Represent decades of competitive strategy distilled into IF-THEN logic. Serve as the performance ceiling of explicit domain knowledge."
+En aquesta tesi comparem sis paradigmes diferents de presa de decisions en Intel·ligència Artificial aplicats a Pokémon Showdown (`gen9randombattle`). A continuació es detallen des d'una perspectiva acadèmica i tècnica en català:
 
-### Adversarial search (v15 minimax)
-> "Deterministic game tree search using the maximin principle. Assumes rational opponent play and perfect information within the search horizon. Represents classical AI game-playing approaches."
+### 1. Heurístiques basades en regles (Heuristics v1–v14)
+* **Què és:** Sistemes experts programats a mà que codifiquen el coneixement del joc directament en regles de decisió lògiques (estructures `if-then-else`).
+* **Com funciona:** Avalua l'estat actual del combat calculant danys exactes, taules de tipus, velocitats, efectes d'estat i utilitat de canvis basant-se en regles fixes decidides per un expert humà.
+* **Paper a la tesi:** Representa el sostre de rendiment de la programació explícita (coneixement de domini pur). Serveix com a línia base forta i com a avaluador per a altres algorismes de cerca.
 
-### Information Set MCTS (v16)
-> "Probabilistic tree search that explicitly handles hidden information by sampling possible opponent states from the Showdown database. The appropriate algorithm for partially-observable games — the theoretical motivation over minimax is the main contribution."
+### 2. Cerca Adversarial (Minimax v15) — *Cerca basada en Heurística*
+* **Què és:** Un algorisme de cerca en arbre de joc que assumeix que l'oponent jugarà de manera racional per minimitzar els nostres guanys (principi maximin).
+* **Com funciona (Dependència d'Heurístiques):** Com que l'arbre del Pokémon és gegant i probabilístic, no es pot cercar fins al final de la partida. Per tant, Minimax fa una cerca de profunditat limitada (1-ply o 2-ply) i **utilitza la nostra millor heurística (v14) com a funció d'avaluació en els nodes fulla** per estimar qui està guanyant la partida en aquell punt intermedi.
+* **Paper a la tesi:** Comprova si afegir previsió de les respostes de l'oponent millora les decisions en comparació amb només reaccionar heurísticament a l'estat actual.
 
-### Imitation learning (XGBoost)
-> "Supervised learning from expert demonstrations. Requires no game knowledge — learns move selection patterns directly from human expert replay data. Tests whether statistical regularities in human play can be captured without explicit strategy encoding."
+### 3. Cerca en Arbre Monte Carlo (MCTS v16) — *Cerca basada en Heurística i Mostreig*
+* **Què és:** Un algorisme de cerca probabilístic que simula partides futures (rollouts) de manera repetida per trobar el moviment amb millor taxa d'èxit.
+* **Com funciona (Dependència d'Heurístiques):** Per ser eficient en un entorn d'informació oculta (on no sabem l'equip de l'oponent), l'MCTS utilitza un *Information Set* (mostreja equips possibles de l'oponent basant-se en la base de dades de Showdown). A més, **depèn d'una política heurística** (la heurística v14) tant per triar els moviments durant les simulacions ràpides com per avaluar l'estat de la partida al final de la simulació de profunditat limitada (per exemple, 5 torns).
+* **Paper a la tesi:** És l'algorisme teòricament més correcte per a jocs estocàstics d'informació imperfecta com el Pokémon, ja que gestiona directament la incertesa de l'oponent.
 
-### Reinforcement learning (PPO)
-> "Model-free policy gradient learning from environmental reward signals. Requires no human data or domain knowledge. Tests the limits of reward-driven exploration in a high-dimensional partially-observable game with sparse rewards."
+### 4. Aprenentatge per Imitació (Imitation Learning via XGBoost) — *Basat en Dataset Estàtic*
+* **Què és:** Un enfocament d'aprenentatge supervisat on un model aprèn a triar moviments imitant el comportament d'experts humans de molt alt nivell.
+* **Com funciona:** S'entrena un classificador (com XGBoost) utilitzant un **dataset estàtic de partides ja jugades (Showdown Replays de jugadors amb Elo 1800+)**. El model aprèn a correlacionar el vector de característiques (features) de l'estat del joc amb la decisió que va prendre l'humà, sense cap coneixement previ de les regles del joc.
+* **Diferència clau:** Treballa exclusivament de manera "offline" amb un conjunt de dades històric tancat (com faria un aprenentatge supervisat clàssic).
 
-### LLM agent (pokellmon)
-> "Language model reasoning applied to battle decisions. Represents the emerging paradigm of general-purpose AI applied to domain-specific strategic tasks. Tests whether natural language reasoning transfers to competitive game environments."
+### 5. Aprenentatge per Reforç Profund (PPO / DRL) — *Basat en Interacció Activa*
+* **Què és:** Un model d'aprenentatge on l'agent aprèn de manera autònoma a través del mètode d'assaig i error, optimitzant una funció de recompensa (win/loss, dany fet, etc.).
+* **Com funciona:** L'agent juga milions de partides contra ell mateix o contra oponents de referència de manera en línia. **A diferència d'Imitation Learning, no utilitza un dataset estàtic de partides preexistents; en comptes d'això, PPO genera les seves pròpies partides mitjançant la interacció contínua amb l'entorn** (Pokemon Showdown).
+* **Paper a la tesi:** Avalua si una intel·ligència artificial pot descobrir estratègies guanyadores i contrarestar estils de joc humans o heurístics sense haver vist mai com juguen els humans, superant les limitacions de biaix que té l'aprenentatge per imitació.
+
+### 6. Agents Basats en LLM (pokellmon)
+* **Què és:** L'ús de Models de Llenguatge Grans (com GPT, Claude, o Llama) com a nucli de raonament estratègic.
+* **Com funciona:** Es tradueix l'estat del joc i el ventall de moviments disponibles a un format textual (prompt). L'agent utilitza la tècnica de Chain-of-Thought (CoT, cadena de pensament) en llenguatge natural per analitzar el combat ("Estic davant d'un Pokémon de tipus Foc, el meu millor moviment és de tipus Aigua...") abans de triar l'acció definitiva.
+* **Paper a la tesi:** Representa el paradigma més recent d'IA general aplicada a tasques de lògica i estratègica complexes d'informació parcial.
 
 ---
 
@@ -672,9 +686,9 @@ src/p02_search/
 ### Key existing files to understand before each phase
 ```
 Phase 1 (IL fix):
-  src/p03_ml_baseline/s01_download/download_dataset.py   ← change --gamemode
-  src/p03_ml_baseline/s03_training/extract_ml_features.py
-  src/p03_ml_baseline/s04_agent/ml_baseline.py
+  src/p02_imitation_learning/s01_download/download_dataset.py   ← change --gamemode
+  src/p02_imitation_learning/s03_training/extract_ml_features.py
+  src/p02_imitation_learning/s04_agent/ml_baseline.py
 
 Phase 2 (v15 minimax):
   src/p02_search/s01_singles/agents/internal/v7_minimax.py  ← reference only

@@ -88,7 +88,7 @@ TFM_Pokemon/
 │   │   └── s02_doubles/        ← v1–v5 doubles agents (exploratory)
 │   ├── p02_search/
 │   │   └── s01_singles/        ← v15 minimax (building), v16 MCTS (planned)
-│   ├── p03_ml_baseline/        ← Imitation learning: download → extract → train → agent
+│   ├── p02_imitation_learning/ ← Imitation learning: download → extract → train → agent
 │   ├── p04_rl_models/          ← PPO: environment, curriculum training, evaluation
 │   └── p05_scripts/            ← Showdown server launch scripts
 │
@@ -168,4 +168,4 @@ uv run python src/...
 | [`CONTEXT.md`](CONTEXT.md) | Detailed module inventory and benchmark data catalog |
 | `src/p01_heuristics/s01_singles/agents/internal/s01_agents_reference.md` | Strategy genealogy v1–v14 |
 | `src/p04_rl_models/s02_training/p02_s02_training_guide.md` | PPO curriculum guide |
-| `src/p03_ml_baseline/README_ML_BASELINE.md` | Imitation learning pipeline |
+| `src/p02_imitation_learning/README_ML_BASELINE.md` | Imitation learning pipeline |
