@@ -43,7 +43,7 @@ That comparison is the core value of the project.
 
 - `src/p01_heuristics/` -> rule-based agents and benchmark/reporting engine
 - `src/p04_rl_models/` -> RL environment, training curriculum, RL evaluation
-- `src/p03_ml_baseline/` -> Hugging Face replay download, EDA, feature extraction, XGBoost training
+- `src/p02_imitation_learning/` -> Hugging Face replay download, EDA, feature extraction, XGBoost training
 - `src/p05_scripts/` -> Pokemon Showdown launch scripts for local multi-port infrastructure
 - `data/` -> benchmark outputs, datasets, generated artifacts
 - `report/` -> thesis/report assets
@@ -182,27 +182,23 @@ This track learns from human expert gameplay data.
 ## Run: Download dataset
 
 ```bash
-uv run python src/p03_ml_baseline/s01_download/download_dataset.py
+uv run python src/p02_imitation_learning/s01_download/download_dataset.py
 ```
 
 ## Run: EDA
 
 ```bash
-uv run python src/p03_ml_baseline/s02_eda/gen9ou/eda_pokemon_battles.py
-uv run python src/p03_ml_baseline/s02_eda/gen9random/eda_pokemon_battles.py
+uv run python src/p02_imitation_learning/s02_eda/eda_pokemon_battles.py
 ```
 
 ## Run: Feature extraction + model training
 
 ```bash
-uv run python src/p03_ml_baseline/s03_training/gen9ou/extract_ml_features.py
-uv run python src/p03_ml_baseline/s03_training/gen9ou/train_ml_baseline.py
-
-uv run python src/p03_ml_baseline/s03_training/gen9random/extract_ml_features.py
-uv run python src/p03_ml_baseline/s03_training/gen9random/train_ml_baseline.py
+uv run python src/p02_imitation_learning/s03_training/extract_ml_features.py --format gen9randombattle
+uv run python src/p02_imitation_learning/s03_training/train_ml_baseline.py --format gen9randombattle
 ```
 
-Produced artifacts are saved in `src/p03_ml_baseline/s03_training/models/`.
+Produced artifacts are saved in `src/p02_imitation_learning/s03_training/models/`.
 
 ---
 
@@ -264,7 +260,7 @@ If you are new to the codebase:
   - `src/p04_rl_models/p04_rl_models_overview.md`
   - `src/p04_rl_models/s02_training/p02_s02_training_guide.md`
 - Then Hugging Face + ML baseline:
-  - `src/p03_ml_baseline/README_ML_BASELINE.md`
-  - `src/p03_ml_baseline/s02_eda/README_eda.md`
+  - `src/p02_imitation_learning/README_ML_BASELINE.md`
+  - `src/p02_imitation_learning/s02_eda/README_eda.md`
 
 This path gives the fastest understanding of both architecture and execution.

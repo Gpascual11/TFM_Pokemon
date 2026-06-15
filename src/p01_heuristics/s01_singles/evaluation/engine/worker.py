@@ -425,8 +425,8 @@ async def _run_streaming(
                 "ko_checks_opp": getattr(opponent, "_ko_checks_by_battle", {}).get(bid, 0),
                 "matchup_switches_us": getattr(player, "_matchup_switches_by_battle", {}).get(bid, 0),
                 "matchup_switches_opp": getattr(opponent, "_matchup_switches_by_battle", {}).get(bid, 0),
-                "terastallized_us": 1 if hasattr(b, "team") and b.team and any(mon.terastallized for mon in b.team.values()) else 0,
-                "terastallized_opp": 1 if hasattr(b, "opponent_team") and b.opponent_team and any(mon.terastallized for mon in b.opponent_team.values()) else 0,
+                "terastallized_us": 1 if hasattr(b, "team") and b.team and any(getattr(mon, "is_terastallized", False) for mon in b.team.values()) else 0,
+                "terastallized_opp": 1 if hasattr(b, "opponent_team") and b.opponent_team and any(getattr(mon, "is_terastallized", False) for mon in b.opponent_team.values()) else 0,
                 "timestamp": datetime.datetime.now().isoformat(),
             }
 

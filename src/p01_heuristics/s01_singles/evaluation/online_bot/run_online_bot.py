@@ -428,12 +428,12 @@ def log_battle(battle, agent_name, agent):
         "matchup_switches_us": getattr(agent, "_matchup_switches_by_battle", {}).get(battle.battle_tag, 0),
         "matchup_switches_opp": 0,
         "terastallized_us": 1
-        if hasattr(battle, "team") and battle.team and any(mon.terastallized for mon in battle.team.values())
+        if hasattr(battle, "team") and battle.team and any(getattr(mon, "is_terastallized", False) for mon in battle.team.values())
         else 0,
         "terastallized_opp": 1
         if hasattr(battle, "opponent_team")
         and battle.opponent_team
-        and any(mon.terastallized for mon in battle.opponent_team.values())
+        and any(getattr(mon, "is_terastallized", False) for mon in battle.opponent_team.values())
         else 0,
         "timestamp": datetime.datetime.now().isoformat(),
     }

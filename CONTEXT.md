@@ -66,7 +66,7 @@ This file contains the technical state and inventory of the Pokémon Showdown AI
     │       └── agents/
     │           └── internal/
     │               └── v7_minimax.py
-    ├── p03_ml_baseline/
+    ├── p02_imitation_learning/
     │   ├── s01_download/
     │   ├── s02_eda/
     │   ├── s03_training/
@@ -122,7 +122,7 @@ This file contains the technical state and inventory of the Pokémon Showdown AI
 ### C. Adversarial Search Framework (`src/p02_search/`)
 * **Agent (`s01_singles/agents/internal/v7_minimax.py`):** Implements 1-ply Minimax. Evaluates the immediate game tree (1 turn ahead) by simulating all valid model actions against predicted opponent actions and selecting the maximin option.
 
-### D. Machine Learning Imitation Pipeline (`src/p03_ml_baseline/`)
+### D. Machine Learning Imitation Pipeline (`src/p02_imitation_learning/`)
 * **`s01_download/`:** Hugging Face expert replay downloader.
 * **`s02_eda/`:** Behavioral analysis and graphing scripts.
 * **`s03_training/`:** Tabular features extractor and training scripts for XGBoost models.
