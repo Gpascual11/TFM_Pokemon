@@ -1,8 +1,8 @@
-import os
 from pathlib import Path
+
 import pandas as pd
 
-DATA_DIR = Path("/home/sirp/Documents/MUDS/TFM_Pokemon/data/1_vs_1/benchmarks_all_10k")
+DATA_DIR = Path("/home/sirp/Documents/MUDS/TFM_Pokemon/data/benchmarks/all_10k")
 
 all_elos = {}
 for i in range(1, 10):

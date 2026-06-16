@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Advanced XGBoost training script using the rich, unrolled battle dataset.
 
@@ -22,8 +20,9 @@ It:
    - The exact feature column order to `xgboost_advanced_features.pkl`
 """
 
+from __future__ import annotations
+
 import os
-from typing import List
 
 import joblib
 import numpy as np
@@ -31,7 +30,6 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.metrics import accuracy_score, classification_report, roc_auc_score
 from sklearn.model_selection import GroupShuffleSplit
-
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "src", "p02_imitation_learning", "s03_training", "models", "gen9randombattle")
@@ -41,9 +39,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 ADV_DATA_PATH = os.path.join(
     PROJECT_ROOT,
     "data",
-    "models",
-    "dataset",
-    "processed",
+    "imitation_learning_expert_replays",
     "expert_gen9randombattle_advanced.parquet",
 )
 
@@ -95,7 +91,7 @@ def train_xgboost_advanced(
     X: pd.DataFrame,
     y: pd.Series,
     groups: np.ndarray,
-) -> tuple[xgb.XGBClassifier, List[str]]:
+) -> tuple[xgb.XGBClassifier, list[str]]:
     """Train the advanced XGBoost model using group-wise splitting."""
     print("\nPerforming GroupShuffleSplit (grouped by battle_id)...")
     splitter = GroupShuffleSplit(n_splits=1, test_size=0.20, random_state=42)
@@ -144,7 +140,7 @@ def train_xgboost_advanced(
     print("\nClassification Report:")
     print(classification_report(y_test, y_pred, target_names=["Move (0)", "Switch (1)"]))
 
-    feature_names: List[str] = X_train.columns.tolist()
+    feature_names: list[str] = X_train.columns.tolist()
     return model, feature_names
 
 

@@ -1,11 +1,13 @@
 import os
 import re
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from datasets import load_dataset
+
 # Import the dataset loader from pokechamp
 import sys
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
 # The current file is in src/p02_imitation_learning/s02_eda/eda_pokemon_battles.py
 # We need to reach pokechamp/scripts/training/
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../pokechamp/scripts/training")))
@@ -87,9 +89,12 @@ def generate_eda_plots(df):
     
     # Bucket turns into early (1-5), mid (6-15), late (15+)
     def categorize_turn(t):
-        if t <= 5: return "Early (1-5)"
-        elif t <= 15: return "Mid (6-15)"
-        else: return "Late (16+)"
+        if t <= 5:
+            return "Early (1-5)"
+        elif t <= 15:
+            return "Mid (6-15)"
+        else:
+            return "Late (16+)"
         
     df['turn_phase'] = df['turn'].apply(categorize_turn)
     

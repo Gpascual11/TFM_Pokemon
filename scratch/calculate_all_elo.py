@@ -1,9 +1,9 @@
-import os
 from pathlib import Path
-import pandas as pd
-import numpy as np
 
-DATA_DIR = Path("/home/sirp/Documents/MUDS/TFM_Pokemon/data/1_vs_1/benchmarks_all_10k")
+import numpy as np
+import pandas as pd
+
+DATA_DIR = Path("/home/sirp/Documents/MUDS/TFM_Pokemon/data/benchmarks/all_10k")
 
 def calculate_bt_elo(df_format, anchor_agent="random", anchor_elo=1000, max_iter=300, tol=1e-6):
     agents = sorted(list(set(df_format['heuristic']).union(set(df_format['opponent']))))

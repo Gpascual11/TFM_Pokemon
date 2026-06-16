@@ -1,12 +1,13 @@
-# Python Script Version of the XGBoost baseline notebook
 from __future__ import annotations
-import os
+
 import argparse
-import pandas as pd
+import os
+
 import matplotlib.pyplot as plt
+import pandas as pd
 import xgboost as xgb
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import GroupShuffleSplit
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 
@@ -30,13 +31,23 @@ def main():
     print(f"Loaded {len(df)} samples.")
     
     # 1. Prepare Data
-    X = df.drop("action", axis=1)
+    if "battle_id" not in df.columns:
+        print("Error: 'battle_id' column not found in training data. Please run extract_ml_features.py again.")
+        return
+        
+    groups = df["battle_id"]
+    X = df.drop(columns=["battle_id", "action"])
     y = df["action"] # 0 = Move, 1 = Switch
     
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Perform a group-based train/test split to avoid temporal leakage between turns of the same battle.
+    splitter = GroupShuffleSplit(n_splits=1, test_size=0.20, random_state=42)
+    train_idx, test_idx = next(splitter.split(X, y, groups=groups))
+    
+    X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+    y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
     
     # 2. Train XGBoost Model
-    print("\nTraining XGBoost Classifier...")
+    print("\nTraining XGBoost Classifier (with GroupShuffleSplit)...")
     model = xgb.XGBClassifier(
         n_estimators=100,
         max_depth=4,

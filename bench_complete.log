@@ -1,0 +1,36 @@
+════════════════════════════════════════════════════════════════
+ Complete All-10k Benchmark — Fill All Missing Matchups
+ Agents    : 21 (v1-v15 + 6 baselines)
+ Gens      : 9
+ Total     : 3780 matchups (already-done skipped instantly)
+ Output    : data/benchmarks/all_10k/<gen>/
+════════════════════════════════════════════════════════════════
+
+
+══ GEN 1/9: gen1randombattle ══
+
+♻️  RESTARTING 8 SHOWDOWN SERVERS...
+✅ All 8 servers initialized.
+✅ Matchup v1 vs v1 complete: 10000 games recorded.
+✅ Matchup v1 vs v2 complete: 10000 games recorded.
+✅ Matchup v1 vs v3 complete: 10000 games recorded.
+✅ Matchup v1 vs v4 complete: 10000 games recorded.
+✅ Matchup v1 vs v5 complete: 10000 games recorded.
+✅ Matchup v1 vs v6 complete: 10000 games recorded.
+✅ Matchup v1 vs v7 complete: 10000 games recorded.
+✅ Matchup v1 vs v8 complete: 10000 games recorded.
+✅ Matchup v1 vs v9 complete: 10000 games recorded.
+✅ Matchup v1 vs v10 complete: 10000 games recorded.
+✅ Matchup v1 vs v11 complete: 10000 games recorded.
+✅ Matchup v1 vs v12 complete: 10000 games recorded.
+✅ Matchup v1 vs v13 complete: 10000 games recorded.
+✅ Matchup v1 vs v14 complete: 10000 games recorded.
+⚔️  Executing v1 vs v15: 10000 missing games (Total Target: 10000)...
+      [v1 vs v15] Batch 1 -> Port 8000: Starting 1250 games...
+      [v1 vs v15] Batch 2 -> Port 8001: Starting 1250 games...
+      [v1 vs v15] Batch 3 -> Port 8002: Starting 1250 games...
+      [v1 vs v15] Batch 4 -> Port 8003: Starting 1250 games...
+      [v1 vs v15] Batch 5 -> Port 8004: Starting 1250 games...
+      [v1 vs v15] Batch 6 -> Port 8005: Starting 1250 games...
+      [v1 vs v15] Batch 7 -> Port 8006: Starting 1250 games...
+      [v1 vs v15] Batch 8 -> Port 8007: Starting 1250 games...

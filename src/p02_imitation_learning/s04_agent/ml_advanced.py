@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import os
-import random
 
 import joblib
 import pandas as pd
 import xgboost as xgb
 
-from p01_heuristics.s01_singles.core.base import BaseHeuristic1v1
-from p01_heuristics.s01_singles.core.common import calculate_base_damage, get_status_name
+from p00_core.core.common import get_status_name
+from p01_heuristics.agents.internal.v14 import HeuristicV14
 
 
-class MLAdvancedAgent(BaseHeuristic1v1):
+class MLAdvancedAgent(HeuristicV14):
     """Advanced Imitation Learning Agent.
 
     This agent uses the high-dimensional XGBoost model trained on the
@@ -23,37 +22,34 @@ class MLAdvancedAgent(BaseHeuristic1v1):
     - Stealth Rock and Tera usage flags
     - One-hot identity of active Pokémon for each side
 
-    As with the baseline, the model predicts a binary action:
+    The model predicts a binary action:
     - 0 = Use a Move
     - 1 = Switch Pokémon
 
-    Once the action type is chosen, the specific move/switch is selected
-    uniformly at random from the legal actions of that type.
+    Once the action type is chosen, it is executed using HeuristicV14's
+    exact damage calculations, move scoring, and switch scoring instead
+    of random selection.
     """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         # Resolve artifacts saved by `train_ml_advanced.py`.
-        # We mirror the same PROJECT_ROOT logic used in the training script
-        # so that both components agree on where models live, regardless of
-        # whether the project is executed from the repo root or installed
-        # as a package.
         project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-        models_dir = os.path.join(project_root, "src", "p02_imitation_learning", "s03_training", "models", "gen9randombattle")
+        models_dir = os.path.join(
+            project_root, "src", "p02_imitation_learning", "s03_training", "models", "gen9randombattle"
+        )
 
         feature_path = os.path.join(models_dir, "xgboost_advanced_features.pkl")
         model_path = os.path.join(models_dir, "xgboost_advanced_model.json")
 
         if not os.path.exists(feature_path):
             raise FileNotFoundError(
-                f"Advanced feature list not found at {feature_path}. "
-                "Please run train_ml_advanced.py first."
+                f"Advanced feature list not found at {feature_path}. Please run train_ml_advanced.py first."
             )
         if not os.path.exists(model_path):
             raise FileNotFoundError(
-                f"Advanced XGBoost model not found at {model_path}. "
-                "Please run train_ml_advanced.py first."
+                f"Advanced XGBoost model not found at {model_path}. Please run train_ml_advanced.py first."
             )
 
         self.feature_columns: list[str] = joblib.load(feature_path)
@@ -68,13 +64,14 @@ class MLAdvancedAgent(BaseHeuristic1v1):
         """Clear both the base battle history and our custom switch-loop tracking."""
         super().reset_battles()
         self._last_action_type.clear()
+
     def _build_empty_feature_dict(self) -> dict[str, float]:
         """Return a zero-initialized feature dict matching the training schema."""
         return {col: 0.0 for col in self.feature_columns}
 
     def _set_species_one_hot(self, features: dict[str, float], prefix: str, species: str | None) -> None:
         """Activate the correct one-hot column for the given species.
-        
+
         Poke-env IDs (e.g., 'ironvaliant') differ from Showdown logs (e.g., 'iron valiant').
         We attempt multiple formats to match the model's schema.
         """
@@ -99,7 +96,7 @@ class MLAdvancedAgent(BaseHeuristic1v1):
             f"{prefix}_{species_raw.replace('ironmoth', 'iron moth')}",
             f"{prefix}_{species_raw.replace('greattusk', 'great tusk')}",
             f"{prefix}_{species_raw.replace('ironvaliant', 'iron valiant')}",
-             f"{prefix}_{species_raw.replace('walkingwake', 'walking wake')}",
+            f"{prefix}_{species_raw.replace('walkingwake', 'walking wake')}",
             f"{prefix}_{species_raw.replace('roaringmoon', 'roaring moon')}",
         ]
 
@@ -129,17 +126,13 @@ class MLAdvancedAgent(BaseHeuristic1v1):
         if "p1_stealth_rock_active" in features:
             features["p1_stealth_rock_active"] = 1.0 if "STEALTH_ROCK" in battle.side_conditions else 0.0
         if "p2_stealth_rock_active" in features:
-            # For opponent side, poke-env uses opponent_side_conditions
             opp_conds = getattr(battle, "opponent_side_conditions", [])
             features["p2_stealth_rock_active"] = 1.0 if "STEALTH_ROCK" in opp_conds else 0.0
 
         # 4. Tera usage
         if "p1_tera_used" in features:
-            # We assume Tera is used if the side can't Tera anymore
             features["p1_tera_used"] = 1.0 if not battle.can_tera else 0.0
         if "p2_tera_used" in features or "p2_used_tera" in features:
-            # Note: poke-env's opponent tera tracking might be manual or through opponent_can_tera
-            # For simplicity, we check if they've already used it once.
             opp_tera = getattr(battle, "opponent_can_tera", True)
             key = "p2_tera_used" if "p2_tera_used" in features else "p2_used_tera"
             features[key] = 0.0 if opp_tera else 1.0
@@ -149,78 +142,89 @@ class MLAdvancedAgent(BaseHeuristic1v1):
             self._set_species_one_hot(features, "p1_active_pokemon", str(me.species))
         if opp:
             self._set_species_one_hot(features, "p2_active_pokemon", str(opp.species))
-        
+
         return pd.DataFrame([features])
 
-    # --------------------------------------------------------------------- #
-    # Decision Logic
-    # --------------------------------------------------------------------- #
     def _select_action(self, battle):
-        # Fallback for empty field
-        if battle.active_pokemon is None or battle.opponent_active_pokemon is None:
+        btag = battle.battle_tag
+        me = battle.active_pokemon
+        opp = battle.opponent_active_pokemon
+
+        # 1. Update roles and parse battlefield states
+        self._evaluate_team_roles(battle)
+        self._update_inferences(battle)
+
+        # Fainted Switch / Forced Switch / No Available Moves
+        force_switch = battle.force_switch
+        if isinstance(force_switch, list):
+            force_switch = any(force_switch)
+
+        if force_switch or me is None or me.fainted or not battle.available_moves:
+            if battle.available_switches:
+                if opp is not None and not opp.fainted:
+                    switch = self._get_best_switch(battle, opp)
+                else:
+                    switch = self._get_best_switch_double_faint(battle)
+                if switch:
+                    return self.create_order(switch)
             return None
 
-        moves = battle.available_moves
-        switches = battle.available_switches
+        # 2. Guaranteed KO — always take the kill immediately.
+        format_str = battle._format or ""
+        my_status = get_status_name(me)
+        opp_status = get_status_name(opp)
+        my_speed = self._get_boosted_speed(me, my_status, format_str)
+        opp_speed = self._get_boosted_speed(opp, opp_status, format_str)
 
-        # Forced cases
-        if not moves and switches:
-            return self.create_order(random.choice(switches))
-        if moves and not switches:
-            return self.create_order(random.choice(moves))
-        if not moves and not switches:
-            return None
+        ko_move = self._find_guaranteed_ko(battle, me, opp, my_speed, opp_speed)
+        if ko_move:
+            self._record_used_move(btag, ko_move.id)
+            tera = self._should_terastallize(battle, ko_move)
+            return self.create_order(ko_move, terastallize=tera)
 
-        # Decision Logic
+        # 3. XGBoost Action Type prediction (0 = Move, 1 = Switch)
         live_features = self._extract_live_features(battle)
         probs = self.model.predict_proba(live_features)[0]
-        
-        # Guard against zero-division or invalid probs
+
         if len(probs) < 2:
             action_type = 0
         else:
-            # Shift towards Moves unless Switch is very likely
             action_type = 1 if probs[1] > 0.65 else 0
-        
-        battle_id = battle.battle_tag
-        last_action = self._last_action_type.get(battle_id, 0)
-        
+
         # --- INFINITE SWITCH LOOP GUARD ---
         # If we switched LAST turn, and we are not forced to switch (handled above),
         # force a move to prevent infinite team cycling.
-        if action_type == 1 and last_action == 1 and moves:
-             # print(f"[MLAdvanced] Game {battle_id} Turn {battle.turn}: Preventing Switch Loop. Forcing Move.")
-             action_type = 0
-            
-        self._last_action_type[battle_id] = action_type
+        last_action = self._last_action_type.get(btag, 0)
+        if action_type == 1 and last_action == 1 and battle.available_moves:
+            action_type = 0
 
-        # Execute decision
-        if action_type == 1 and switches:
-            return self.create_order(random.choice(switches))
-        
-        if moves:
-            # Instead of random moves, use competitive damage logic (Heuristic V3)
-            best_move = None
-            max_damage = -1.0
-            
-            me = battle.active_pokemon
-            opp = battle.opponent_active_pokemon
-            my_status = get_status_name(me) if me else "HEALTHY"
-            
-            for move in moves:
-                # Reuse core damage utility
-                dmg = calculate_base_damage(move, me, opp, my_status)
-                if dmg > max_damage:
-                    max_damage, best_move = dmg, move
-            
-            if best_move:
-                self._record_used_move(battle_id, best_move.id)
-                return self.create_order(best_move)
-            
-            # Final fallback
-            chosen = random.choice(moves)
-            self._record_used_move(battle_id, chosen.id)
-            return self.create_order(chosen)
-            
-        return None
+        self._last_action_type[btag] = action_type
 
+        # 4. Execute Decision
+        if action_type == 1 and battle.available_switches:
+            # Switch action chosen: use V14's best switch evaluator
+            switch = self._get_best_switch(battle, opp)
+            if switch:
+                return self.create_order(switch)
+
+        # Move action chosen (or fallback if no switch was found/valid)
+        best_move = None
+        max_score = -1.0
+        physical_ratio = self._stat_estimation(me, "atk") / max(self._stat_estimation(opp, "def"), 1.0)
+        special_ratio = self._stat_estimation(me, "spa") / max(self._stat_estimation(opp, "spd"), 1.0)
+        if my_status == "BRN":
+            physical_ratio *= 0.5
+
+        for move in battle.available_moves or []:
+            if self._is_ability_immune(move, opp):
+                continue
+            score = self._score_move(move, me, opp, physical_ratio, special_ratio, battle, my_speed, opp_speed)
+            if score > max_score:
+                max_score, best_move = score, move
+
+        if best_move:
+            self._record_used_move(btag, best_move.id)
+            tera = self._should_terastallize(battle, best_move)
+            return self.create_order(best_move, terastallize=tera)
+
+        return self.choose_random_move(battle)

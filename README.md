@@ -83,20 +83,22 @@ TFM_Pokemon/
 ├── pokemon-showdown/           ← Local battle simulator server
 │
 ├── src/
-│   ├── p01_heuristics/
-│   │   ├── s01_singles/        ← v1–v14 agents + benchmark engine + online bot
-│   │   └── s02_doubles/        ← v1–v5 doubles agents (exploratory)
-│   ├── p02_search/
-│   │   └── s01_singles/        ← v15 minimax (building), v16 MCTS (planned)
+│   ├── p00_core/               ← Unified core: engine, common utilities, reporting, online bot, and launcher scripts
+│   │   ├── core/               ← Shared heuristic engine types and factory
+│   │   ├── engine/             ← Benchmark runners (benchmark.py, worker.py, run_single.py)
+│   │   ├── scripts/            ← Showdown server setup & launch utilities
+│   │   └── online_bot/         ← Public Showdown server deployment hook
+│   ├── p01_heuristics/         ← Rule-based agents (v1–v14)
 │   ├── p02_imitation_learning/ ← Imitation learning: download → extract → train → agent
-│   ├── p04_rl_models/          ← PPO: environment, curriculum training, evaluation
-│   └── p05_scripts/            ← Showdown server launch scripts
+│   ├── p03_minmax/             ← Minimax search agents (v7, v15)
+│   ├── p04_mcts/               ← MCTS agent planning
+│   └── p05_ppo_drl/            ← Deep Reinforcement Learning pipeline
 │
 └── data/
     ├── 1_vs_1/
-    │   ├── benchmarks_all_10k/gen9randombattle/   ← 326 benchmark CSVs (v1–v12)
-    │   └── logs_v14/battle_history.csv            ← Online bot results
-    └── models/                 ← PPO checkpoints
+    │   ├── benchmarks/         ← Unified benchmark CSVs
+    │   └── logs_v14/           ← Online bot validation logs
+    └── models/                 ← Checkpoints and models
 ```
 
 ---
@@ -110,7 +112,7 @@ See [`SETUP.md`](SETUP.md) for full installation instructions.
 uv python install 3.12
 uv sync                          # base deps: poke-env, xgboost, pandas, etc.
 cd pokemon-showdown && npm install && node build && cd ..
-bash src/p05_scripts/p05_launch_custom_servers.sh 8
+bash src/p00_core/scripts/launch_custom_servers.sh 8
 ```
 
 **For RL training (GPU):**
@@ -140,7 +142,7 @@ uv sync --extra pokechamp
 
 ## Benchmark Results (gen9randombattle, 10k games each)
 
-All results in `data/1_vs_1/benchmarks_all_10k/gen9randombattle/` (326 CSV files).
+All results in `data/benchmarks/all_10k/gen9randombattle/` (326 CSV files).
 
 The complete paradigm comparison matrix (v15, v16 MCTS, XGBoost IL, PPO) is pending — see [`THESIS_PLAN.md`](THESIS_PLAN.md) for the full roadmap.
 
@@ -166,6 +168,6 @@ uv run python src/...
 | [`THESIS_PLAN.md`](THESIS_PLAN.md) | Research question, paradigm comparison, phase-by-phase implementation plan |
 | [`SETUP.md`](SETUP.md) | Full installation guide (Python, Showdown, extras, poke-env version notes) |
 | [`CONTEXT.md`](CONTEXT.md) | Detailed module inventory and benchmark data catalog |
-| `src/p01_heuristics/s01_singles/agents/internal/s01_agents_reference.md` | Strategy genealogy v1–v14 |
-| `src/p04_rl_models/s02_training/p02_s02_training_guide.md` | PPO curriculum guide |
+| `src/p01_heuristics/agents/internal/agents_reference.md` | Strategy genealogy v1–v14 |
+| `src/p05_ppo_drl/s02_training/s02_training_guide.md` | PPO curriculum guide |
 | `src/p02_imitation_learning/README_ML_BASELINE.md` | Imitation learning pipeline |

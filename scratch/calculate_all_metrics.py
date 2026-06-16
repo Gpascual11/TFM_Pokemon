@@ -1,10 +1,10 @@
-import os
-from pathlib import Path
-import pandas as pd
-import numpy as np
 import multiprocessing
+from pathlib import Path
 
-DATA_DIR = Path("/home/sirp/Documents/MUDS/TFM_Pokemon/data/1_vs_1/benchmarks_all_10k")
+import numpy as np
+import pandas as pd
+
+DATA_DIR = Path("/home/sirp/Documents/MUDS/TFM_Pokemon/data/benchmarks/all_10k")
 REPORT_DIR = Path("/home/sirp/Documents/MUDS/TFM_Pokemon/report")
 
 # Define the exact 18 agents in order of strength/lineage for rows/cols

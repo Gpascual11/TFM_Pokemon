@@ -1,8 +1,9 @@
+import argparse
 import os
 import re
-import argparse
-import pandas as pd
 import sys
+
+import pandas as pd
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 
@@ -74,13 +75,13 @@ def extract_features_from_battles(dataset, max_battles=5000):
             # Only record turns where P1 made a clear, single choice
             if p1_moves > 0 and p1_switches == 0: # Attack
                 # Action = 0
-                data_rows.append([hp_diff, int(p1_hazards), is_late_game, 0])
+                data_rows.append([example['battle_id'], hp_diff, int(p1_hazards), is_late_game, 0])
                 
             elif p1_switches > 0 and p1_moves == 0: # Switch
                 # Action = 1
-                data_rows.append([hp_diff, int(p1_hazards), is_late_game, 1])
+                data_rows.append([example['battle_id'], hp_diff, int(p1_hazards), is_late_game, 1])
 
-    columns = ["hp_diff", "hazards_active", "is_late_game", "action"]
+    columns = ["battle_id", "hp_diff", "hazards_active", "is_late_game", "action"]
     df = pd.DataFrame(data_rows, columns=columns)
     return df
 
@@ -105,8 +106,8 @@ def normalize_month_year(val: str) -> str:
 def main():
     parser = argparse.ArgumentParser(description="Extract Features from Replay Dataset")
     parser.add_argument("--format", type=str, default="gen9randombattle", help="Format/Gamemode to load (default: gen9randombattle)")
-    parser.add_argument("--start", type=str, default="January2025", help="Start month (default: January2025)")
-    parser.add_argument("--end", type=str, default="April2026", help="End month (default: April2026)")
+    parser.add_argument("--start", type=str, default="August2023", help="Start month (default: August2023)")
+    parser.add_argument("--end", type=str, default="March2025", help="End month (default: March2025)")
     parser.add_argument("--max-battles", type=int, default=10000, help="Max battles to process (default: 10000)")
     args = parser.parse_args()
 

@@ -1,4 +1,5 @@
 import os
+
 import pandas as pd
 
 gens = ["gen9randombattle", "gen5randombattle", "gen1randombattle"]
@@ -12,7 +13,7 @@ for gen in gens:
     # We want to order by win rate descending to match the walkthrough table style
     rows = []
     for opp in opponents:
-        csv_path = f"data/1_vs_1/benchmarks_v12_10k/{gen}/v12_vs_{opp}.csv"
+        csv_path = f"data/testing/backup/benchmarks_v12_10k/{gen}/v12_vs_{opp}.csv"
         if not os.path.exists(csv_path):
             continue
         df = pd.read_csv(csv_path)
