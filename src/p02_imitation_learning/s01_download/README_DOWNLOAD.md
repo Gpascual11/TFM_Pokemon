@@ -12,7 +12,7 @@ When you run `download_dataset.py`, it executes `load_filtered_dataset()`. Behin
 1. Connects to the HuggingFace Hub.
 2. Downloads the massive `milkkarten/pokechamp` dataset.
 3. Automatically routes the download to the 1TB external drive cache (`data/huggingface_cache`) to prevent completely filling your local root disk.
-4. Filters the dataset down realistically to only Gen 9 OU (OverUsed) singles format, played in March 2024, by players with an Elo rating of **1800 or higher**.
+4. Filters the dataset down to the **Gen 9 Random Battle** singles format, for a configurable date range (defaulting to the complete window of August 2023 to March 2025), played by expert players with an Elo rating of **1800 or higher**.
 
 ## Why This Matters
 By extracting games from strictly 1800+ Elo players immediately, we guarantee that the EDA (Step 2) and the XGBoost model (Step 3) are studying "expert" decision-making, rather than random or mathematically suboptimal moves from beginners.

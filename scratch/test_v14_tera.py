@@ -1,11 +1,14 @@
 import sys
+
 sys.path.insert(0, "/home/sirp/Documents/MUDS/TFM_Pokemon/pokechamp")
 sys.path.insert(0, "/home/sirp/Documents/MUDS/TFM_Pokemon/src")
 
 from unittest.mock import MagicMock
-from poke_env.environment.pokemon_type import PokemonType
+
 from poke_env.data import GenData
-from p01_heuristics.s01_singles.agents.internal.v14 import HeuristicV14
+from poke_env.environment.pokemon_type import PokemonType
+
+from p01_heuristics.agents.internal.v14 import HeuristicV14
 
 # Initialize GenData
 gd = GenData.from_gen(9)

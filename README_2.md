@@ -1,7 +1,8 @@
 # TFM: Pokemon Battle AI Research Environment
 
 Research workspace for building, benchmarking, and analyzing Pokemon Showdown agents:
-- Heuristic agents (singles and doubles).
+- Heuristic agents.
+- Adversarial search agents (minimax and MCTS).
 - RL pipelines and evaluation modules.
 - LLM-based agents (Pokechamp/Pokellmon integrations).
 - Reporting pipeline (CSV -> plots/tables for the thesis report).
@@ -10,8 +11,10 @@ The project is optimized for local parallel simulation using Pokemon Showdown + 
 
 ## What Is New in This Refactor
 
-- Updated all old paths/commands to current modules under `src/p01_heuristics/...`.
-- Added both Singles (`s01_singles`) and Doubles (`s02_doubles`) workflows.
+- Consolidated singles heuristics to `src/p01_heuristics/` and deleted doubles logic.
+- Consolidated shared core engine, scripts, and evaluation under `src/p00_core/`.
+- Consolidated MCTS agent design under `src/p04_mcts/`.
+- Renamed and flattened curriculum RL under `src/p05_ppo_drl/`.
 - Added current benchmark engine behavior (parallel workers, resume-by-rerun, server restarts).
 - Added dev tooling (`ruff`, `ty`) and reproducible environment notes (`uv`, Python 3.12).
 - Added machine-specific tuning guidance for your CPU (`AMD Ryzen 7 5700X3D`, 16 threads, 32 GB RAM).
@@ -86,10 +89,12 @@ uv sync --all-extras --index-url https://download.pytorch.org/whl/cu124 --extra-
 
 ## Project Map
 
-- `src/p01_heuristics/s01_singles/`: Singles (1v1) agents, benchmark engine, reporting.
-- `src/p01_heuristics/s02_doubles/`: Doubles (2v2) agents, benchmark engine, reporting.
-- `src/p02_rl_models/` and `src/p04_rl_models/`: RL training/evaluation pipelines.
-- `src/p05_scripts/`: Infrastructure scripts for launching local Showdown servers.
+- `src/p01_heuristics/`: Heuristic agents (v1-v14) and guides.
+- `src/p02_imitation_learning/`: Imitation learning pipeline.
+- `src/p03_minmax/`: Minimax search agents (v7, v15).
+- `src/p04_mcts/`: Information Set MCTS agent layout.
+- `src/p05_ppo_drl/`: Deep Reinforcement Learning environment and training curriculum.
+- `src/p00_core/`: Core benchmark engine, reporting scripts, server utilities, and guides.
 - `data/`: Benchmark outputs, run artifacts, and generated datasets.
 - `report/`: Thesis report sources.
 - `docs/`: Development and workflow documentation.
@@ -99,41 +104,31 @@ uv sync --all-extras --index-url https://download.pytorch.org/whl/cu124 --extra-
 ### 1) Start local servers (recommended script)
 
 ```bash
-bash src/p05_scripts/p05_launch_custom_servers.sh 4
+bash src/p00_core/scripts/launch_custom_servers.sh 4
 ```
 
 This launches ports `8000-8003` and handles cleanup on exit.
 
 Alternative:
-- `bash src/p05_scripts/p05_start_fixed_servers.sh` (legacy fixed 6-server launcher).
+- `bash src/p00_core/scripts/start_fixed_servers.sh` (legacy fixed 6-server launcher).
 
-### 2) Singles benchmark (recommended entrypoint)
+### 2) Heuristics benchmark (recommended entrypoint)
 
 ```bash
-uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 1000 \
+uv run python src/p00_core/engine/benchmark.py 1000 \
   --ports 4 \
   --concurrency 10
 ```
 
 Key behavior:
 - Runs a full matchup matrix.
-- Writes outputs to `data/1_vs_1/benchmarks/unified/`.
+- Writes outputs to `data/testing/benchmarks/`.
 - Resume-by-rerun: run the same command again to complete missing games only.
 
-### 3) Doubles benchmark
+### 3) LLM agent benchmark (low-port mode)
 
 ```bash
-uv run python src/p01_heuristics/s02_doubles/evaluation/engine/benchmark.py 10000 \
-  --ports 8 \
-  --battle-format gen9randomdoublesbattle
-```
-
-Outputs are organized by generation under `data/2_vs_2/benchmarks/`.
-
-### 4) LLM agent benchmark (low-port mode)
-
-```bash
-uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 20 \
+uv run python src/p00_core/engine/benchmark.py 20 \
   --agents pokechamp \
   --opponents v6 random \
   --ports 1 \
@@ -144,25 +139,16 @@ uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 20 \
 
 ## Reporting and Analysis
 
-### Singles heatmap/reporting
+### Heatmap/reporting
 
 ```bash
-uv run python -m src.p01_heuristics.s01_singles.evaluation.reporting.plots.generate_heatmap \
-  --data-dir data/1_vs_1/benchmarks/unified \
-  --output heatmap.png
+uv run python src/p00_core/reporting/plots/generate_full_report.py --data-dir data/benchmarks/all_10k/gen9randombattle
 ```
 
-### Legacy/full report generators
+### WHR Elo Calculation
 
 ```bash
-uv run python src/p01_heuristics/s01_singles/evaluation/reporting/generate_report.py --agent pokechamp
-uv run python src/p01_heuristics/s01_singles/evaluation/reporting/plots/generate_full_report.py
-```
-
-### Doubles report
-
-```bash
-uv run python src/p01_heuristics/s02_doubles/evaluation/reporting/generate_report.py
+uv run python src/p00_core/reporting/elo/elo_ranking.py --data-dir data/benchmarks/all_10k/gen9randombattle
 ```
 
 ## Performance Tuning (Your Machine)
@@ -203,7 +189,6 @@ uv run ty check
 ## Useful Internal Docs
 
 - `SETUP.md`: clean setup for new machines.
-- `src/p01_heuristics/s01_singles/README.md`: complete singles architecture guide.
-- `src/p01_heuristics/s02_doubles/s02_doubles_guide.md`: doubles usage and metrics.
-- `src/p01_heuristics/s01_singles/docs/CLI_REFERENCE.md`: full CLI options.
+- `src/p01_heuristics/heuristics.md`: complete heuristics architecture guide.
+- `src/p01_heuristics/docs/cli_reference.md`: full CLI options reference.
 - `docs/development_tools.md`: editor/lint/type-check/LaTeX tooling.

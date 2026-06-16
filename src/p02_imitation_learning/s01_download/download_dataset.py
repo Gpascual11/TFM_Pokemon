@@ -1,7 +1,7 @@
-import os
-import sys
 import argparse
+import os
 import re
+import sys
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
 
@@ -39,9 +39,9 @@ def normalize_month_year(val: str) -> str:
 
 def main():
     parser = argparse.ArgumentParser(description="Download Pokemon Replay Dataset with Smart Caching")
-    parser.add_argument("--gamemode", type=str, default="gen9randombattle", help="Game mode (e.g. gen9randombattle, gen9ou)")
-    parser.add_argument("--start", type=str, default="January2025", help="Starting month (e.g. 2025-01 or January2025)")
-    parser.add_argument("--end", type=str, default="April2026", help="Ending month (e.g. 2026-04 or April2026)")
+    parser.add_argument("--gamemode", type=str, default="gen9randombattle", help="Game mode (e.g. gen9randombattle)")
+    parser.add_argument("--start", type=str, default="August2023", help="Starting month (e.g. 2023-08 or August2023)")
+    parser.add_argument("--end", type=str, default="March2025", help="Ending month (e.g. 2025-03 or March2025)")
     args = parser.parse_args()
 
     # Normalize dates if in YYYY-MM format
@@ -56,10 +56,10 @@ def main():
     else:
         print("Cache is empty. Deep download starting...")
 
-    print(f"\nTarget Configuration:")
+    print("\nTarget Configuration:")
     print(f" - Game Mode: {args.gamemode}")
     print(f" - Range:    {start_normalized} to {end_normalized} (Input: {args.start} to {args.end})")
-    print(f" - Quality:  1800+ Elo Only\n")
+    print(" - Quality:  1800+ Elo Only\n")
 
     print("Executing load_filtered_dataset...")
     
@@ -72,7 +72,7 @@ def main():
         gamemode=args.gamemode
     )
     
-    print(f"\nSuccess! Dataset Ready.")
+    print("\nSuccess! Dataset Ready.")
     print(f" - Total Matches: {len(dataset)}")
     print(f" - Location:      {hf_cache_dir}")
     print("\nYou can now proceed to Step 2: EDA.")

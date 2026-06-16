@@ -142,7 +142,7 @@ exports.subprocesses = {
 ### Launch servers for benchmarking
 ```bash
 # Start 8 servers on ports 8000–8007
-bash src/p05_scripts/p05_launch_custom_servers.sh 8
+bash src/p00_core/scripts/launch_custom_servers.sh 8
 ```
 
 This is the configuration used for all benchmark results in this thesis (200 concurrent games, ~50k games/hour).

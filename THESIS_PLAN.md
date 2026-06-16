@@ -40,15 +40,15 @@ v1 (Random)              ← DONE ✅
 
 | Component | Status | Location |
 |---|---|---|
-| Heuristics v1–v14 | Complete | `src/p01_heuristics/s01_singles/agents/internal/` |
-| Bot-vs-bot benchmark (v1–v12) | Complete | `data/1_vs_1/benchmarks_all_10k/gen9randombattle/` (326 files) |
+| Heuristics v1–v14 | Complete | `src/p01_heuristics/agents/internal/` |
+| Bot-vs-bot benchmark (v1–v12) | Complete | `data/benchmarks/all_10k/gen9randombattle/` (326 files) |
 | Pokechamp baselines (abyssal, max_power, one_step) | Benchmarked | Same folder |
-| Online bot v14 | Running, 98 games | `data/1_vs_1/logs_v14/battle_history.csv` |
+| Online bot v14 | Running, 98 games | `data/testing/logs_v14/battle_history.csv` |
 | PPO models (Feb 2026) | Trained but weak | `data/models/models_22_02_26/` |
-| v7 minimax (old) | Exists, weak | `src/p02_search/s01_singles/agents/internal/v7_minimax.py` |
+| v7 minimax (old) | Exists, weak | `src/p03_minmax/agents/internal/v7_minimax.py` |
 | IL pipeline structure | Exists, wrong data | `src/p02_imitation_learning/` |
-| 8-server parallel infra | Working | `src/p05_scripts/` |
-| Doubles heuristics v1–v5 | Exists | `src/p01_heuristics/s02_doubles/` |
+| 8-server parallel infra | Working | `src/p00_core/scripts/` |
+| Doubles heuristics v1–v5 | Removed (out of scope) | (Deleted) |
 
 ### 2.2 What is BROKEN / NEEDS FIXING ⚠️
 
@@ -85,7 +85,7 @@ The 326 existing files cover: `v1–v12` × `abyssal`, `max_power`, `one_step`, 
 ## 3. Infrastructure
 
 ### 3.1 Compute setup
-- **Servers:** 8 local Pokemon Showdown instances (ports 8000+), launched via `src/p05_scripts/p05_launch_custom_servers.sh`
+- **Servers:** 8 local Pokemon Showdown instances (ports 8000+), launched via `src/p00_core/scripts/launch_custom_servers.sh`
 - **Concurrency:** 25 games per server × 8 servers = **200 concurrent battles**
 - **Throughput:** ~2.5 million games in 50 hours ≈ **50,000 games/hour**
 - **For benchmarks:** 10k games takes ~12 minutes with this setup
@@ -174,7 +174,7 @@ uv run python src/p02_imitation_learning/s03_training/train_ml_baseline.py \
 ---
 
 ### Phase 2 — Build v15 Minimax (~2 weeks)
-**Path:** `src/p02_search/s01_singles/agents/internal/v15_minimax.py`
+**Path:** `src/p03_minmax/agents/internal/v15_minimax.py`
 
 #### What it is
 A 1-ply adversarial game tree search. For each possible move, estimate: "If I pick this move and the opponent plays optimally, what is the worst-case outcome?" Pick the move with the best worst-case (maximin).
@@ -183,11 +183,11 @@ A 1-ply adversarial game tree search. For each possible move, estimate: "If I pi
 The pokechamp `pokechamp` bot uses a minimax with LocalSim but with a weak evaluator (simple damage subtraction). v14 has a far superior evaluator with exact damage rolls, speed ordering, status effects, setup detection, etc. v15 wraps v14's evaluator in a proper game tree.
 
 #### Why not improve v7_minimax?
-`src/p02_search/s01_singles/agents/internal/v7_minimax.py` exists but uses a primitive evaluator. Build v15 fresh, inheriting from v14, rather than extending v7.
+`src/p03_minmax/agents/internal/v7_minimax.py` exists but uses a primitive evaluator. Build v15 fresh, inheriting from v14, rather than extending v7.
 
 #### Core architecture
 ```python
-# src/p02_search/s01_singles/agents/internal/v15_minimax.py
+# src/p03_minmax/agents/internal/v15_minimax.py
 
 class MinimaxV15(HeuristicV14):
     """
@@ -249,7 +249,7 @@ Expected: v15 should beat v14 (~55%+) and match or beat pokechamp's minimax.
 ---
 
 ### Phase 3 — Fix and Scale PPO (~2–3 weeks)
-**Path:** `src/p04_rl_models/`
+**Path:** `src/p05_ppo_drl/`
 
 #### What it is
 Reinforcement Learning. The agent plays millions of games and learns from win/loss signals without any human knowledge — it discovers strategy from scratch.
@@ -263,7 +263,7 @@ Running more training on a broken agent wastes weeks. Run this diagnostic FIRST:
 
 ```bash
 # Phase 1 diagnostic: 500k steps vs RandomPlayer, log win rate every 50k
-uv run python src/p04_rl_models/s02_training/train_p1_base.py \
+uv run python src/p05_ppo_drl/s02_training/train_p1_base.py \
     --timesteps 500000 \
     --eval-interval 50000 \
     --log-winrate
@@ -289,7 +289,7 @@ def compute_reward(self, battle, prev_battle):
     win_bonus = 1.0 if battle.won else (-1.0 if battle.lost else 0.0)
     return 0.01 * hp_dealt - 0.005 * hp_lost + fainted_bonus + win_bonus
 ```
-File to check: `src/p04_rl_models/s01_env/pokemon_env.py`
+File to check: `src/p05_ppo_drl/s01_env/pokemon_env.py`
 
 **B. State vector missing critical info**
 The vectorizer must include at minimum:
@@ -300,7 +300,7 @@ The vectorizer must include at minimum:
 - Type matchup: effectiveness of my best move vs opponent
 - Speed comparison: am I faster?
 
-File to check: `src/p04_rl_models/s01_env/vectorizer.py`
+File to check: `src/p05_ppo_drl/s01_env/vectorizer.py`
 
 **C. Action masking bug**
 If illegal actions (switches to fainted Pokémon, moves with 0 PP) aren't masked to `-inf` before softmax, the agent wastes learning cycles on impossible actions.
@@ -329,7 +329,7 @@ n_envs = 200  # 8 servers × 25 concurrent each
 ---
 
 ### Phase 4 — Build MCTS (~2–3 weeks)
-**Path:** `src/p02_search/s02_mcts/agents/internal/v16_mcts.py`
+**Path:** `src/p03_minmax/s02_mcts/agents/internal/v16_mcts.py`
 
 #### What it is
 Monte Carlo Tree Search with Information Set sampling. Instead of exhaustive search (minimax), it uses stochastic simulations to estimate the value of moves. It's the algorithm core to AlphaGo/AlphaZero.
@@ -365,7 +365,7 @@ from poke_env.player.local_simulation import LocalSim
 
 #### Core MCTS implementation
 ```python
-# src/p02_search/s02_mcts/agents/internal/v16_mcts.py
+# src/p03_minmax/s02_mcts/agents/internal/v16_mcts.py
 
 import math
 from dataclasses import dataclass, field
@@ -466,7 +466,7 @@ Expected: MCTS should beat v15 minimax because it handles hidden info better, es
 ---
 
 ### Phase 5 — External Pokechamp Benchmarks (~1 week)
-**Path:** Extend `src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py`
+**Path:** Extend `src/p00_core/engine/benchmark.py`
 
 #### What it is
 Running the published pokechamp agents against your implementations as external reference points.
@@ -498,7 +498,7 @@ The existing benchmark matrix only covers v1–v12. You need v13 and v14 in the 
 
 ```bash
 # Add v13 and v14 to the benchmark matrix
-uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py \
+uv run python src/p00_core/engine/benchmark.py \
     --agents v13,v14 \
     --opponents all \
     --format gen9randombattle \
@@ -672,15 +672,14 @@ Month 3 — Write
 
 ### New files to create
 ```
-src/p02_search/
-  s01_singles/agents/internal/
+src/p03_minmax/
+  agents/internal/
     v15_minimax.py            ← Phase 2: 1-ply minimax with v14 evaluator
-  s02_mcts/
-    __init__.py
-    agents/internal/
-      v16_mcts.py             ← Phase 4: Information Set MCTS with LocalSim
-    evaluation/
-      benchmark_mcts.py       ← MCTS-specific benchmark runner
+src/p04_mcts/
+  agents/internal/
+    v16_mcts.py             ← Phase 4: Information Set MCTS with LocalSim
+  evaluation/
+    benchmark_mcts.py       ← MCTS-specific benchmark runner
 ```
 
 ### Key existing files to understand before each phase
@@ -691,24 +690,24 @@ Phase 1 (IL fix):
   src/p02_imitation_learning/s04_agent/ml_baseline.py
 
 Phase 2 (v15 minimax):
-  src/p02_search/s01_singles/agents/internal/v7_minimax.py  ← reference only
-  src/p01_heuristics/s01_singles/agents/internal/v14.py     ← inherit from this
-  src/p01_heuristics/s01_singles/core/base.py               ← base class
+  src/p03_minmax/agents/internal/v7_minimax.py  ← reference only
+  src/p01_heuristics/agents/internal/v14.py     ← inherit from this
+  src/p00_core/core/base.py               ← base class
 
 Phase 3 (PPO fix):
-  src/p04_rl_models/s01_env/pokemon_env.py     ← check reward + masking
-  src/p04_rl_models/s01_env/vectorizer.py      ← check state vector
-  src/p04_rl_models/s02_training/train.py      ← main training script
+  src/p05_ppo_drl/s01_env/pokemon_env.py     ← check reward + masking
+  src/p05_ppo_drl/s01_env/vectorizer.py      ← check state vector
+  src/p05_ppo_drl/s02_training/train.py      ← main training script
 
 Phase 4 (MCTS):
   pokechamp/poke_env/player/local_simulation.py  ← LocalSim.step() is here
-  src/p01_heuristics/s01_singles/agents/internal/v14.py  ← inherit evaluator
+  src/p01_heuristics/agents/internal/v14.py  ← inherit evaluator
 ```
 
 ### Running benchmarks
 ```bash
 # Standard bot-vs-bot benchmark
-uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py \
+uv run python src/p00_core/engine/benchmark.py \
     --agents v14,v15 \
     --opponents v1,v8,v12,v13,v14,abyssal \
     --format gen9randombattle \
@@ -717,7 +716,7 @@ uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py \
     --concurrency 25
 
 # Online bot
-uv run python src/p01_heuristics/s01_singles/evaluation/online_bot/run_online_bot.py \
+uv run python src/p00_core/online_bot/run_online_bot.py \
     --agent v14 --mode ladder --username SirPThesis --password ***REDACTED*** \
     --games 100 --concurrency 3
 ```

@@ -1,8 +1,8 @@
 import json
 
-notebook_path = "/home/sirp/Documents/MUDS/TFM_Pokemon/src/p01_heuristics/s01_singles/evaluation/reporting/eda_tournament.ipynb"
+notebook_path = "/home/sirp/Documents/MUDS/TFM_Pokemon/src/p00_core/reporting/eda_tournament.ipynb"
 
-with open(notebook_path, "r", encoding="utf-8") as f:
+with open(notebook_path, encoding="utf-8") as f:
     nb = json.load(f)
 
 for idx, cell in enumerate(nb["cells"]):

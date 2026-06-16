@@ -42,9 +42,9 @@ That comparison is the core value of the project.
 ## 3) Repository Map
 
 - `src/p01_heuristics/` -> rule-based agents and benchmark/reporting engine
-- `src/p04_rl_models/` -> RL environment, training curriculum, RL evaluation
+- `src/p05_ppo_drl/` -> RL environment, training curriculum, RL evaluation
 - `src/p02_imitation_learning/` -> Hugging Face replay download, EDA, feature extraction, XGBoost training
-- `src/p05_scripts/` -> Pokemon Showdown launch scripts for local multi-port infrastructure
+- `src/p00_core/scripts/` -> Pokemon Showdown launch scripts for local multi-port infrastructure
 - `data/` -> benchmark outputs, datasets, generated artifacts
 - `report/` -> thesis/report assets
 - `docs/` + `SETUP.md` -> setup/dev workflows
@@ -85,7 +85,7 @@ uv sync --all-extras --group dev
 From repo root:
 
 ```bash
-bash src/p05_scripts/p05_launch_custom_servers.sh 4
+bash src/p00_core/scripts/launch_custom_servers.sh 4
 ```
 
 This starts ports `8000-8003`.
@@ -103,30 +103,21 @@ Heuristics are deterministic/rule-based policies that score legal actions using 
 - Latest heuristic evolution adds richer field awareness, defensive pivoting, and priority valuation.
 
 ## Main locations
-- Singles: `src/p01_heuristics/s01_singles/`
-- Doubles: `src/p01_heuristics/s02_doubles/`
+- Heuristics: `src/p01_heuristics/`
 
-## Run: Singles matrix benchmark
+## Run: Heuristics matrix benchmark
 
 ```bash
-uv run python src/p01_heuristics/s01_singles/evaluation/engine/benchmark.py 1000 \
+uv run python src/p00_core/engine/benchmark.py 1000 \
   --ports 4 \
   --concurrency 10
-```
-
-## Run: Doubles benchmark
-
-```bash
-uv run python src/p01_heuristics/s02_doubles/evaluation/engine/benchmark.py 10000 \
-  --ports 8 \
-  --battle-format gen9randomdoublesbattle
 ```
 
 ## Reporting
 
 ```bash
-uv run python -m src.p01_heuristics.s01_singles.evaluation.reporting.plots.generate_heatmap \
-  --data-dir data/1_vs_1/benchmarks/unified \
+uv run python -m src.p00_core.reporting.plots.generate_heatmap \
+  --data-dir data/benchmarks/all_10k \
   --output heatmap.png
 ```
 
@@ -151,7 +142,7 @@ RL uses a neural policy (`MaskablePPO`) that learns from interaction instead of 
 ## Run: Example RL phase
 
 ```bash
-uv run python -m src.p04_rl_models.s02_training.train_p1_base \
+uv run python -m src.p05_ppo_drl.s02_training.train_p1_base \
   --timesteps 1000000 \
   --ports 8000 8001 8002 8003
 ```
@@ -159,12 +150,12 @@ uv run python -m src.p04_rl_models.s02_training.train_p1_base \
 ## RL evaluation
 
 ```bash
-uv run python src/p04_rl_models/s03_evaluation/run_benchmarks.py
-uv run python src/p04_rl_models/s03_evaluation/benchmark_rl.py --games 1000 --ports 4
-uv run python src/p04_rl_models/s03_evaluation/generate_rl_report.py
+uv run python src/p05_ppo_drl/s03_evaluation/run_benchmarks.py
+uv run python src/p05_ppo_drl/s03_evaluation/benchmark_rl.py --games 1000 --ports 4
+uv run python src/p05_ppo_drl/s03_evaluation/generate_rl_report.py
 ```
 
-Outputs are stored under `src/p04_rl_models/s03_evaluation/results/`.
+Outputs are stored under `src/p05_ppo_drl/s03_evaluation/results/`.
 
 ---
 
@@ -206,7 +197,7 @@ Produced artifacts are saved in `src/p02_imitation_learning/s03_training/models/
 
 For reliable thesis-grade experiments:
 
-1. Start local servers (`p05_scripts`).
+1. Start local servers (`p00_core/scripts`).
 2. Run heuristic baselines and collect benchmark CSVs.
 3. Train/evaluate RL policies and export RL benchmark summaries.
 4. Build imitation-learning models from Hugging Face replay data.
@@ -254,11 +245,11 @@ Best practices:
 If you are new to the codebase:
 
 - Start with heuristics:
-  - `src/p01_heuristics/s01_singles/README.md`
-  - `src/p01_heuristics/s01_singles/docs/CLI_REFERENCE.md`
+  - `src/p01_heuristics/heuristics.md`
+  - `src/p01_heuristics/docs/cli_reference.md`
 - Then RL:
-  - `src/p04_rl_models/p04_rl_models_overview.md`
-  - `src/p04_rl_models/s02_training/p02_s02_training_guide.md`
+  - `src/p05_ppo_drl/p05_ppo_drl_overview.md`
+  - `src/p05_ppo_drl/s02_training/s02_training_guide.md`
 - Then Hugging Face + ML baseline:
   - `src/p02_imitation_learning/README_ML_BASELINE.md`
   - `src/p02_imitation_learning/s02_eda/README_eda.md`
