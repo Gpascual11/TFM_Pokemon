@@ -156,7 +156,7 @@ async def run_worker_batch(
     proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
 
     # Dynamic timeout based on battles to run to prevent timeouts under CPU contention
-    batch_timeout = max(300, int(n_battles * 1.5))
+    batch_timeout = max(7200, int(n_battles * 40))
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=batch_timeout)
     except TimeoutError:
