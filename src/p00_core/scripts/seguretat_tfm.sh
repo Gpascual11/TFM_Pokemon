@@ -3,7 +3,7 @@
 # --- CARREGA CREDENCIALS (.env) ---
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-ENV_FILE="$SCRIPT_DIR/.env"
+ENV_FILE="$ROOT_DIR/.env"
 
 if [ -f "$ROOT_DIR/.venv/bin/activate" ]; then
     # shellcheck source=/dev/null

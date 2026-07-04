@@ -26,6 +26,15 @@ def get_agent_class(name: str) -> type:
             if name == "v15":
                 module = __import__("p03_minmax.agents.internal.v15_minimax", fromlist=["HeuristicV15Minimax"])
                 return module.HeuristicV15Minimax
+            if name == "v16":
+                module = __import__("p03_minmax.agents.internal.v16_minimax", fromlist=["HeuristicV16Minimax"])
+                return module.HeuristicV16Minimax
+            if name == "v17":
+                module = __import__("p04_mcts.agents.internal.v17_mcts", fromlist=["HeuristicV17MCTS"])
+                return module.HeuristicV17MCTS
+            if name == "v18":
+                module = __import__("p04_mcts.agents.internal.v18_mcts", fromlist=["HeuristicV18MCTS"])
+                return module.HeuristicV18MCTS
             version = int(name[1:])
             if 1 <= version <= 14:
                 module = __import__(f"p01_heuristics.agents.internal.v{version}", fromlist=[f"HeuristicV{version}"])

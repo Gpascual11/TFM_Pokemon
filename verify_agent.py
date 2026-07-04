@@ -30,4 +30,5 @@ if __name__ == "__main__":
     test_agent_loading("ml_baseline")
     test_agent_loading("ml_advanced")
     test_agent_loading("v15")
+    test_agent_loading("v16")
     print("\nAll agents verified successfully!")

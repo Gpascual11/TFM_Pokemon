@@ -20,7 +20,7 @@ set -euo pipefail
 # ── Load credentials from .env ──────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-ENV_FILE="$SCRIPT_DIR/../.env"
+ENV_FILE="$ROOT_DIR/.env"
 
 cd "$ROOT_DIR"
 
