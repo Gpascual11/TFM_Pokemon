@@ -37,6 +37,12 @@ This document summarizes the evaluation of the Imitation Learning agents trained
    * By combining the human action-type policy (stay vs. switch predicted by XGBoost) with high-level heuristic execution (`v14`), `ml_advanced` becomes highly competitive.
    * It achieves a **43.7% win rate against the championship heuristic `v14`** and **53.6% against `v8`**. This suggests that the XGBoost imitation policy makes highly rational, human-like decisions regarding active matchups and switching boundaries.
 
+### 3.1 Methodological Justification: Why a Hybrid Model is Academically Sound
+A potential critique during a thesis defense is that a "pure" imitation learning agent should predict specific moves and switches directly, rather than using a heuristic delegate. However, in the context of competitive Pokémon Showdown, a hybrid approach is the mathematically and practically correct design:
+* **The Action Semantics Problem**: A pure model predicting action slots (0-9) is theoretically flawed because slot indices have no universal meaning (e.g., action 0 is "Stealth Rock" on one Pokémon, but "Hydro Pump" on another). Without a complex transformer/attention mechanism matching options to state vectors, slot classification is noise.
+* **Exposure Bias and Compounding Errors**: In behavioral cloning, if an agent makes a single suboptimal decision, it moves into a state-space region not covered by the training dataset. This leads to rapid strategic degradation. Using the `v14` expert engine to guide the execution of the selected action type keeps the agent in a highly structured, valid state trajectory.
+* **Hierarchical Policy Design**: This hybrid structure is formally defined as a hierarchical policy: a high-level policy (XGBoost) makes the macro decision (Stay vs. Switch transition boundary), and a low-level policy (`v14`) handles micro-tactical execution. This is a robust and widely used design in AI literature.
+
 ---
 
 ## 4. Technical Hyperparameters & Model Architecture

@@ -15,6 +15,7 @@ import gc
 import os
 import random
 import sys
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -60,20 +61,32 @@ class StatsBattle(Battle):
         self.miss_count_opp = 0
         self.supereffective_count_us = 0
         self.supereffective_count_opp = 0
+        # Flag set by parse_message when a 'drag' message arrives (phazing move).
+        # Cleared after switch() consumes it so it doesn't bleed into the next turn.
+        self._drag_incoming: bool = False
 
     def switch(self, pokemon_str: str, details: str, hp_status: str):
         identifier = pokemon_str.split(":")[0][:2]
         is_mine = identifier == self._player_role
+        is_drag = self._drag_incoming
+        self._drag_incoming = False  # consume the flag
 
+        force_switch = getattr(self, "force_switch", False)
+        if isinstance(force_switch, list):
+            force_switch = any(force_switch)
         if is_mine:
-            if getattr(self, "force_switch", False):
+            if force_switch or is_drag:
                 self.forced_switches_us += 1
             else:
                 self.voluntary_switches_us += 1
         else:
             if self.opponent_active_pokemon is None:
+                # Turn 1 lead send-out — not really voluntary or forced, count as voluntary
                 self.voluntary_switches_opp += 1
             elif self.opponent_active_pokemon.fainted:
+                self.forced_switches_opp += 1
+            elif is_drag:
+                # Phazing move (Roar/Whirlwind/Dragon Tail) — forced involuntary switch
                 self.forced_switches_opp += 1
             else:
                 self.voluntary_switches_opp += 1
@@ -94,7 +107,11 @@ class StatsBattle(Battle):
 
         if len(split_message) > 2:
             msg_type = split_message[1]
-            if msg_type == "-crit":
+            # 'drag' means a phazing move (Roar/Whirlwind/Dragon Tail) forced the switch.
+            # Set a flag BEFORE calling super() so our switch() override sees it.
+            if msg_type == "drag":
+                self._drag_incoming = True
+            elif msg_type == "-crit":
                 role = getattr(self, "_player_role", "p1") or "p1"
                 is_us = split_message[2].startswith(role)
                 if is_us:
@@ -259,11 +276,17 @@ async def _run_streaming(
     """
     # Gen 1 battles are prone to infinite loops/hangs; use smaller chunks and tighter timeouts
     is_gen1 = "gen1" in player.battle_format if hasattr(player, "battle_format") else False
-    # chunk_size = 10 if is_gen1 else 25
-    chunk_size = 25
+    is_search = any(x in agent_name.lower() or x in opp_name.lower() for x in ["minimax", "minmax", "mcts", "v15", "v16", "v17", "v18", "v19", "v20"])
 
-    # 3 minute timeout for standard chunks, 2 minutes for Gen 1 smaller chunks
-    chunk_timeout = 120 if is_gen1 else 180
+    if is_search:
+        chunk_size = 5
+        chunk_timeout = 300  # 5 minutes for search chunks (avoid timeouts)
+    elif is_gen1:
+        chunk_size = 10
+        chunk_timeout = 120
+    else:
+        chunk_size = 25
+        chunk_timeout = 180
 
     done_total = 0
 
@@ -318,6 +341,27 @@ async def _run_streaming(
         "matchup_switches_opp",
         "terastallized_us",
         "terastallized_opp",
+        # Advanced paradigm tracking
+        "ko_guards_us",
+        "ko_guards_opp",
+        "loop_guards_us",
+        "loop_guards_opp",
+        "xgb_switches_us",
+        "xgb_switches_opp",
+        "xgb_stays_us",
+        "xgb_stays_opp",
+        "xgb_prob_sum_us",
+        "xgb_prob_sum_opp",
+        "search_switches_us",
+        "search_switches_opp",
+        "search_moves_us",
+        "search_moves_opp",
+        "endgame_solves_us",
+        "endgame_solves_opp",
+        "search_diff_us",
+        "search_diff_opp",
+        "total_turns_us",
+        "total_turns_opp",
         "timestamp",
     ]
 
@@ -390,7 +434,7 @@ async def _run_streaming(
             if not b.finished:
                 continue
             row = {
-                "battle_id": bid,
+                "battle_id": f"p{port}_{uuid.uuid4().hex[:6]}_{bid}",
                 "format": getattr(b, "_format", None) or battle_format,
                 "heuristic": agent_name,
                 "opponent": opp_name,
@@ -424,8 +468,42 @@ async def _run_streaming(
                 "ko_checks_opp": getattr(opponent, "_ko_checks_by_battle", {}).get(bid, 0),
                 "matchup_switches_us": getattr(player, "_matchup_switches_by_battle", {}).get(bid, 0),
                 "matchup_switches_opp": getattr(opponent, "_matchup_switches_by_battle", {}).get(bid, 0),
-                "terastallized_us": 1 if hasattr(b, "team") and b.team and any(getattr(mon, "is_terastallized", False) for mon in b.team.values()) else 0,
-                "terastallized_opp": 1 if hasattr(b, "opponent_team") and b.opponent_team and any(getattr(mon, "is_terastallized", False) for mon in b.opponent_team.values()) else 0,
+                "terastallized_us": 1 if hasattr(b, "team") and b.team and any(getattr(mon, "terastallized", getattr(mon, "_terastallized", False)) for mon in b.team.values()) else 0,
+                "terastallized_opp": 1 if hasattr(b, "opponent_team") and b.opponent_team and any(getattr(mon, "terastallized", getattr(mon, "_terastallized", False)) for mon in b.opponent_team.values()) else 0,
+                # Advanced paradigm tracking
+                "ko_guards_us": getattr(player, "_ko_guards_by_battle", {}).get(bid, 0),
+                "ko_guards_opp": getattr(opponent, "_ko_guards_by_battle", {}).get(bid, 0),
+                "loop_guards_us": getattr(player, "_loop_guards_by_battle", {}).get(bid, 0),
+                "loop_guards_opp": getattr(opponent, "_loop_guards_by_battle", {}).get(bid, 0),
+                "xgb_switches_us": getattr(player, "_xgb_switches_by_battle", {}).get(bid, 0),
+                "xgb_switches_opp": getattr(opponent, "_xgb_switches_by_battle", {}).get(bid, 0),
+                "xgb_stays_us": getattr(player, "_xgb_stays_by_battle", {}).get(bid, 0),
+                "xgb_stays_opp": getattr(opponent, "_xgb_stays_by_battle", {}).get(bid, 0),
+                "xgb_prob_sum_us": getattr(player, "_xgb_prob_sum_by_battle", {}).get(bid, 0.0),
+                "xgb_prob_sum_opp": getattr(opponent, "_xgb_prob_sum_by_battle", {}).get(bid, 0.0),
+                "search_switches_us": getattr(player, "_search_switches_by_battle", {}).get(bid, 0),
+                "search_switches_opp": getattr(opponent, "_search_switches_by_battle", {}).get(bid, 0),
+                "search_moves_us": getattr(player, "_search_moves_by_battle", {}).get(bid, 0),
+                "search_moves_opp": getattr(opponent, "_search_moves_by_battle", {}).get(bid, 0),
+                "endgame_solves_us": getattr(player, "_endgame_solves_by_battle", {}).get(bid, 0),
+                "endgame_solves_opp": getattr(opponent, "_endgame_solves_by_battle", {}).get(bid, 0),
+                "search_diff_us": getattr(player, "_search_diff_by_battle", {}).get(bid, 0),
+                "search_diff_opp": getattr(opponent, "_search_diff_by_battle", {}).get(bid, 0),
+                "total_turns_us": getattr(player, "_total_turns_by_battle", {}).get(bid, 0),
+                "total_turns_opp": getattr(opponent, "_total_turns_by_battle", {}).get(bid, 0),
+                # Default initialization for team and status columns
+                "fainted_us": 0,
+                "remaining_pokemon_us": 0,
+                "total_hp_us": 0.0,
+                "hp_perc_us": 0.0,
+                "team_us": "",
+                "side_conditions_us": "",
+                "fainted_opp": 0,
+                "remaining_pokemon_opp": 0,
+                "total_hp_opp": 0.0,
+                "hp_perc_opp": 0.0,
+                "team_opp": "",
+                "side_conditions_opp": "",
                 "timestamp": datetime.datetime.now().isoformat(),
             }
 
@@ -484,9 +562,24 @@ async def _run_streaming(
             if hasattr(opponent, "reset_battles"):
                 opponent.reset_battles()
         except OSError:
-            # This happens if some battles timed out and are still technically "running"
-            # We log it and continue; the orchestrator will handle missing games
-            print("      ⚠️  Could not reset_battles (some still running). Continuing...")
+            # This happens if some battles timed out and are still technically "running".
+            # Manually clear the _battles dict so that already-written battles are not
+            # extracted and written again in the next chunk (which would create duplicate rows).
+            print("      ⚠️  Could not reset_battles (some still running). Manually clearing battles dict...")
+            for _p in (player, opponent):
+                if hasattr(_p, "_battles"):
+                    _p._battles.clear()
+                for attr in [
+                    "_used_moves_by_battle", "_fallback_moves_by_battle", "_error_moves_by_battle",
+                    "_total_decisions_by_battle", "_hazard_sets_by_battle", "_hazard_removals_by_battle",
+                    "_setup_uses_by_battle", "_ko_checks_by_battle", "_matchup_switches_by_battle",
+                    "_ko_guards_by_battle", "_loop_guards_by_battle", "_xgb_switches_by_battle",
+                    "_xgb_stays_by_battle", "_xgb_prob_sum_by_battle", "_search_switches_by_battle",
+                    "_search_moves_by_battle", "_endgame_solves_by_battle", "_search_diff_by_battle",
+                    "_total_turns_by_battle", "_last_action_type"
+                ]:
+                    if hasattr(_p, attr):
+                        getattr(_p, attr).clear()
 
         # Manually clear the local rows and battles references
         del rows

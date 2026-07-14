@@ -29,3 +29,9 @@ This document summarizes the evaluation of the Information Set Monte Carlo Tree 
 
 2. **The Constraints of Low Search Budget:**
    * At 100 simulations per turn, MCTS is constrained in its lookahead width. However, achieving a **43.0% win rate** against a monolithic 2,100-line expert system (`v14`) using only a simple type-aware rollout policy is highly successful. It demonstrates that search alone can approximate expert-level play without requiring a massive hand-crafted codebase.
+
+### 3.1 Methodological Analysis: Why Lookahead Search Underperforms Pure Heuristics
+An counter-intuitive result in the final Elo matrix is that the search-based agents (`v15` Minimax, `v18` MCTS) underperform the pure rule-based expert systems (`v12`, `v13`, `v14`). In an academic defense, this is framed as a key finding of search limitations in complex stochastic domains:
+* **The Horizon Overriding Effect**: Rule-based agents (`v12–v14`) utilize hardcoded, long-term strategic priority systems (such as saving a key sweeper for the late-game, or prioritizing hazard setting). A shallow tree search (1-ply minimax or a 5-turn MCTS lookahead) evaluates states purely on leaf utility. Consequently, the search agent will often identify a short-term advantage (e.g., deal immediate damage) and override a superior long-term heuristic choice.
+* **Rollout Noise & Simulation Discrepancies**: MCTS relies on `LocalSim` (a local Python simulator) for rollouts. Slight mismatches in simulator logic relative to the actual Showdown Node.js server acts as noise, misguiding UCB1 value estimates.
+* **Low Search Budget for Imperfect Information**: A budget of 100 simulations per turn is extremely small given the branching factor of Pokémon. Under heavy hidden information (unknown opponent team, moves, and items), the search tree is too shallow and wide to reach strategic consensus, making a monolithic expert system more robust.

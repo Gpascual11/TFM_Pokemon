@@ -36,6 +36,24 @@ class MLBaselineAgent(BaseHeuristic1v1):
             
         self.model.load_model(model_path)
 
+        # Telemetry and switch loop guard
+        self._last_action_type: dict[str, int] = {}
+        self._loop_guards_by_battle: dict[str, int] = {}
+        self._xgb_switches_by_battle: dict[str, int] = {}
+        self._xgb_stays_by_battle: dict[str, int] = {}
+        self._total_turns_by_battle: dict[str, int] = {}
+
+    def reset_battles(self) -> None:
+        """Clear battle history and local tracking dictionaries."""
+        try:
+            super().reset_battles()
+        finally:
+            self._last_action_type.clear()
+            self._loop_guards_by_battle.clear()
+            self._xgb_switches_by_battle.clear()
+            self._xgb_stays_by_battle.clear()
+            self._total_turns_by_battle.clear()
+
     def _extract_live_features(self, battle) -> pd.DataFrame:
         """
         Extracts the exact same features we used in training, but from the LIVE poke-env battle state!
@@ -86,6 +104,20 @@ class MLBaselineAgent(BaseHeuristic1v1):
         prediction = self.model.predict(live_features)[0]
         
         action_type = int(prediction) # 0 = Attack, 1 = Switch
+        
+        btag = battle.battle_tag
+        self._total_turns_by_battle[btag] = self._total_turns_by_battle.get(btag, 0) + 1
+
+        last_action = self._last_action_type.get(btag, -1)
+        if action_type == 1 and last_action == 1 and my_moves:
+            action_type = 0
+            self._loop_guards_by_battle[btag] = self._loop_guards_by_battle.get(btag, 0) + 1
+
+        self._last_action_type[btag] = action_type
+        if action_type == 1:
+            self._xgb_switches_by_battle[btag] = self._xgb_switches_by_battle.get(btag, 0) + 1
+        else:
+            self._xgb_stays_by_battle[btag] = self._xgb_stays_by_battle.get(btag, 0) + 1
         
         # Execute the model's policy
         if action_type == 1 and my_switches:

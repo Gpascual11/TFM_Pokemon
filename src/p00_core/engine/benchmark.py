@@ -54,21 +54,22 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Server Management
 # ---------------------------------------------------------------------------
-async def restart_servers_async(n_ports: int) -> None:
+async def restart_servers_async(n_ports: int, start_port: int = DEFAULT_PORT) -> None:
     """Kills existing Showdown servers and launches new ones.
 
     This ensures that memory bloat in Node.js processes is cleared before starting
     a new set of matchups. Use the `--restart-every` flag to trigger this periodically.
 
     Args:
-        n_ports (int): The number of ports to launch (starting from DEFAULT_PORT).
+        n_ports (int): The number of ports to launch.
+        start_port (int): The base port number.
     """
-    print(f"\n♻️  RESTARTING {n_ports} SHOWDOWN SERVERS...")
+    print(f"\n♻️  RESTARTING {n_ports} SHOWDOWN SERVERS (Starting from Port {start_port})...")
     try:
         subprocess.run(["pkill", "-f", "pokemon-showdown"], check=False)
         await asyncio.sleep(2)
         subprocess.Popen(
-            ["bash", "src/p00_core/scripts/launch_custom_servers.sh", str(n_ports)],
+            ["bash", "src/p00_core/scripts/launch_custom_servers.sh", str(n_ports), str(start_port)],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             cwd=str(_ROOT),
@@ -77,7 +78,7 @@ async def restart_servers_async(n_ports: int) -> None:
         # Wait for ports to become responsive
         start_time = time.time()
         timeout = 30 + (n_ports * 2)  # Scale timeout by number of servers
-        for i in range(DEFAULT_PORT, DEFAULT_PORT + n_ports):
+        for i in range(start_port, start_port + n_ports):
             ready = False
             while not ready and (time.time() - start_time) < timeout:
                 try:
@@ -302,6 +303,9 @@ async def run_matchup(
                 final_df = pd.concat([existing_df, new_df], ignore_index=True)
             else:
                 final_df = new_df
+            # Safety dedup: if a battle somehow got written twice (e.g. OSError
+            # on reset_battles bypassed the _battles.clear()), keep the last row.
+            final_df = final_df.drop_duplicates(subset=["battle_id"], keep="last")
             final_df.to_csv(out_csv, index=False)
             total_new_overall += new_in_iteration
 
@@ -370,7 +374,7 @@ async def main_async():
     agents = args.agents or DEFAULT_AGENTS
     opponents = args.opponents or DEFAULT_AGENTS
 
-    await restart_servers_async(args.ports)
+    await restart_servers_async(args.ports, args.start_port)
 
     stats = []
     performance_log = []
@@ -380,7 +384,7 @@ async def main_async():
         for opp in opponents:
             # Periodic Restart
             if args.restart_every > 0 and matchup_count > 0 and matchup_count % args.restart_every == 0:
-                await restart_servers_async(args.ports)
+                await restart_servers_async(args.ports, args.start_port)
 
             start_time = time.time()
             total_done, new_games = await run_matchup(
@@ -432,6 +436,14 @@ async def main_async():
                         for p in performance_log:
                             if p["agent"] == agent and p["opponent"] == opp:
                                 spg = f"{p['sec_per_game']:.2f}"
+                        if spg == "N/A" and perf_csv.exists():
+                            try:
+                                pdf = pd.read_csv(perf_csv)
+                                m = pdf[(pdf["agent"] == agent) & (pdf["opponent"] == opp)]
+                                if not m.empty:
+                                    spg = f"{float(m.iloc[-1]['sec_per_game']):.2f}"
+                            except Exception:
+                                pass
 
                         stats.append(
                             {

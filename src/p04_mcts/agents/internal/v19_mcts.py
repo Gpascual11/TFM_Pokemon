@@ -40,10 +40,10 @@ class MCTSNode:
         return exploitation + exploration
 
 
-class HeuristicV17MCTS(HeuristicV14):
-    """Information Set Monte Carlo Tree Search Agent (Base).
+class HeuristicV19MCTS(HeuristicV14):
+    """Information Set Monte Carlo Tree Search Agent (Upgraded).
 
-    Uses pokechamp's LocalSim for fast in-process rollouts.
+    Uses pokechamp's LocalSim for rollouts, evaluated by a v14-guided positional state scorer.
     """
 
     N_SIMULATIONS = 100
@@ -69,6 +69,14 @@ class HeuristicV17MCTS(HeuristicV14):
         self.item_effect = get_cached_item_effect()
         self.pokemon_item_dict = get_cached_pokemon_item_dict()
 
+        self._search_switches_by_battle: dict[str, int] = {}
+        self._search_moves_by_battle: dict[str, int] = {}
+        self._endgame_solves_by_battle: dict[str, int] = {}
+        self._search_diff_by_battle: dict[str, int] = {}
+        self._total_turns_by_battle: dict[str, int] = {}
+        self._last_action_type: dict[str, int] = {}
+        self._loop_guards_by_battle: dict[str, int] = {}
+
     def _get_greedy_rollout_action(self, battle, is_opponent: bool) -> Any:
         """A fast, type-aware greedy rollout action picker."""
         if not is_opponent:
@@ -80,11 +88,13 @@ class HeuristicV17MCTS(HeuristicV14):
 
             moves = battle.available_moves
             if moves:
+
                 def score_move(m):
                     bp = m.base_power or 0
                     if target:
                         return bp * target.damage_multiplier(m)
                     return bp
+
                 return max(moves, key=score_move)
 
             switches = battle.available_switches
@@ -99,19 +109,19 @@ class HeuristicV17MCTS(HeuristicV14):
             # Opponent moves are in active.moves
             moves = list(active.moves.values())
             if moves:
+
                 def score_move(m):
                     bp = m.base_power or 0
                     if target:
                         return bp * target.damage_multiplier(m)
                     return bp
+
                 return max(moves, key=score_move)
 
             return random.choice(opp_switches) if opp_switches else None
 
     def _sample_opponent_determinization(self, battle, sets_db: dict) -> dict[str, Any]:
-        """Samples plausible moves for the opponent based on Showdown sets database."""
         opp_team_data = {}
-        gen = self._get_gen(battle)
         for mon in battle.opponent_team.values():
             species_clean = mon.species.lower().replace(" ", "").replace("-", "").replace("_", "")
             set_info = sets_db.get(species_clean, {})
@@ -133,10 +143,11 @@ class HeuristicV17MCTS(HeuristicV14):
         return opp_team_data
 
     def _rollout(self, battle, initial_action: Any, opp_determinization: dict) -> float:
-        """Simulates ROLLOUT_DEPTH turns using LocalSim and returns team HP difference."""
+        """Simulates ROLLOUT_DEPTH turns using LocalSim and returns positional utility score."""
         from poke_env.player.local_simulation import LocalSim
 
         from poke_env.data.gen_data import GenData
+
         gen_data = GenData.from_format(battle._format or "gen9randombattle")
 
         # Instantiate a local battle copy
@@ -153,7 +164,7 @@ class HeuristicV17MCTS(HeuristicV14):
             format=battle._format or "gen9randombattle",
         )
 
-        # Apply the sampled opponent determinization to sim's opponent team
+        # Apply sampled opponent configuration
         for mon in sim.battle.opponent_team.values():
             spec = mon.species
             if spec in opp_determinization:
@@ -169,47 +180,69 @@ class HeuristicV17MCTS(HeuristicV14):
                             pass
 
         # First step
-        my_first_order = self.create_order(initial_action)
+        my_first_order = self.create_order(initial_action) if initial_action else None
         opp_first_action = self._get_greedy_rollout_action(sim.battle, is_opponent=True)
         opp_first_order = self.create_order(opp_first_action) if opp_first_action else None
 
-        sim.step(my_first_order, opp_first_order)
+        if my_first_order and opp_first_order:
+            sim.step(my_first_order, opp_first_order)
 
-        # Rollout loop
-        for _ in range(self.ROLLOUT_DEPTH - 1):
-            if sim.battle.finished or not sim.battle.active_pokemon or not sim.battle.opponent_active_pokemon:
-                break
+            # Rollout loop
+            for _ in range(self.ROLLOUT_DEPTH - 1):
+                if sim.battle.finished or not sim.battle.active_pokemon or not sim.battle.opponent_active_pokemon:
+                    break
 
-            my_action = self._get_greedy_rollout_action(sim.battle, is_opponent=False)
-            opp_action = self._get_greedy_rollout_action(sim.battle, is_opponent=True)
+                my_action = self._get_greedy_rollout_action(sim.battle, is_opponent=False)
+                opp_action = self._get_greedy_rollout_action(sim.battle, is_opponent=True)
 
-            my_order = self.create_order(my_action) if my_action else None
-            opp_order = self.create_order(opp_action) if opp_action else None
+                my_order = self.create_order(my_action) if my_action else None
+                opp_order = self.create_order(opp_action) if opp_action else None
 
-            if not my_order and not opp_order:
-                break
+                if not my_order or not opp_order:
+                    break
 
-            sim.step(my_order, opp_order)
+                sim.step(my_order, opp_order)
 
         if sim.battle.won:
             return 2.0
         if sim.battle.lost:
             return -2.0
 
-        # Evaluate the terminal state: sum of HP percentages of active + benched (assuming unrevealed are at 100% HP)
+        # Positional Evaluator
+        # 1. HP Score
         def get_team_hp(team):
             revealed_hp = sum(p.current_hp_fraction for p in team.values())
             unrevealed_count = max(0, 6 - len(team))
             return (revealed_hp + unrevealed_count) / 6.0
 
-        me_hp_sum = get_team_hp(sim.battle.team)
-        opp_hp_sum = get_team_hp(sim.battle.opponent_team)
+        me_hp_pct = get_team_hp(sim.battle.team)
+        opp_hp_pct = get_team_hp(sim.battle.opponent_team)
+        hp_score = me_hp_pct - opp_hp_pct
 
-        return me_hp_sum - opp_hp_sum
+        # 2. Matchup Score (from v14 rules)
+        matchup_score = 0.0
+        me_active = sim.battle.active_pokemon
+        opp_active = sim.battle.opponent_active_pokemon
+        if me_active and opp_active:
+            matchup_score = self._estimate_matchup(me_active, opp_active, sim.battle)
+
+        # 3. Status Conditions
+        status_score = 0.0
+        for p in sim.battle.team.values():
+            if p.status:
+                status_score -= 0.15
+        for p in sim.battle.opponent_team.values():
+            if p.status:
+                status_score += 0.15
+
+        return hp_score + 0.25 * matchup_score + status_score
 
     def _select_action(self, battle):
         me = battle.active_pokemon
         opp = battle.opponent_active_pokemon
+        btag = battle.battle_tag
+
+        self._total_turns_by_battle[btag] = self._total_turns_by_battle.get(btag, 0) + 1
 
         # 1. Update roles and parse battlefield state
         self._evaluate_team_roles(battle)
@@ -239,9 +272,7 @@ class HeuristicV17MCTS(HeuristicV14):
 
         ko_move = self._find_guaranteed_ko(battle, me, opp, my_speed, opp_speed)
         if ko_move:
-            self._ko_checks_by_battle[battle.battle_tag] = (
-                self._ko_checks_by_battle.get(battle.battle_tag, 0) + 1
-            )
+            self._ko_checks_by_battle[battle.battle_tag] = self._ko_checks_by_battle.get(battle.battle_tag, 0) + 1
             self._record_used_move(battle.battle_tag, ko_move.id)
             tera = self._should_terastallize(battle, ko_move)
             return self.create_order(ko_move, terastallize=tera)
@@ -271,6 +302,7 @@ class HeuristicV17MCTS(HeuristicV14):
             except Exception as e:
                 # Fallback to heuristic evaluation on failure
                 import traceback
+
                 traceback.print_exc()
                 score = 0.0
 
@@ -283,14 +315,67 @@ class HeuristicV17MCTS(HeuristicV14):
         best_node = max(root.children, key=lambda n: n.visits)
         best_action = best_node.action
 
+        is_switch = best_action is not None and not isinstance(best_action, Move)
+        last_action = self._last_action_type.get(btag, 0)
+        if is_switch and last_action == 1 and battle.available_moves:
+            # Prevent infinite switch loops by forcing the best move from MCTS tree or greedy rollout
+            move_children = [c for c in root.children if c.action is not None and isinstance(c.action, Move)]
+            if move_children:
+                best_node = max(move_children, key=lambda n: n.visits)
+                best_action = best_node.action
+            else:
+                best_action = self._get_greedy_rollout_action(battle, is_opponent=False) or random.choice(list(battle.available_moves))
+            self._loop_guards_by_battle[btag] = self._loop_guards_by_battle.get(btag, 0) + 1
+            is_switch = False
+
+        self._last_action_type[btag] = 1 if is_switch else 0
+
         if best_action:
             if not isinstance(best_action, Move):
-                # Switch action
-                return self.create_order(best_action)
+                self._search_switches_by_battle[btag] = self._search_switches_by_battle.get(btag, 0) + 1
+                actual_order = self.create_order(best_action)
             else:
-                # Move action
+                self._search_moves_by_battle[btag] = self._search_moves_by_battle.get(btag, 0) + 1
                 self._record_used_move(battle.battle_tag, best_action.id)
                 tera = self._should_terastallize(battle, best_action)
-                return self.create_order(best_action, terastallize=tera)
+                actual_order = self.create_order(best_action, terastallize=tera)
+        else:
+            actual_order = self.choose_random_move(battle)
 
-        return self.choose_random_move(battle)
+        # Track search difference vs raw v14 heuristic
+        try:
+            v14_order = super()._select_action(battle)
+        except Exception:
+            v14_order = None
+
+        if v14_order and actual_order:
+            v14_act = v14_order.order
+            act_act = actual_order.order
+
+            v14_id = (
+                v14_act.id
+                if hasattr(v14_act, "id")
+                else (v14_act.species if hasattr(v14_act, "species") else str(v14_act))
+            )
+            act_id = (
+                act_act.id
+                if hasattr(act_act, "id")
+                else (act_act.species if hasattr(act_act, "species") else str(act_act))
+            )
+
+            if v14_id != act_id:
+                self._search_diff_by_battle[btag] = self._search_diff_by_battle.get(btag, 0) + 1
+
+        return actual_order
+
+    def reset_battles(self) -> None:
+        try:
+            super().reset_battles()
+        finally:
+            self._search_switches_by_battle.clear()
+            self._search_moves_by_battle.clear()
+            self._endgame_solves_by_battle.clear()
+            self._search_diff_by_battle.clear()
+            self._total_turns_by_battle.clear()
+            self._last_action_type.clear()
+            self._loop_guards_by_battle.clear()

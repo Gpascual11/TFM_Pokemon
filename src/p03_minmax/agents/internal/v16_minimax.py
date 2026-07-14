@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import random
 from typing import Any
 
 try:
@@ -13,8 +14,17 @@ from p00_core.core.common import get_status_name
 from p01_heuristics.agents.internal.v14 import HeuristicV14
 
 SETUP_MOVES = {
-    "swordsdance", "dragondance", "nastyplot", "calmmind", "quiverdance",
-    "shiftgear", "curse", "bulkup", "agility", "shellsmash", "irondefense"
+    "swordsdance",
+    "dragondance",
+    "nastyplot",
+    "calmmind",
+    "quiverdance",
+    "shiftgear",
+    "curse",
+    "bulkup",
+    "agility",
+    "shellsmash",
+    "irondefense",
 }
 HAZARD_MOVES = {"stealthrock", "spikes", "toxicspikes", "stickyweb"}
 RECOVERY_MOVES = {"recover", "roost", "slackoff", "softboiled", "moonlight", "synthesis", "shoreup"}
@@ -26,6 +36,16 @@ class HeuristicV16Minimax(HeuristicV14):
 
     Integrates setup, hazard, and recovery bonuses from HeuristicV14 into the minimax state scoring.
     """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._search_switches_by_battle: dict[str, int] = {}
+        self._search_moves_by_battle: dict[str, int] = {}
+        self._endgame_solves_by_battle: dict[str, int] = {}
+        self._search_diff_by_battle: dict[str, int] = {}
+        self._total_turns_by_battle: dict[str, int] = {}
+        self._last_action_type: dict[str, int] = {}
+        self._loop_guards_by_battle: dict[str, int] = {}
 
     def _predict_opponent_moves(self, battle, opp, gen: int, sets_db: dict) -> list[Move]:
         opp_moves = list(opp.moves.values()) if opp.moves else []
@@ -65,6 +85,13 @@ class HeuristicV16Minimax(HeuristicV14):
         gen: int,
         sets_db: dict,
     ) -> float:
+        # Guard: no opponent move predicted (empty moveset + no bench). Return a
+        # simple HP-differential score so minimax can still rank our actions.
+        if opp_action is None:
+            is_my_switch = not isinstance(my_action, Move)
+            me_hp = my_action.current_hp_fraction if is_my_switch else me.current_hp_fraction
+            return me_hp - opp.current_hp_fraction
+
         is_my_switch = not isinstance(my_action, Move)
         is_opp_switch = opp_action == "switch"
 
@@ -212,6 +239,8 @@ class HeuristicV16Minimax(HeuristicV14):
         me = battle.active_pokemon
         opp = battle.opponent_active_pokemon
 
+        self._total_turns_by_battle[btag] = self._total_turns_by_battle.get(btag, 0) + 1
+
         self._evaluate_team_roles(battle)
         self._update_inferences(battle)
 
@@ -275,12 +304,78 @@ class HeuristicV16Minimax(HeuristicV14):
                 best_worst_case_score = worst_case_score_for_this_action
                 best_action = my_action
 
+        is_switch = best_action is not None and not isinstance(best_action, Move)
+        last_action = self._last_action_type.get(btag, 0)
+        if is_switch and last_action == 1 and battle.available_moves:
+            # Prevent infinite switch loops by forcing the best move instead
+            best_move_score = -math.inf
+            best_move_action = None
+            for move in battle.available_moves:
+                if not opp_actions:
+                    score = self._evaluate_state_score(battle, move, None, me, opp, gen, sets_db)
+                else:
+                    score = min(
+                        self._evaluate_state_score(battle, move, o_act, me, opp, gen, sets_db)
+                        for o_act in opp_actions
+                    )
+                if score > best_move_score:
+                    best_move_score = score
+                    best_move_action = move
+            if best_move_action is not None:
+                best_action = best_move_action
+            else:
+                best_action = random.choice(list(battle.available_moves))
+            self._loop_guards_by_battle[btag] = self._loop_guards_by_battle.get(btag, 0) + 1
+            is_switch = False
+
+        self._last_action_type[btag] = 1 if is_switch else 0
+
         if best_action:
             if not isinstance(best_action, Move):
-                return self.create_order(best_action)
+                self._search_switches_by_battle[btag] = self._search_switches_by_battle.get(btag, 0) + 1
+                actual_order = self.create_order(best_action)
             else:
+                self._search_moves_by_battle[btag] = self._search_moves_by_battle.get(btag, 0) + 1
                 self._record_used_move(btag, best_action.id)
                 tera = self._should_terastallize(battle, best_action)
-                return self.create_order(best_action, terastallize=tera)
+                actual_order = self.create_order(best_action, terastallize=tera)
+        else:
+            actual_order = self.choose_random_move(battle)
 
-        return self.choose_random_move(battle)
+        # Track search difference vs raw v14 heuristic
+        try:
+            v14_order = super()._select_action(battle)
+        except Exception:
+            v14_order = None
+
+        if v14_order and actual_order:
+            v14_act = v14_order.order
+            act_act = actual_order.order
+
+            v14_id = (
+                v14_act.id
+                if hasattr(v14_act, "id")
+                else (v14_act.species if hasattr(v14_act, "species") else str(v14_act))
+            )
+            act_id = (
+                act_act.id
+                if hasattr(act_act, "id")
+                else (act_act.species if hasattr(act_act, "species") else str(act_act))
+            )
+
+            if v14_id != act_id:
+                self._search_diff_by_battle[btag] = self._search_diff_by_battle.get(btag, 0) + 1
+
+        return actual_order
+
+    def reset_battles(self) -> None:
+        try:
+            super().reset_battles()
+        finally:
+            self._search_switches_by_battle.clear()
+            self._search_moves_by_battle.clear()
+            self._endgame_solves_by_battle.clear()
+            self._search_diff_by_battle.clear()
+            self._total_turns_by_battle.clear()
+            self._last_action_type.clear()
+            self._loop_guards_by_battle.clear()
