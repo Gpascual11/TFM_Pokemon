@@ -8,10 +8,14 @@ import xgboost as xgb
 
 from p00_core.core.common import get_status_name
 from p01_heuristics.agents.internal.v14 import HeuristicV14
+try:
+    from poke_env.environment.side_condition import SideCondition
+except ImportError:
+    from poke_env.battle import SideCondition
 
 
-class MLAdvancedAgent(HeuristicV14):
-    """Advanced Imitation Learning Agent.
+class HeuristicV21XGBoost(HeuristicV14):
+    """Advanced Imitation Learning Agent (v21_xgboost).
 
     This agent uses the high-dimensional XGBoost model trained on the
     unrolled Gen9 Random Battle dataset (654 contextual features).
@@ -59,11 +63,28 @@ class MLAdvancedAgent(HeuristicV14):
         # Track last action type to prevent infinite switching loops
         # 0 = Move, 1 = Switch
         self._last_action_type: dict[str, int] = {}
+        # Advanced metrics tracking
+        self._ko_guards_by_battle: dict[str, int] = {}
+        self._loop_guards_by_battle: dict[str, int] = {}
+        self._xgb_switches_by_battle: dict[str, int] = {}
+        self._xgb_stays_by_battle: dict[str, int] = {}
+        self._xgb_prob_sum_by_battle: dict[str, float] = {}
+        self._endgame_solves_by_battle: dict[str, int] = {}
+        self._total_turns_by_battle: dict[str, int] = {}
 
     def reset_battles(self) -> None:
         """Clear both the base battle history and our custom switch-loop tracking."""
-        super().reset_battles()
-        self._last_action_type.clear()
+        try:
+            super().reset_battles()
+        finally:
+            self._last_action_type.clear()
+            self._ko_guards_by_battle.clear()
+            self._loop_guards_by_battle.clear()
+            self._xgb_switches_by_battle.clear()
+            self._xgb_stays_by_battle.clear()
+            self._xgb_prob_sum_by_battle.clear()
+            self._endgame_solves_by_battle.clear()
+            self._total_turns_by_battle.clear()
 
     def _build_empty_feature_dict(self) -> dict[str, float]:
         """Return a zero-initialized feature dict matching the training schema."""
@@ -124,10 +145,10 @@ class MLAdvancedAgent(HeuristicV14):
 
         # 3. Stealth Rock state
         if "p1_stealth_rock_active" in features:
-            features["p1_stealth_rock_active"] = 1.0 if "STEALTH_ROCK" in battle.side_conditions else 0.0
+            features["p1_stealth_rock_active"] = 1.0 if (SideCondition.STEALTH_ROCK in battle.side_conditions or any(getattr(c, "name", str(c)) == "STEALTH_ROCK" for c in battle.side_conditions)) else 0.0
         if "p2_stealth_rock_active" in features:
-            opp_conds = getattr(battle, "opponent_side_conditions", [])
-            features["p2_stealth_rock_active"] = 1.0 if "STEALTH_ROCK" in opp_conds else 0.0
+            opp_conds = getattr(battle, "opponent_side_conditions", {}) or {}
+            features["p2_stealth_rock_active"] = 1.0 if (SideCondition.STEALTH_ROCK in opp_conds or any(getattr(c, "name", str(c)) == "STEALTH_ROCK" for c in opp_conds)) else 0.0
 
         # 4. Tera usage
         if "p1_tera_used" in features:
@@ -149,6 +170,15 @@ class MLAdvancedAgent(HeuristicV14):
         btag = battle.battle_tag
         me = battle.active_pokemon
         opp = battle.opponent_active_pokemon
+
+        # Initialize tracking for this battle tag
+        self._ko_guards_by_battle.setdefault(btag, 0)
+        self._loop_guards_by_battle.setdefault(btag, 0)
+        self._xgb_switches_by_battle.setdefault(btag, 0)
+        self._xgb_stays_by_battle.setdefault(btag, 0)
+        self._xgb_prob_sum_by_battle.setdefault(btag, 0.0)
+        self._endgame_solves_by_battle.setdefault(btag, 0)
+        self._total_turns_by_battle[btag] = self._total_turns_by_battle.get(btag, 0) + 1
 
         # 1. Update roles and parse battlefield states
         self._evaluate_team_roles(battle)
@@ -178,6 +208,7 @@ class MLAdvancedAgent(HeuristicV14):
 
         ko_move = self._find_guaranteed_ko(battle, me, opp, my_speed, opp_speed)
         if ko_move:
+            self._ko_guards_by_battle[btag] = self._ko_guards_by_battle.get(btag, 0) + 1
             self._record_used_move(btag, ko_move.id)
             tera = self._should_terastallize(battle, ko_move)
             return self.create_order(ko_move, terastallize=tera)
@@ -188,14 +219,25 @@ class MLAdvancedAgent(HeuristicV14):
 
         if len(probs) < 2:
             action_type = 0
+            prob_val = 0.0
         else:
             action_type = 1 if probs[1] > 0.65 else 0
+            prob_val = float(probs[1])
+
+        self._xgb_prob_sum_by_battle[btag] = self._xgb_prob_sum_by_battle.get(btag, 0.0) + prob_val
+
+        # Record XGBoost high-level policy decision
+        if action_type == 1:
+            self._xgb_switches_by_battle[btag] = self._xgb_switches_by_battle.get(btag, 0) + 1
+        else:
+            self._xgb_stays_by_battle[btag] = self._xgb_stays_by_battle.get(btag, 0) + 1
 
         # --- INFINITE SWITCH LOOP GUARD ---
         # If we switched LAST turn, and we are not forced to switch (handled above),
         # force a move to prevent infinite team cycling.
         last_action = self._last_action_type.get(btag, 0)
         if action_type == 1 and last_action == 1 and battle.available_moves:
+            self._loop_guards_by_battle[btag] = self._loop_guards_by_battle.get(btag, 0) + 1
             action_type = 0
 
         self._last_action_type[btag] = action_type
@@ -228,3 +270,7 @@ class MLAdvancedAgent(HeuristicV14):
             return self.create_order(best_move, terastallize=tera)
 
         return self.choose_random_move(battle)
+
+
+# Backward compatibility alias for training scripts
+MLAdvancedAgent = HeuristicV21XGBoost

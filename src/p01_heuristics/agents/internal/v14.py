@@ -117,6 +117,27 @@ class HeuristicV14(BaseHeuristic1v1):
             self._active_history_by_battle.clear()
         if hasattr(self, "_opp_active_history_by_battle"):
             self._opp_active_history_by_battle.clear()
+        if hasattr(self, "_endgame_solves_by_battle"):
+            self._endgame_solves_by_battle.clear()
+        if hasattr(self, "_roles_by_battle"):
+            self._roles_by_battle.clear()
+        if hasattr(self, "_opp_archetype_by_battle"):
+            self._opp_archetype_by_battle.clear()
+        # Inference tracking dicts (lazily initialised in _update_inferences).
+        # Without clearing these, each unique battle_tag accumulates an entry
+        # that is never removed, causing unbounded growth over a long worker run.
+        for _attr in (
+            "_opp_boots_detected",
+            "_opp_move_counts",
+            "_opp_active_last_move",
+            "_last_opp_active_name",
+            "_last_processed_turn",
+            "_opponent_tendency",
+            "_last_turn_matchup",
+            "_opp_vol_switches",
+        ):
+            if hasattr(self, _attr):
+                getattr(self, _attr).clear()
 
     def _get_gen(self, battle) -> int:
         if battle is None:
@@ -950,6 +971,9 @@ class HeuristicV14(BaseHeuristic1v1):
         # 3. Endgame Minimax Solver
         endgame_order = self._run_endgame_solver(battle, me, opp)
         if endgame_order:
+            if not hasattr(self, "_endgame_solves_by_battle"):
+                self._endgame_solves_by_battle = {}
+            self._endgame_solves_by_battle[btag] = self._endgame_solves_by_battle.get(btag, 0) + 1
             return endgame_order
 
         # 4. Early Game Scouting Phase (turns 1-3)
@@ -1796,16 +1820,10 @@ class HeuristicV14(BaseHeuristic1v1):
             converts_to_ko = not_ko_without_tera and ko_with_tera
 
             has_offensive_boosts = (
-                active.boosts.get("atk", 0) >= 1
-                or active.boosts.get("spa", 0) >= 1
-                or active.boosts.get("spe", 0) >= 1
+                active.boosts.get("atk", 0) >= 1 or active.boosts.get("spa", 0) >= 1 or active.boosts.get("spe", 0) >= 1
             )
 
-            is_offensive_worthwhile = (
-                n_alive == 1
-                or has_offensive_boosts
-                or converts_to_ko
-            )
+            is_offensive_worthwhile = n_alive == 1 or has_offensive_boosts or converts_to_ko
 
             if is_offensive_worthwhile:
                 net_ratio = offensive_tera_score * (defensive_tera_score / defensive_score)

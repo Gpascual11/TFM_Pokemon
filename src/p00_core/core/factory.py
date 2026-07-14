@@ -39,8 +39,10 @@ class AgentFactory:
 
     @staticmethod
     def available_internal() -> list[str]:
-        """Return a list of locally developed rule-based heuristic agents."""
-        return ["v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18"]
+        return [
+            "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14",
+            "v15_minimax", "v16_minimax", "v17_minimax_hybrid", "v18_mcts", "v19_mcts", "v20_mcts_hybrid", "v21_xgboost"
+        ]
 
     @staticmethod
     def available_baselines() -> list[str]:

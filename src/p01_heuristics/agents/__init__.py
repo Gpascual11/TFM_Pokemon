@@ -20,22 +20,31 @@ def get_agent_class(name: str) -> type:
     # Internal Heuristics (v1-v8), Search (v7_minimax), and ML (ml_baseline)
     if name.startswith("v"):
         try:
-            if name == "v7_minimax":
-                module = __import__("p03_minmax.agents.internal.v7_minimax", fromlist=["HeuristicV7Minimax"])
-                return module.HeuristicV7Minimax
-            if name == "v15":
+            if name in ["v15", "v15_minimax"]:
                 module = __import__("p03_minmax.agents.internal.v15_minimax", fromlist=["HeuristicV15Minimax"])
                 return module.HeuristicV15Minimax
-            if name == "v16":
+            if name in ["v16", "v16_minimax"]:
                 module = __import__("p03_minmax.agents.internal.v16_minimax", fromlist=["HeuristicV16Minimax"])
                 return module.HeuristicV16Minimax
-            if name == "v17":
-                module = __import__("p04_mcts.agents.internal.v17_mcts", fromlist=["HeuristicV17MCTS"])
-                return module.HeuristicV17MCTS
-            if name == "v18":
+            if name in ["v17", "v17_minimax", "v17_minimax_hybrid"]:
+                module = __import__("p03_minmax.agents.internal.v17_minimax_hybrid", fromlist=["HeuristicV17MinimaxHybrid"])
+                return module.HeuristicV17MinimaxHybrid
+            if name in ["v18", "v18_mcts"]:
                 module = __import__("p04_mcts.agents.internal.v18_mcts", fromlist=["HeuristicV18MCTS"])
                 return module.HeuristicV18MCTS
-            version = int(name[1:])
+            if name in ["v19", "v19_mcts"]:
+                module = __import__("p04_mcts.agents.internal.v19_mcts", fromlist=["HeuristicV19MCTS"])
+                return module.HeuristicV19MCTS
+            if name in ["v20", "v20_mcts", "v20_mcts_hybrid"]:
+                module = __import__("p04_mcts.agents.internal.v20_mcts_hybrid", fromlist=["HeuristicV20MCTSHybrid"])
+                return module.HeuristicV20MCTSHybrid
+            if name in ["v21", "v21_xgboost", "ml_advanced"]:
+                module = __import__("p02_imitation_learning.s04_agent.v21_xgboost", fromlist=["HeuristicV21XGBoost"])
+                return module.HeuristicV21XGBoost
+            
+            # Handle standard heuristics v1-v14 (with optional _heuristic suffix)
+            clean_name = name.split("_")[0] if "_" in name and name.split("_")[0][1:].isdigit() else name
+            version = int(clean_name[1:])
             if 1 <= version <= 14:
                 module = __import__(f"p01_heuristics.agents.internal.v{version}", fromlist=[f"HeuristicV{version}"])
                 return getattr(module, f"HeuristicV{version}")
@@ -45,9 +54,9 @@ def get_agent_class(name: str) -> type:
     if name == "ml_baseline":
         module = __import__("p02_imitation_learning.s04_agent.ml_baseline", fromlist=["MLBaselineAgent"])
         return module.MLBaselineAgent
-    if name == "ml_advanced":
-        module = __import__("p02_imitation_learning.s04_agent.ml_advanced", fromlist=["MLAdvancedAgent"])
-        return module.MLAdvancedAgent
+    if name in ["ml_advanced", "v21_xgboost"]:
+        module = __import__("p02_imitation_learning.s04_agent.v21_xgboost", fromlist=["HeuristicV21XGBoost"])
+        return module.HeuristicV21XGBoost
 
     # Baselines
     if name == "random":

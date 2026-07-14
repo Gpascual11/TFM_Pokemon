@@ -45,6 +45,8 @@ def extract_features_from_battles(dataset, max_battles=5000):
         
         # State tracking through the text
         p1_hazards = False
+        p1_hp_pct = 100.0
+        p2_hp_pct = 100.0
         
         for turn_idx, turn_text in enumerate(turns[1:], 1):
             
@@ -60,8 +62,10 @@ def extract_features_from_battles(dataset, max_battles=5000):
             p1_hps = re.findall(r"p1[a-c]: [^\|]+\|(\d+)\/(\d+)", turn_text)
             p2_hps = re.findall(r"p2[a-c]: [^\|]+\|(\d+)\/(\d+)", turn_text)
             
-            p1_hp_pct = (float(p1_hps[-1][0]) / float(p1_hps[-1][1]) * 100) if p1_hps and float(p1_hps[-1][1]) > 0 else 100.0
-            p2_hp_pct = (float(p2_hps[-1][0]) / float(p2_hps[-1][1]) * 100) if p2_hps and float(p2_hps[-1][1]) > 0 else 100.0
+            if p1_hps and float(p1_hps[-1][1]) > 0:
+                p1_hp_pct = float(p1_hps[-1][0]) / float(p1_hps[-1][1]) * 100
+            if p2_hps and float(p2_hps[-1][1]) > 0:
+                p2_hp_pct = float(p2_hps[-1][0]) / float(p2_hps[-1][1]) * 100
             hp_diff = p1_hp_pct - p2_hp_pct
             
             # 3. Time state

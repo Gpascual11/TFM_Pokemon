@@ -9,7 +9,7 @@ set -e
 
 # Configuration
 COUNT=${1:-1}
-BASE_PORT=8000
+BASE_PORT=${2:-8000}
 ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 SHOWDOWN="$ROOT_DIR/pokemon-showdown/pokemon-showdown"
 
