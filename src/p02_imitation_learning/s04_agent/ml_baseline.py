@@ -85,6 +85,9 @@ class MLBaselineAgent(BaseHeuristic1v1):
         if battle.active_pokemon is None or battle.opponent_active_pokemon is None:
              return self.choose_random_move(battle)
 
+        btag = battle.battle_tag
+        self._total_turns_by_battle[btag] = self._total_turns_by_battle.get(btag, 0) + 1
+
         my_moves = battle.available_moves
         my_switches = battle.available_switches
         
@@ -104,9 +107,6 @@ class MLBaselineAgent(BaseHeuristic1v1):
         prediction = self.model.predict(live_features)[0]
         
         action_type = int(prediction) # 0 = Attack, 1 = Switch
-        
-        btag = battle.battle_tag
-        self._total_turns_by_battle[btag] = self._total_turns_by_battle.get(btag, 0) + 1
 
         last_action = self._last_action_type.get(btag, -1)
         if action_type == 1 and last_action == 1 and my_moves:

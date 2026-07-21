@@ -515,16 +515,18 @@ async def _run_streaming(
             row["move_stats_us"] = _serialize_counts(getattr(b, "move_counts_us", {}))
             row["move_stats_opp"] = _serialize_counts(getattr(b, "move_counts_opp", {}))
 
+            # In gen9randombattle both sides always field exactly 6 Pokémon.
+            # b.opponent_team is lazily populated (only seen mons), so we
+            # hardcode 6 as the team size for remaining/hp_perc calculations.
+            _TEAM_SIZE = 6
             if hasattr(b, "team") and b.team:
                 fainted = sum(m.fainted for m in b.team.values())
                 row.update(
                     {
                         "fainted_us": fainted,
-                        "remaining_pokemon_us": len(b.team) - fainted,
+                        "remaining_pokemon_us": _TEAM_SIZE - fainted,
                         "total_hp_us": round(sum(m.current_hp_fraction for m in b.team.values() if not m.fainted), 3),
-                        "hp_perc_us": round(sum(m.current_hp_fraction for m in b.team.values()) / len(b.team), 3)
-                        if len(b.team) > 0
-                        else 0,
+                        "hp_perc_us": round(sum(m.current_hp_fraction for m in b.team.values()) / _TEAM_SIZE, 3),
                         "team_us": _format_team_detailed(b.team),
                         "side_conditions_us": _format_side_conditions(getattr(b, "side_conditions", {})),
                     }
@@ -534,15 +536,16 @@ async def _run_streaming(
                 row.update(
                     {
                         "fainted_opp": fainted,
-                        "remaining_pokemon_opp": len(b.opponent_team) - fainted,
+                        # Fix: use _TEAM_SIZE (6), not len(opponent_team) which is
+                        # < 6 whenever unseen mons were never sent out.
+                        "remaining_pokemon_opp": _TEAM_SIZE - fainted,
                         "total_hp_opp": round(
                             sum(m.current_hp_fraction for m in b.opponent_team.values() if not m.fainted), 3
                         ),
+                        # Fix: divide by _TEAM_SIZE (6), not len(opponent_team).
                         "hp_perc_opp": round(
-                            sum(m.current_hp_fraction for m in b.opponent_team.values()) / len(b.opponent_team), 3
-                        )
-                        if len(b.opponent_team) > 0
-                        else 0,
+                            sum(m.current_hp_fraction for m in b.opponent_team.values()) / _TEAM_SIZE, 3
+                        ),
                         "team_opp": _format_team_detailed(b.opponent_team),
                         "side_conditions_opp": _format_side_conditions(getattr(b, "opponent_side_conditions", {})),
                     }

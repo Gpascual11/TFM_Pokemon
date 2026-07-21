@@ -18,7 +18,7 @@ def test_minimax_trace():
     print("=== Minimax 1-Ply Diagnostic Trace ===")
     
     # Initialize the agent
-    agent = HeuristicV15Minimax()
+    agent = HeuristicV15Minimax(start_listening=False)
     
     # Mock active Pokemon
     me = MagicMock()
@@ -28,6 +28,7 @@ def test_minimax_trace():
     me.current_hp_fraction = 1.0
     me.status = None
     me.boosts = {}
+    me.base_stats = {"spe": 364, "atk": 130, "def": 90, "spa": 120, "spd": 90}
     
     opp = MagicMock()
     opp.species = "Chien-Pao"
@@ -36,6 +37,7 @@ def test_minimax_trace():
     opp.current_hp_fraction = 1.0
     opp.status = None
     opp.boosts = {}
+    opp.base_stats = {"spe": 405, "atk": 130, "def": 80, "spa": 90, "spd": 80}
     
     # Mock moves using Move spec and MoveCategory
     my_move = MagicMock(spec=Move)

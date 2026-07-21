@@ -39,7 +39,7 @@ avis_telegram() {
     if [ -n "${TELEGRAM_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
         curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_CHAT_ID}" \
-            -d text="$1" > /dev/null
+            -d text="$1" >/dev/null 2>&1 || true
     else
         echo "[NOTIFY] $1"
     fi

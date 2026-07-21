@@ -1,7 +1,8 @@
 """MCTS Agent v20 (PUCT Information Set MCTS with Heuristic Prior Biasing).
 
-Extends HeuristicV18MCTS with PUCT (Predictor Upper Confidence Bound for Trees).
-Before MCTS expands root nodes, it queries the domain-expert recommendation of `HeuristicV14`.
+Extends HeuristicV19MCTS with PUCT (Predictor Upper Confidence Bound for Trees).
+Before MCTS expands root nodes, it queries the domain-expert recommendation of `HeuristicV14` safely
+using `_get_v14_pure_action(battle)` to prevent recursion loops or state tracking corruption.
 The candidate action recommended by `v14` receives a strong initial prior probability (`heuristic_prior_weight = 0.70`),
 guaranteeing that MCTS concentrates its simulation budget on high-value positional lines immediately.
 """
@@ -12,11 +13,8 @@ import math
 import random
 from typing import Any
 
-try:
-    from poke_env.environment.move import Move
-except ImportError:
-    from poke_env.battle import Move
-
+from poke_env.environment.move import Move
+from p00_core.core.common import get_status_name
 from .v19_mcts import HeuristicV19MCTS, MCTSNode
 
 
@@ -50,17 +48,34 @@ class HeuristicV20MCTSHybrid(HeuristicV19MCTS):
         me = battle.active_pokemon
         opp = battle.opponent_active_pokemon
 
-        if me is None or me.fainted or not battle.available_moves:
-            return super()._select_action(battle)
+        self._total_turns_by_battle[btag] = self._total_turns_by_battle.get(btag, 0) + 1
 
+        self._evaluate_team_roles(battle)
+        self._update_inferences(battle)
+
+        force_switch = battle.force_switch
+        if isinstance(force_switch, list):
+            force_switch = any(force_switch)
+
+        if force_switch or me is None or me.fainted or not battle.available_moves:
+            if battle.available_switches:
+                if opp is not None and not opp.fainted:
+                    switch = self._get_best_switch(battle, opp)
+                else:
+                    switch = self._get_best_switch_double_faint(battle)
+                if switch:
+                    return self.create_order(switch)
+            return None
+
+        # 1. Guaranteed KO & Emergency Tactical Overrides — always execute immediately
         format_str = battle._format or ""
-        my_status = getattr(me, "status", None)
-        my_status_name = my_status.name.lower() if my_status else None
-        opp_status = getattr(opp, "status", None) if opp else None
-        opp_status_name = opp_status.name.lower() if opp_status else None
+        my_status = get_status_name(me)
+        opp_status = get_status_name(opp)
+        my_speed = self._get_boosted_speed(me, my_status, format_str)
+        opp_speed = self._get_boosted_speed(opp, opp_status, format_str) if opp else 100.0
 
-        my_speed = self._get_boosted_speed(me, my_status_name, format_str)
-        opp_speed = self._get_boosted_speed(opp, opp_status_name, format_str) if opp else 100.0
+        gen = self._get_gen(battle)
+        sets_db = self._load_pokemon_sets(gen)
 
         if opp:
             ko_move = self._find_guaranteed_ko(battle, me, opp, my_speed, opp_speed)
@@ -75,20 +90,36 @@ class HeuristicV20MCTSHybrid(HeuristicV19MCTS):
                 self._endgame_solves_by_battle[btag] = self._endgame_solves_by_battle.get(btag, 0) + 1
                 return endgame_order
 
-        self._total_turns_by_battle[btag] = self._total_turns_by_battle.get(btag, 0) + 1
+            if hasattr(self, "_handle_opponent_setup_sweeper"):
+                setup_order = self._handle_opponent_setup_sweeper(battle, me, opp, my_speed, opp_speed)
+                if setup_order:
+                    return setup_order
+
+            if hasattr(self, "_try_status_absorption"):
+                status_order = self._try_status_absorption(battle, me, opp)
+                if status_order:
+                    return status_order
+
+            if battle.turn <= 3 and hasattr(self, "_is_switch_allowed"):
+                for m in battle.available_moves:
+                    if m.id in {"uturn", "voltswitch", "flipturn"} and battle.available_switches:
+                        opp_max_dmg = 0.0
+                        if hasattr(self, "_estimate_max_damage"):
+                            opp_max_dmg = self._estimate_max_damage(opp, me, gen, sets_db)
+                        if opp_max_dmg < me.current_hp * 0.55:
+                            self._record_used_move(btag, m.id)
+                            return self.create_order(m)
 
         my_actions = list(battle.available_moves) + list(battle.available_switches)
         if not my_actions:
             return self.choose_random_move(battle)
 
-        # Query baseline v14 prior for PUCT Heuristic Prior Biasing
-        try:
-            v14_order = super()._select_action(battle)
-        except Exception:
-            v14_order = None
+        # 2. Query baseline v14 prior safely using state-preserving wrapper (bypasses v19 MCTS recursion)
+        v14_order = self._get_v14_pure_action(battle)
         v14_target = v14_order.order if v14_order else None
+        v14_id = getattr(v14_target, "id", getattr(v14_target, "species", str(v14_target))) if v14_target else None
 
-        # Initialize root node with PUCT children
+        # 3. Initialize root node with PUCT children
         root = PUCTNode()
         n_children = len(my_actions)
         prior_expert = self.heuristic_prior_weight
@@ -96,7 +127,8 @@ class HeuristicV20MCTSHybrid(HeuristicV19MCTS):
 
         root.children = []
         for act in my_actions:
-            p = prior_expert if (v14_target is not None and act == v14_target) else prior_other
+            act_id = getattr(act, "id", getattr(act, "species", str(act)))
+            p = prior_expert if (v14_target is not None and (act == v14_target or act_id == v14_id)) else prior_other
             root.children.append(PUCTNode(action=act, parent=root, prior=p))
 
         gen = self._get_gen(battle)
@@ -127,7 +159,6 @@ class HeuristicV20MCTSHybrid(HeuristicV19MCTS):
         is_switch = best_action is not None and not isinstance(best_action, Move)
         last_action = self._last_action_type.get(btag, 0)
         if is_switch and last_action == 1 and battle.available_moves:
-            # Prevent infinite switch loops by forcing the best move from MCTS tree or greedy rollout
             move_children = [c for c in root.children if c.action is not None and isinstance(c.action, Move)]
             if move_children:
                 best_node = max(move_children, key=lambda n: n.visits)
