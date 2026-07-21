@@ -11,13 +11,30 @@
 #   - CSV creation in data/benchmarks/verification_100games_gen9/
 #   - Advanced telemetry columns check: search_diff_us, xgb_switches_us, ko_guards_us, loop_guards_us, etc.
 
-if grep -q 'avis_telegram()' ~/.bashrc 2>/dev/null; then
-    eval "$(grep -A3 '^avis_telegram()' ~/.bashrc)"
+# ── Load credentials from .env ────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../../../../" && pwd)"
+ENV_FILE="$ROOT_DIR/.env"
+if [ -f "$ENV_FILE" ]; then
+    source "$ENV_FILE"
 else
-    avis_telegram() { echo "[NOTIFY] $1"; }
+    TELEGRAM_TOKEN=""
+    TELEGRAM_CHAT_ID=""
 fi
 
-NEW_AGENTS=${NEW_AGENTS:-"v15_minimax v16_minimax v17_minimax_hybrid v18_mcts v19_mcts v20_mcts_hybrid v21_xgboost"}
+# ── Telegram notification ──────────────────────────────────────────────────────
+avis_telegram() {
+    if [ -n "${TELEGRAM_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
+        curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d text="$1" >/dev/null 2>&1 || true
+    fi
+    echo "[NOTIFY] $1"
+}
+
+
+#NEW_AGENTS=${NEW_AGENTS:-"v15_minimax v16_minimax v17_minimax_hybrid v18_mcts v19_mcts v20_mcts_hybrid v21_xgboost"}
+NEW_AGENTS=${NEW_AGENTS:-"v18_mcts v19_mcts v20_mcts_hybrid"}
 ALL_AGENTS=${ALL_AGENTS:-"v1 v14 random"}
 N_BATTLES=${N_BATTLES:-100}
 PORTS=${PORTS:-8}
@@ -131,6 +148,8 @@ print('-' * 95)
 
 all_ok = True
 for f in sorted(csv_files):
+    if f.name == 'matchup_performance.csv':
+        continue
     df = pd.read_csv(f)
     cols = set(df.columns)
     

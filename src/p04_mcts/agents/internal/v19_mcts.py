@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import random
 import sys
 from pathlib import Path
@@ -11,231 +10,109 @@ project_root = Path(__file__).parent.parent.parent.parent.parent.resolve()
 pokechamp_path = project_root / "pokechamp"
 if str(pokechamp_path) not in sys.path:
     sys.path.insert(0, str(pokechamp_path))
-    # Force eviction of already loaded PyPI poke_env modules from cache
     for key in list(sys.modules.keys()):
         if key == "poke_env" or key.startswith("poke_env."):
             sys.modules.pop(key)
 
 from poke_env.environment.move import Move
-from poke_env.player.battle_order import BattleOrder
 from p00_core.core.common import get_status_name
-from p01_heuristics.agents.internal.v14 import HeuristicV14
+from .v18_mcts import HeuristicV18MCTS, MCTSNode
 
 
-class MCTSNode:
-    """A node in the Monte Carlo Search Tree."""
-
-    def __init__(self, action: Any = None, parent: MCTSNode | None = None):
-        self.action = action  # Move or Pokemon object
-        self.parent = parent
-        self.children: list[MCTSNode] = []
-        self.visits = 0
-        self.value = 0.0
-
-    def ucb_score(self, exploration_c: float = 1.4) -> float:
-        if self.visits == 0:
-            return float("inf")
-        exploitation = self.value / self.visits
-        exploration = exploration_c * math.sqrt(math.log(self.parent.visits) / self.visits)
-        return exploitation + exploration
-
-
-class HeuristicV19MCTS(HeuristicV14):
+class HeuristicV19MCTS(HeuristicV18MCTS):
     """Information Set Monte Carlo Tree Search Agent (Upgraded).
 
-    Uses pokechamp's LocalSim for rollouts, evaluated by a v14-guided positional state scorer.
+    Extends HeuristicV18MCTS by introducing:
+    1. Advanced V14-Guided Positional Scorer at leaf nodes (dynamic team roles, speed tier OHKO threat detection,
+       status severity penalties, setup stages, and hazard control).
+    2. V14 Emergency Tactical Overrides pre-search (setup stopping, status absorption, and early pivots).
     """
 
-    N_SIMULATIONS = 100
-    ROLLOUT_DEPTH = 5
-    EXPLORATION_C = 1.4
+    def _evaluate_mcts_terminal_state(self, sim) -> float:
+        """Evaluates the terminal state of an MCTS rollout (Advanced V19 Positional Scorer)."""
+        battle = sim.battle
+        me_team = battle.team
+        opp_team = battle.opponent_team
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-        from pokechamp.data_cache import (
-            get_cached_move_effect,
-            get_cached_pokemon_move_dict,
-            get_cached_ability_effect,
-            get_cached_pokemon_ability_dict,
-            get_cached_item_effect,
-            get_cached_pokemon_item_dict,
-        )
-
-        self.move_effect = get_cached_move_effect()
-        self.pokemon_move_dict = get_cached_pokemon_move_dict()
-        self.ability_effect = get_cached_ability_effect()
-        self.pokemon_ability_dict = get_cached_pokemon_ability_dict()
-        self.item_effect = get_cached_item_effect()
-        self.pokemon_item_dict = get_cached_pokemon_item_dict()
-
-        self._search_switches_by_battle: dict[str, int] = {}
-        self._search_moves_by_battle: dict[str, int] = {}
-        self._endgame_solves_by_battle: dict[str, int] = {}
-        self._search_diff_by_battle: dict[str, int] = {}
-        self._total_turns_by_battle: dict[str, int] = {}
-        self._last_action_type: dict[str, int] = {}
-        self._loop_guards_by_battle: dict[str, int] = {}
-
-    def _get_greedy_rollout_action(self, battle, is_opponent: bool) -> Any:
-        """A fast, type-aware greedy rollout action picker."""
-        if not is_opponent:
-            active = battle.active_pokemon
-            target = battle.opponent_active_pokemon
-            if not active or active.fainted:
-                switches = battle.available_switches
-                return random.choice(switches) if switches else None
-
-            moves = battle.available_moves
-            if moves:
-
-                def score_move(m):
-                    bp = m.base_power or 0
-                    if target:
-                        return bp * target.damage_multiplier(m)
-                    return bp
-
-                return max(moves, key=score_move)
-
-            switches = battle.available_switches
-            return random.choice(switches) if switches else None
-        else:
-            active = battle.opponent_active_pokemon
-            target = battle.active_pokemon
-            opp_switches = [p for p in battle.opponent_team.values() if not p.active and not p.fainted]
-            if not active or active.fainted:
-                return random.choice(opp_switches) if opp_switches else None
-
-            # Opponent moves are in active.moves
-            moves = list(active.moves.values())
-            if moves:
-
-                def score_move(m):
-                    bp = m.base_power or 0
-                    if target:
-                        return bp * target.damage_multiplier(m)
-                    return bp
-
-                return max(moves, key=score_move)
-
-            return random.choice(opp_switches) if opp_switches else None
-
-    def _sample_opponent_determinization(self, battle, sets_db: dict) -> dict[str, Any]:
-        opp_team_data = {}
-        for mon in battle.opponent_team.values():
-            species_clean = mon.species.lower().replace(" ", "").replace("-", "").replace("_", "")
-            set_info = sets_db.get(species_clean, {})
-            probable_moves = set_info.get("moves", [])
-
-            # Fill up to 4 moves
-            mon_moves = list(mon.moves.keys())
-            for m_id in probable_moves:
-                if len(mon_moves) >= 4:
-                    break
-                if m_id not in mon_moves:
-                    mon_moves.append(m_id)
-
-            opp_team_data[mon.species] = {
-                "moves": mon_moves,
-                "ability": mon.ability or set_info.get("ability", ""),
-                "item": mon.item or set_info.get("item", ""),
-            }
-        return opp_team_data
-
-    def _rollout(self, battle, initial_action: Any, opp_determinization: dict) -> float:
-        """Simulates ROLLOUT_DEPTH turns using LocalSim and returns positional utility score."""
-        from poke_env.player.local_simulation import LocalSim
-
-        from poke_env.data.gen_data import GenData
-
-        gen_data = GenData.from_format(battle._format or "gen9randombattle")
-
-        # Instantiate a local battle copy
-        sim = LocalSim(
-            battle,
-            self.move_effect,
-            self.pokemon_move_dict,
-            self.ability_effect,
-            self.pokemon_ability_dict,
-            self.item_effect,
-            self.pokemon_item_dict,
-            gen_data,
-            self._dynamax_disable,
-            format=battle._format or "gen9randombattle",
-        )
-
-        # Apply sampled opponent configuration
-        for mon in sim.battle.opponent_team.values():
-            spec = mon.species
-            if spec in opp_determinization:
-                det = opp_determinization[spec]
-                mon._ability = det["ability"]
-                mon._item = det["item"]
-                # Update moves
-                for m_id in det["moves"]:
-                    if m_id not in mon.moves:
-                        try:
-                            mon._moves[m_id] = Move(m_id, gen=self._get_gen(battle))
-                        except Exception:
-                            pass
-
-        # First step
-        my_first_order = self.create_order(initial_action) if initial_action else None
-        opp_first_action = self._get_greedy_rollout_action(sim.battle, is_opponent=True)
-        opp_first_order = self.create_order(opp_first_action) if opp_first_action else None
-
-        if my_first_order and opp_first_order:
-            sim.step(my_first_order, opp_first_order)
-
-            # Rollout loop
-            for _ in range(self.ROLLOUT_DEPTH - 1):
-                if sim.battle.finished or not sim.battle.active_pokemon or not sim.battle.opponent_active_pokemon:
-                    break
-
-                my_action = self._get_greedy_rollout_action(sim.battle, is_opponent=False)
-                opp_action = self._get_greedy_rollout_action(sim.battle, is_opponent=True)
-
-                my_order = self.create_order(my_action) if my_action else None
-                opp_order = self.create_order(opp_action) if opp_action else None
-
-                if not my_order or not opp_order:
-                    break
-
-                sim.step(my_order, opp_order)
-
-        if sim.battle.won:
-            return 2.0
-        if sim.battle.lost:
-            return -2.0
-
-        # Positional Evaluator
-        # 1. HP Score
-        def get_team_hp(team):
-            revealed_hp = sum(p.current_hp_fraction for p in team.values())
+        # 1. Dynamic Roles Weighted HP Score
+        def get_weighted_team_hp(team, is_us: bool):
+            total_hp = 0.0
+            roles_map = getattr(self, "_roles_by_battle", {}).get(battle.battle_tag, {}) if is_us else {}
+            for mon_id, mon in team.items():
+                hp_frac = mon.current_hp_fraction
+                weight = 1.0
+                if is_us:
+                    role = roles_map.get(mon_id, roles_map.get(mon.species, ""))
+                    if role == "Win-Con":
+                        weight = 1.45
+                    elif role == "Vital Wall":
+                        weight = 1.25
+                total_hp += hp_frac * weight
             unrevealed_count = max(0, 6 - len(team))
-            return (revealed_hp + unrevealed_count) / 6.0
+            total_hp += unrevealed_count * 1.0
+            return total_hp / 6.0
 
-        me_hp_pct = get_team_hp(sim.battle.team)
-        opp_hp_pct = get_team_hp(sim.battle.opponent_team)
-        hp_score = me_hp_pct - opp_hp_pct
+        me_hp_score = get_weighted_team_hp(me_team, is_us=True)
+        opp_hp_score = get_weighted_team_hp(opp_team, is_us=False)
+        hp_diff = me_hp_score - 1.2 * opp_hp_score
 
-        # 2. Matchup Score (from v14 rules)
+        me_active = battle.active_pokemon
+        opp_active = battle.opponent_active_pokemon
+
+        # 2. Matchup & Speed Tier / OHKO Threat Check
         matchup_score = 0.0
-        me_active = sim.battle.active_pokemon
-        opp_active = sim.battle.opponent_active_pokemon
-        if me_active and opp_active:
-            matchup_score = self._estimate_matchup(me_active, opp_active, sim.battle)
+        threat_penalty = 0.0
+        if me_active and opp_active and not me_active.fainted and not opp_active.fainted:
+            matchup_score = self._estimate_matchup(me_active, opp_active, battle)
+            try:
+                gen = self._get_gen(battle)
+                sets_db = self._load_pokemon_sets(gen)
+                format_str = battle._format or ""
+                my_status = get_status_name(me_active)
+                opp_status = get_status_name(opp_active)
+                my_speed = self._get_boosted_speed(me_active, my_status, format_str)
+                opp_speed = self._get_boosted_speed(opp_active, opp_status, format_str)
 
-        # 3. Status Conditions
+                # If opponent outspeeds and can OHKO or severely cripple our active
+                if opp_speed > my_speed:
+                    max_defensive = self._estimate_max_damage(opp_active, me_active, gen, sets_db)
+                    mon_hp = self._current_hp(me_active)
+                    if max_defensive >= mon_hp:
+                        roles_map = getattr(self, "_roles_by_battle", {}).get(battle.battle_tag, {})
+                        spec_clean = me_active.species.lower()
+                        role = roles_map.get(spec_clean, roles_map.get(me_active.species, ""))
+                        threat_penalty = -10.0 if role in ["WIN_CON", "Win-Con"] else -6.5
+            except Exception:
+                pass
+
+        # 3. Status Conditions Penalty / Reward
         status_score = 0.0
-        for p in sim.battle.team.values():
+        for p in me_team.values():
             if p.status:
-                status_score -= 0.15
-        for p in sim.battle.opponent_team.values():
+                s_name = p.status.name.lower()
+                status_score -= 0.18 if s_name in {"brn", "par", "slp", "frz", "tox"} else 0.10
+        for p in opp_team.values():
             if p.status:
-                status_score += 0.15
+                s_name = p.status.name.lower()
+                status_score += 0.18 if s_name in {"brn", "par", "slp", "frz", "tox"} else 0.10
 
-        return hp_score + 0.25 * matchup_score + status_score
+        # 4. Setup & Boosts Check
+        boost_score = 0.0
+        if me_active and not me_active.fainted and hasattr(me_active, "boosts"):
+            pos_boosts = sum(max(0, v) for k, v in me_active.boosts.items() if k in {"atk", "spa", "spe"})
+            boost_score += 0.06 * pos_boosts
+        if opp_active and not opp_active.fainted and hasattr(opp_active, "boosts"):
+            opp_boosts = sum(max(0, v) for k, v in opp_active.boosts.items() if k in {"atk", "spa", "spe"})
+            boost_score -= 0.07 * opp_boosts
+
+        # 5. Entry Hazard Chip & Control Check
+        hazard_score = 0.0
+        if sum(battle.opponent_side_conditions.values()) > 0:
+            hazard_score += 0.08
+        if sum(battle.side_conditions.values()) > 0:
+            hazard_score -= 0.08
+
+        return hp_diff + 0.35 * matchup_score + threat_penalty + status_score + boost_score + hazard_score
 
     def _select_action(self, battle):
         me = battle.active_pokemon
@@ -263,20 +140,50 @@ class HeuristicV19MCTS(HeuristicV14):
                     return self.create_order(switch)
             return None
 
-        # 2. Guaranteed KO — always execute immediately
+        # 2. Guaranteed KO & Tactical Overrides — always execute immediately
         format_str = battle._format or ""
         my_status = get_status_name(me)
         opp_status = get_status_name(opp)
         my_speed = self._get_boosted_speed(me, my_status, format_str)
-        opp_speed = self._get_boosted_speed(opp, opp_status, format_str)
+        opp_speed = self._get_boosted_speed(opp, opp_status, format_str) if opp else 100.0
 
-        ko_move = self._find_guaranteed_ko(battle, me, opp, my_speed, opp_speed)
-        if ko_move:
-            self._ko_checks_by_battle[battle.battle_tag] = self._ko_checks_by_battle.get(battle.battle_tag, 0) + 1
-            self._record_used_move(battle.battle_tag, ko_move.id)
-            tera = self._should_terastallize(battle, ko_move)
-            return self.create_order(ko_move, terastallize=tera)
+        gen = self._get_gen(battle)
+        sets_db = self._load_pokemon_sets(gen)
 
+        if opp:
+            ko_move = self._find_guaranteed_ko(battle, me, opp, my_speed, opp_speed)
+            if ko_move:
+                self._ko_checks_by_battle[btag] = self._ko_checks_by_battle.get(btag, 0) + 1
+                self._record_used_move(btag, ko_move.id)
+                tera = self._should_terastallize(battle, ko_move)
+                return self.create_order(ko_move, terastallize=tera)
+
+            endgame_order = self._run_endgame_solver(battle, me, opp)
+            if endgame_order:
+                self._endgame_solves_by_battle[btag] = self._endgame_solves_by_battle.get(btag, 0) + 1
+                return endgame_order
+
+            # V14 Emergency Setup Sweeper Stop
+            if hasattr(self, "_handle_opponent_setup_sweeper"):
+                setup_order = self._handle_opponent_setup_sweeper(battle, me, opp, my_speed, opp_speed)
+                if setup_order:
+                    return setup_order
+
+            # V14 Status Absorption Pivot
+            if hasattr(self, "_try_status_absorption"):
+                status_order = self._try_status_absorption(battle, me, opp)
+                if status_order:
+                    return status_order
+
+            # Early game scouting pivot check on turns 1-3
+            if battle.turn <= 3 and hasattr(self, "_is_switch_allowed"):
+                for m in battle.available_moves:
+                    if m.id in {"uturn", "voltswitch", "flipturn"} and battle.available_switches:
+                        opp_max_dmg = 0.0
+                        if hasattr(self, "_estimate_max_damage"):
+                            opp_max_dmg = self._estimate_max_damage(opp, me, gen, sets_db)
+                        if opp_max_dmg < me.current_hp * 0.55:
+                            self._record_used_move(btag, m.id)
         # 3. Information Set MCTS Search Loop
         my_actions = list(battle.available_moves) + list(battle.available_switches)
         if not my_actions:
@@ -285,9 +192,6 @@ class HeuristicV19MCTS(HeuristicV14):
         # Initialize root node and children
         root = MCTSNode()
         root.children = [MCTSNode(action=act, parent=root) for act in my_actions]
-
-        gen = self._get_gen(battle)
-        sets_db = self._load_pokemon_sets(gen)
 
         for _ in range(self.N_SIMULATIONS):
             # Selection: Pick child node maximizing UCB1
@@ -299,11 +203,7 @@ class HeuristicV19MCTS(HeuristicV14):
             # Rollout
             try:
                 score = self._rollout(battle, node.action, opp_determinization)
-            except Exception as e:
-                # Fallback to heuristic evaluation on failure
-                import traceback
-
-                traceback.print_exc()
+            except Exception:
                 score = 0.0
 
             # Backpropagate
@@ -343,11 +243,7 @@ class HeuristicV19MCTS(HeuristicV14):
             actual_order = self.choose_random_move(battle)
 
         # Track search difference vs raw v14 heuristic
-        try:
-            v14_order = super()._select_action(battle)
-        except Exception:
-            v14_order = None
-
+        v14_order = self._get_v14_pure_action(battle)
         if v14_order and actual_order:
             v14_act = v14_order.order
             act_act = actual_order.order
@@ -367,15 +263,3 @@ class HeuristicV19MCTS(HeuristicV14):
                 self._search_diff_by_battle[btag] = self._search_diff_by_battle.get(btag, 0) + 1
 
         return actual_order
-
-    def reset_battles(self) -> None:
-        try:
-            super().reset_battles()
-        finally:
-            self._search_switches_by_battle.clear()
-            self._search_moves_by_battle.clear()
-            self._endgame_solves_by_battle.clear()
-            self._search_diff_by_battle.clear()
-            self._total_turns_by_battle.clear()
-            self._last_action_type.clear()
-            self._loop_guards_by_battle.clear()

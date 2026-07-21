@@ -1,0 +1,7 @@
+{
+  "f1_optimal_threshold": 0.48,
+  "f1_score": 0.5063,
+  "frequency_matched_threshold": 0.625,
+  "true_switch_rate": 0.2585,
+  "recommended_threshold": 0.5525
+}

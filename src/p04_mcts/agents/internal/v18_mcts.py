@@ -17,9 +17,25 @@ if str(pokechamp_path) not in sys.path:
             sys.modules.pop(key)
 
 from poke_env.environment.move import Move
-from poke_env.player.battle_order import BattleOrder
 from p00_core.core.common import get_status_name
 from p01_heuristics.agents.internal.v14 import HeuristicV14
+
+SETUP_MOVES = {
+    "swordsdance",
+    "dragondance",
+    "nastyplot",
+    "calmmind",
+    "quiverdance",
+    "shiftgear",
+    "curse",
+    "bulkup",
+    "agility",
+    "shellsmash",
+    "irondefense",
+}
+HAZARD_MOVES = {"stealthrock", "spikes", "toxicspikes", "stickyweb"}
+RECOVERY_MOVES = {"recover", "roost", "slackoff", "softboiled", "moonlight", "synthesis", "shoreup"}
+HAZARD_REMOVAL_MOVES = {"rapidspin", "defog", "tidyup", "courtchange"}
 
 
 class MCTSNode:
@@ -43,7 +59,8 @@ class MCTSNode:
 class HeuristicV18MCTS(HeuristicV14):
     """Information Set Monte Carlo Tree Search Agent (Base).
 
-    Uses pokechamp's LocalSim for fast in-process rollouts.
+    Uses pokechamp's LocalSim for fast in-process rollouts with tactical action selection
+    and state-preserving telemetry tracking against V14 recommendations.
     """
 
     N_SIMULATIONS = 100
@@ -77,28 +94,81 @@ class HeuristicV18MCTS(HeuristicV14):
         self._last_action_type: dict[str, int] = {}
         self._loop_guards_by_battle: dict[str, int] = {}
 
+    def _get_v14_pure_action(self, battle):
+        """Safely queries HeuristicV14 recommendation without corrupting state tracking."""
+        btag = battle.battle_tag
+        hist = list(getattr(self, "_active_history_by_battle", {}).get(btag, []))
+        opp_hist = list(getattr(self, "_opp_active_history_by_battle", {}).get(btag, []))
+        last_m = getattr(self, "_last_turn_matchup", {}).get(btag)
+        move_counts_us = dict(getattr(battle, "move_counts_us", {}))
+
+        try:
+            order = HeuristicV14._select_action(self, battle)
+        except Exception:
+            order = None
+
+        if hasattr(self, "_active_history_by_battle") and btag in self._active_history_by_battle:
+            self._active_history_by_battle[btag] = hist
+        if hasattr(self, "_opp_active_history_by_battle") and btag in self._opp_active_history_by_battle:
+            self._opp_active_history_by_battle[btag] = opp_hist
+        if hasattr(self, "_last_turn_matchup"):
+            if last_m is not None:
+                self._last_turn_matchup[btag] = last_m
+            elif btag in self._last_turn_matchup:
+                del self._last_turn_matchup[btag]
+        if hasattr(battle, "move_counts_us"):
+            battle.move_counts_us = move_counts_us
+
+        return order
+
     def _get_greedy_rollout_action(self, battle, is_opponent: bool) -> Any:
-        """A fast, type-aware greedy rollout action picker."""
+        """A fast, type-aware and tactical greedy rollout action picker for MCTS."""
         if not is_opponent:
             active = battle.active_pokemon
             target = battle.opponent_active_pokemon
+            switches = list(battle.available_switches)
             if not active or active.fainted:
-                switches = battle.available_switches
                 return random.choice(switches) if switches else None
 
-            moves = battle.available_moves
-            if moves:
+            moves = [m for m in battle.available_moves if getattr(m, "current_pp", 1) > 0]
+            if not moves:
+                return random.choice(switches) if switches else None
 
-                def score_move(m):
-                    bp = m.base_power or 0
-                    if target:
-                        return bp * target.damage_multiplier(m)
-                    return bp
+            # Tactical switch check during rollout if heavily crippled or facing severe unfavorable matchup
+            if switches and target and not target.fainted:
+                try:
+                    hp_pct = active.current_hp_fraction
+                    if getattr(active, "boosts", {}).get("atk", 0) <= -2 and getattr(active, "boosts", {}).get("spa", 0) <= -2:
+                        return random.choice(switches)
+                    max_my_mult = max((target.damage_multiplier(m) for m in moves if getattr(m, "base_power", 0) > 0), default=1.0)
+                    if max_my_mult <= 0.5 and hp_pct < 0.6 and random.random() < 0.4:
+                        return random.choice(switches)
+                except Exception:
+                    pass
 
-                return max(moves, key=score_move)
+            def score_move(m):
+                bp = m.base_power or 0
+                if bp > 0:
+                    mult = target.damage_multiplier(m) if target else 1.0
+                    score = bp * mult
+                    if getattr(m, "type", None) and (getattr(active, "type_1", None) == m.type or getattr(active, "type_2", None) == m.type):
+                        score *= 1.5
+                    return score
+                m_id = m.id
+                if m_id in SETUP_MOVES:
+                    hp_pct = active.current_hp_fraction if active else 1.0
+                    return 80.0 if hp_pct > 0.75 else 20.0
+                if m_id in RECOVERY_MOVES:
+                    hp_pct = active.current_hp_fraction if active else 1.0
+                    return 90.0 if hp_pct < 0.55 else 10.0
+                if m_id in HAZARD_MOVES:
+                    return 70.0 if getattr(battle, "turn", 1) <= 3 else 25.0
+                if m_id in HAZARD_REMOVAL_MOVES:
+                    hazards = getattr(battle, "side_conditions", {})
+                    return 75.0 if hazards else 15.0
+                return 15.0
 
-            switches = battle.available_switches
-            return random.choice(switches) if switches else None
+            return max(moves, key=score_move)
         else:
             active = battle.opponent_active_pokemon
             target = battle.active_pokemon
@@ -106,24 +176,46 @@ class HeuristicV18MCTS(HeuristicV14):
             if not active or active.fainted:
                 return random.choice(opp_switches) if opp_switches else None
 
-            # Opponent moves are in active.moves
-            moves = list(active.moves.values())
-            if moves:
+            moves = [m for m in active.moves.values() if getattr(m, "current_pp", 1) > 0]
+            if not moves:
+                return random.choice(opp_switches) if opp_switches else None
 
-                def score_move(m):
-                    bp = m.base_power or 0
-                    if target:
-                        return bp * target.damage_multiplier(m)
-                    return bp
+            if opp_switches and target and not target.fainted:
+                try:
+                    hp_pct = active.current_hp_fraction
+                    max_opp_mult = max((target.damage_multiplier(m) for m in moves if getattr(m, "base_power", 0) > 0), default=1.0)
+                    if max_opp_mult <= 0.5 and hp_pct < 0.6 and random.random() < 0.35:
+                        return random.choice(opp_switches)
+                except Exception:
+                    pass
 
-                return max(moves, key=score_move)
+            def score_move(m):
+                bp = m.base_power or 0
+                if bp > 0:
+                    mult = target.damage_multiplier(m) if target else 1.0
+                    score = bp * mult
+                    if getattr(m, "type", None) and (getattr(active, "type_1", None) == m.type or getattr(active, "type_2", None) == m.type):
+                        score *= 1.5
+                    return score
+                m_id = m.id
+                if m_id in SETUP_MOVES:
+                    hp_pct = active.current_hp_fraction if active else 1.0
+                    return 80.0 if hp_pct > 0.75 else 20.0
+                if m_id in RECOVERY_MOVES:
+                    hp_pct = active.current_hp_fraction if active else 1.0
+                    return 90.0 if hp_pct < 0.55 else 10.0
+                if m_id in HAZARD_MOVES:
+                    return 70.0 if getattr(battle, "turn", 1) <= 3 else 25.0
+                if m_id in HAZARD_REMOVAL_MOVES:
+                    hazards = getattr(battle, "opponent_side_conditions", {})
+                    return 75.0 if hazards else 15.0
+                return 15.0
 
-            return random.choice(opp_switches) if opp_switches else None
+            return max(moves, key=score_move)
 
     def _sample_opponent_determinization(self, battle, sets_db: dict) -> dict[str, Any]:
         """Samples plausible moves for the opponent based on Showdown sets database."""
         opp_team_data = {}
-        gen = self._get_gen(battle)
         for mon in battle.opponent_team.values():
             species_clean = mon.species.lower().replace(" ", "").replace("-", "").replace("_", "")
             set_info = sets_db.get(species_clean, {})
@@ -147,7 +239,6 @@ class HeuristicV18MCTS(HeuristicV14):
     def _rollout(self, battle, initial_action: Any, opp_determinization: dict) -> float:
         """Simulates ROLLOUT_DEPTH turns using LocalSim and returns team HP difference."""
         from poke_env.player.local_simulation import LocalSim
-
         from poke_env.data.gen_data import GenData
 
         gen_data = GenData.from_format(battle._format or "gen9randombattle")
@@ -166,14 +257,15 @@ class HeuristicV18MCTS(HeuristicV14):
             format=battle._format or "gen9randombattle",
         )
 
-        # Apply the sampled opponent determinization to sim's opponent team
-        for mon in sim.battle.opponent_team.values():
+        # Apply the sampled opponent determinization to sim's opponent team and active pokemon
+        for mon in list(sim.battle.opponent_team.values()) + ([sim.battle.opponent_active_pokemon] if sim.battle.opponent_active_pokemon else []):
+            if not mon:
+                continue
             spec = mon.species
             if spec in opp_determinization:
                 det = opp_determinization[spec]
                 mon._ability = det["ability"]
                 mon._item = det["item"]
-                # Update moves
                 for m_id in det["moves"]:
                     if m_id not in mon.moves:
                         try:
@@ -210,7 +302,10 @@ class HeuristicV18MCTS(HeuristicV14):
         if sim.battle.lost:
             return -2.0
 
-        # Evaluate the terminal state: sum of HP percentages of active + benched (assuming unrevealed are at 100% HP)
+        return self._evaluate_mcts_terminal_state(sim)
+
+    def _evaluate_mcts_terminal_state(self, sim) -> float:
+        """Evaluates the terminal state of an MCTS rollout (Base V18 evaluation)."""
         def get_team_hp(team):
             revealed_hp = sum(p.current_hp_fraction for p in team.values())
             unrevealed_count = max(0, 6 - len(team))
@@ -219,7 +314,32 @@ class HeuristicV18MCTS(HeuristicV14):
         me_hp_sum = get_team_hp(sim.battle.team)
         opp_hp_sum = get_team_hp(sim.battle.opponent_team)
 
-        return me_hp_sum - opp_hp_sum
+        # Active boost bonus
+        me_active = sim.battle.active_pokemon
+        opp_active = sim.battle.opponent_active_pokemon
+        boost_bonus = 0.0
+        if me_active and not me_active.fainted and hasattr(me_active, "boosts"):
+            pos_boosts = sum(max(0, v) for k, v in me_active.boosts.items() if k in {"atk", "spa", "spe"})
+            boost_bonus += 0.04 * pos_boosts
+        if opp_active and not opp_active.fainted and hasattr(opp_active, "boosts"):
+            opp_boosts = sum(max(0, v) for k, v in opp_active.boosts.items() if k in {"atk", "spa", "spe"})
+            boost_bonus -= 0.04 * opp_boosts
+
+        # Status condition advantage
+        status_bonus = 0.0
+        if opp_active and getattr(opp_active, "status", None) is not None:
+            status_bonus += 0.08
+        if me_active and getattr(me_active, "status", None) is not None:
+            status_bonus -= 0.08
+
+        # Hazard control check
+        hazard_bonus = 0.0
+        if sum(sim.battle.opponent_side_conditions.values()) > 0:
+            hazard_bonus += 0.05
+        if sum(sim.battle.side_conditions.values()) > 0:
+            hazard_bonus -= 0.05
+
+        return (me_hp_sum - opp_hp_sum) + boost_bonus + status_bonus + hazard_bonus
 
     def _select_action(self, battle):
         me = battle.active_pokemon
@@ -283,11 +403,7 @@ class HeuristicV18MCTS(HeuristicV14):
             # Rollout
             try:
                 score = self._rollout(battle, node.action, opp_determinization)
-            except Exception as e:
-                # Fallback to heuristic evaluation on failure
-                import traceback
-
-                traceback.print_exc()
+            except Exception:
                 score = 0.0
 
             # Backpropagate
@@ -327,11 +443,7 @@ class HeuristicV18MCTS(HeuristicV14):
             actual_order = self.choose_random_move(battle)
 
         # Track search difference vs raw v14 heuristic
-        try:
-            v14_order = super()._select_action(battle)
-        except Exception:
-            v14_order = None
-
+        v14_order = self._get_v14_pure_action(battle)
         if v14_order and actual_order:
             v14_act = v14_order.order
             act_act = actual_order.order

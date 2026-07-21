@@ -51,15 +51,25 @@ class HeuristicV16Minimax(HeuristicV14):
         opp_moves = list(opp.moves.values()) if opp.moves else []
         move_objs = {m.id: m for m in opp_moves}
 
-        clean_name = opp.species.lower().replace(" ", "").replace("-", "").replace("_", "")
-        predicted_ids = sets_db.get(clean_name, {}).get("moves", [])
-
-        for pid in predicted_ids:
-            if pid not in move_objs:
-                try:
-                    move_objs[pid] = Move(pid, gen=gen)
-                except Exception:
-                    pass
+        if len(move_objs) < 4:
+            clean_name = opp.species.lower().replace(" ", "").replace("-", "").replace("_", "")
+            predicted_ids = sets_db.get(clean_name, {}).get("moves", [])
+            candidate_moves = []
+            for pid in predicted_ids:
+                if pid not in move_objs:
+                    try:
+                        m = Move(pid, gen=gen)
+                        bp = m.base_power or 0
+                        score = bp * (opp.damage_multiplier(m) if opp else 1.0)
+                        if m.category == MoveCategory.STATUS:
+                            score = 40.0
+                        candidate_moves.append((score, m))
+                    except Exception:
+                        pass
+            candidate_moves.sort(key=lambda x: x[0], reverse=True)
+            needed = 4 - len(move_objs)
+            for _, m in candidate_moves[:needed]:
+                move_objs[m.id] = m
 
         return list(move_objs.values())
 
@@ -90,7 +100,7 @@ class HeuristicV16Minimax(HeuristicV14):
         if opp_action is None:
             is_my_switch = not isinstance(my_action, Move)
             me_hp = my_action.current_hp_fraction if is_my_switch else me.current_hp_fraction
-            return me_hp - opp.current_hp_fraction
+            return me_hp - 1.5 * opp.current_hp_fraction
 
         is_my_switch = not isinstance(my_action, Move)
         is_opp_switch = opp_action == "switch"
@@ -100,7 +110,6 @@ class HeuristicV16Minimax(HeuristicV14):
 
         # Apply entry hazard chip damage penalties for switches
         my_hazards = getattr(battle, "side_conditions", {})
-        opp_hazards = getattr(battle, "opponent_side_conditions", {})
 
         # 1. BOTH PLAYERS SWITCH
         if is_my_switch and is_opp_switch:
@@ -115,7 +124,7 @@ class HeuristicV16Minimax(HeuristicV14):
             opp_hp_pct = opp_switch_in.current_hp_fraction
             matchup_score = self._estimate_matchup(switch_in, opp_switch_in, battle)
 
-            return me_hp_pct - opp_hp_pct + 0.3 * matchup_score
+            return me_hp_pct - 1.5 * opp_hp_pct + 0.3 * matchup_score
 
         # 2. WE SWITCH, OPPONENT ATTACKS
         if is_my_switch and not is_opp_switch:
@@ -132,7 +141,7 @@ class HeuristicV16Minimax(HeuristicV14):
             opp_hp_pct = opp.current_hp_fraction
             matchup_score = self._estimate_matchup(switch_in, opp, battle)
 
-            return me_hp_pct - opp_hp_pct + 0.3 * matchup_score
+            return me_hp_pct - 1.5 * opp_hp_pct + 0.3 * matchup_score
 
         # 3. WE ATTACK, OPPONENT SWITCHES
         if not is_my_switch and is_opp_switch:
@@ -161,19 +170,22 @@ class HeuristicV16Minimax(HeuristicV14):
             opp_hp_pct = max(0.0, opp_incoming_hp / opp_switch_in.max_hp) if opp_switch_in.max_hp > 0 else 0.0
             matchup_score = self._estimate_matchup(opp_switch_in, me, battle)
 
-            return me_hp_pct - opp_hp_pct - 0.3 * matchup_score + action_bonus
+            return me_hp_pct - 1.5 * opp_hp_pct - 0.3 * matchup_score + action_bonus
 
         # 4. BOTH ATTACK
         my_move = my_action
         opp_move = opp_action
 
+        my_protects = my_move.id in {"protect", "detect", "banefulbunker", "kingsshield", "spikyshield", "silkerape", "burningbulwark"}
+        opp_protects = opp_move.id in {"protect", "detect", "banefulbunker", "kingsshield", "spikyshield", "silkerape", "burningbulwark"}
+
         my_dmg = 0.0
-        if my_move.base_power > 0 and my_move.category in [MoveCategory.PHYSICAL, MoveCategory.SPECIAL]:
+        if not opp_protects and my_move.base_power > 0 and my_move.category in [MoveCategory.PHYSICAL, MoveCategory.SPECIAL]:
             if not self._is_ability_immune(my_move, opp):
                 _, my_dmg = self._calculate_exact_damage_range(my_move, me, opp, battle)
 
         opp_dmg = 0.0
-        if opp_move.base_power > 0 and opp_move.category in [MoveCategory.PHYSICAL, MoveCategory.SPECIAL]:
+        if not my_protects and opp_move.base_power > 0 and opp_move.category in [MoveCategory.PHYSICAL, MoveCategory.SPECIAL]:
             if not self._is_ability_immune(opp_move, me):
                 _, opp_dmg = self._calculate_exact_damage_range(opp_move, opp, me, battle)
 
@@ -209,7 +221,23 @@ class HeuristicV16Minimax(HeuristicV14):
             if me_remaining_hp <= 0:
                 my_dmg = 0.0
 
-        me_after_hp = max(0.0, (me.current_hp - opp_dmg) / me.max_hp) if me.max_hp > 0 else 0.0
+        healing_bonus_hp = 0.0
+        if my_move.id in RECOVERY_MOVES:
+            healing_bonus_hp = 0.5 * me.max_hp if me.current_hp_fraction < 0.85 else 0.0
+        elif my_move.id in {"gigadrain", "drainpunch", "hornleech", "bitterblade", "drainingkiss", "paraboliccharge", "matchagotcha", "oblivionwing"}:
+            healing_bonus_hp = 0.5 * my_dmg
+
+        if my_hits_first:
+            incoming_hp = min(me.max_hp, me.current_hp + healing_bonus_hp) - opp_dmg
+            me_after_hp = max(0.0, min(1.0, incoming_hp / me.max_hp)) if me.max_hp > 0 else 0.0
+        else:
+            me_remaining_hp = me.current_hp - opp_dmg
+            if me_remaining_hp <= 0:
+                me_after_hp = 0.0
+            else:
+                incoming_hp = min(me.max_hp, me_remaining_hp + healing_bonus_hp)
+                me_after_hp = max(0.0, min(1.0, incoming_hp / me.max_hp)) if me.max_hp > 0 else 0.0
+
         opp_after_hp = max(0.0, (opp.current_hp - my_dmg) / opp.max_hp) if opp.max_hp > 0 else 0.0
 
         # Apply action bonuses
@@ -233,6 +261,32 @@ class HeuristicV16Minimax(HeuristicV14):
                 status_bonus -= 0.3
 
         return me_after_hp - 1.5 * opp_after_hp + status_bonus + action_bonus
+
+    def _get_v14_pure_action(self, battle):
+        btag = battle.battle_tag
+        hist = list(getattr(self, "_active_history_by_battle", {}).get(btag, []))
+        opp_hist = list(getattr(self, "_opp_active_history_by_battle", {}).get(btag, []))
+        last_m = getattr(self, "_last_turn_matchup", {}).get(btag)
+        move_counts_us = dict(getattr(battle, "move_counts_us", {}))
+
+        try:
+            order = super()._select_action(battle)
+        except Exception:
+            order = None
+
+        if hasattr(self, "_active_history_by_battle") and btag in self._active_history_by_battle:
+            self._active_history_by_battle[btag] = hist
+        if hasattr(self, "_opp_active_history_by_battle") and btag in self._opp_active_history_by_battle:
+            self._opp_active_history_by_battle[btag] = opp_hist
+        if hasattr(self, "_last_turn_matchup"):
+            if last_m is not None:
+                self._last_turn_matchup[btag] = last_m
+            elif btag in self._last_turn_matchup:
+                del self._last_turn_matchup[btag]
+        if hasattr(battle, "move_counts_us"):
+            battle.move_counts_us = move_counts_us
+
+        return order
 
     def _select_action(self, battle):
         btag = battle.battle_tag
@@ -271,11 +325,44 @@ class HeuristicV16Minimax(HeuristicV14):
             tera = self._should_terastallize(battle, ko_move)
             return self.create_order(ko_move, terastallize=tera)
 
-        # Minimax adversarial search
+        endgame_order = self._run_endgame_solver(battle, me, opp)
+        if endgame_order:
+            self._endgame_solves_by_battle[btag] = self._endgame_solves_by_battle.get(btag, 0) + 1
+            return endgame_order
+
+        # Emergency tactical checks from V14
+        if hasattr(self, "_handle_opponent_setup_sweeper"):
+            setup_order = self._handle_opponent_setup_sweeper(battle, me, opp, my_speed, opp_speed)
+            if setup_order:
+                return setup_order
+
+        if hasattr(self, "_try_status_absorption"):
+            status_order = self._try_status_absorption(battle, me, opp)
+            if status_order:
+                return status_order
+
         gen = self._get_gen(battle)
         sets_db = self._load_pokemon_sets(gen)
 
-        my_actions = list(battle.available_moves) + list(battle.available_switches)
+        # Early game scouting check
+        if battle.turn <= 3 and hasattr(self, "_is_switch_allowed"):
+            for m in battle.available_moves:
+                if m.id in {"uturn", "voltswitch", "flipturn"} and battle.available_switches:
+                    # Check if safe to pivot
+                    opp_max_dmg = 0.0
+                    if opp and hasattr(self, "_estimate_max_damage"):
+                        opp_max_dmg = self._estimate_max_damage(opp, me, gen, sets_db)
+                    if opp_max_dmg < me.current_hp * 0.55:
+                        self._record_used_move(btag, m.id)
+                        return self.create_order(m)
+
+        # Minimax adversarial search
+
+        my_actions: list[Any] = list(battle.available_moves)
+        if battle.available_switches and opp:
+            for switch_cand in battle.available_switches:
+                if self._is_switch_allowed(battle, switch_cand):
+                    my_actions.append(switch_cand)
         if not my_actions:
             return self.choose_random_move(battle)
 
@@ -344,7 +431,7 @@ class HeuristicV16Minimax(HeuristicV14):
 
         # Track search difference vs raw v14 heuristic
         try:
-            v14_order = super()._select_action(battle)
+            v14_order = self._get_v14_pure_action(battle)
         except Exception:
             v14_order = None
 
