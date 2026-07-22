@@ -365,7 +365,10 @@ class HeuristicV18MCTS(HeuristicV14):
                     switch = self._get_best_switch_double_faint(battle)
                 if switch:
                     return self.create_order(switch)
-            return None
+                # Best-switch returned None but switches exist — pick any available
+                return self.create_order(battle.available_switches[0])
+            # No switches at all — random is correct (last mon standing)
+            return self.choose_random_move(battle)
 
         # 2. Guaranteed KO — always execute immediately
         format_str = battle._format or ""

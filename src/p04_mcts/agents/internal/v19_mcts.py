@@ -138,7 +138,10 @@ class HeuristicV19MCTS(HeuristicV18MCTS):
                     switch = self._get_best_switch_double_faint(battle)
                 if switch:
                     return self.create_order(switch)
-            return None
+                # Best-switch returned None but switches exist — pick any available
+                return self.create_order(battle.available_switches[0])
+            # No switches available at all (last Pokémon standing) — random is correct
+            return self.choose_random_move(battle)
 
         # 2. Guaranteed KO & Tactical Overrides — always execute immediately
         format_str = battle._format or ""
