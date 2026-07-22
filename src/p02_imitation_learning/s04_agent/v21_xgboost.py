@@ -264,7 +264,10 @@ class HeuristicV21XGBoost(HeuristicV14):
                     switch = self._get_best_switch_double_faint(battle)
                 if switch:
                     return self.create_order(switch)
-            return None
+                # Best-switch returned None but switches exist — pick any available
+                return self.create_order(battle.available_switches[0])
+            # No switches at all — random is correct (last mon standing)
+            return self.choose_random_move(battle)
 
         format_str = battle._format or ""
         my_status = get_status_name(me)

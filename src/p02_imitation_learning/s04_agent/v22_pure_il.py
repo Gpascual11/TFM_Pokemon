@@ -112,6 +112,7 @@ class HeuristicV22PureIL(BaseHeuristic1v1):
         self._loop_guards_by_battle: dict[str, int] = {}
         self._xgb_switches_by_battle: dict[str, int] = {}
         self._xgb_stays_by_battle: dict[str, int] = {}
+        self._xgb_prob_sum_by_battle: dict[str, float] = {}
         self._total_turns_by_battle: dict[str, int] = {}
 
     def reset_battles(self) -> None:
@@ -123,6 +124,7 @@ class HeuristicV22PureIL(BaseHeuristic1v1):
             self._loop_guards_by_battle.clear()
             self._xgb_switches_by_battle.clear()
             self._xgb_stays_by_battle.clear()
+            self._xgb_prob_sum_by_battle.clear()
             self._total_turns_by_battle.clear()
 
     def _build_empty_macro_features(self) -> dict[str, float]:
@@ -298,6 +300,10 @@ class HeuristicV22PureIL(BaseHeuristic1v1):
         live_feat = self._extract_macro_features(battle)
         probs = self.macro_model.predict_proba(live_feat)[0]
         action_type = 1 if len(probs) >= 2 and probs[1] >= self.switch_threshold else 0
+
+        # Accumulate probability telemetry (mirrors v21 pattern)
+        prob_val = float(probs[1]) if len(probs) >= 2 else 0.0
+        self._xgb_prob_sum_by_battle[btag] = self._xgb_prob_sum_by_battle.get(btag, 0.0) + prob_val
 
         # Loop guard
         last_action = self._last_action_type.get(btag, 0)
