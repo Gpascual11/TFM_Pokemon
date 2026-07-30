@@ -160,15 +160,17 @@ async def run_worker_batch(
     batch_timeout = max(7200, int(n_battles * 40))
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=batch_timeout)
-    except TimeoutError:
-        print(f"      ⚠️  {batch_info} -> Port {port} TIMEOUT after {batch_timeout}s. Cleaning up...", flush=True)
+    except (TimeoutError, asyncio.CancelledError, KeyboardInterrupt):
+        print(f"      ⚠️  {batch_info} -> Port {port} interrupted/timed out. Terminating worker...", flush=True)
         try:
             proc.terminate()
-            await asyncio.sleep(1)  # Give it a second to terminate
+            await asyncio.sleep(0.5)
             if proc.returncode is None:
                 proc.kill()
         except OSError:
             pass
+        if isinstance(Exception, (asyncio.CancelledError, KeyboardInterrupt)):
+            raise
         return 0
 
     total_done = 0
