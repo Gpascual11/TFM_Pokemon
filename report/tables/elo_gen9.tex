@@ -1,0 +1,25 @@
+\begin{table}[H]
+\centering
+\caption{Elo Bradley--Terry a \texttt{gen9randombattle}, àncora \texttt{random}${}=1000$, usant \emph{ambdós} seients de cada fitxer dirigit. Agents no-MCTS: 506.000 partides al model; MCTS: 56.000 (28k com a nosaltres + 28k com a oponent). \texttt{v14} queda empatat amb Abyssal i Simple Heuristic ($\sim$1755): el mateix llançament de moneda ja vist a les cel·les de 10k.}
+\label{tab:elo_gen9}
+\small
+\begin{tabular}{rlrl}
+\toprule
+\textbf{Rang} & \textbf{Agent} & \textbf{Elo} & \textbf{Paradigma} \\
+\midrule
+1  & \texttt{v12}               & 1812 & Heurística \\
+2  & \texttt{v13}               & 1802 & Heurística \\
+3  & \texttt{simple\_heuristic} & 1755 & Baseline \\
+4  & \texttt{v14}               & 1755 & Heurística \\
+5  & \texttt{abyssal}           & 1755 & Baseline \\
+6  & \texttt{v20}               & 1742 & MCTS (cel·les $n=1$k) \\
+7  & \texttt{v11}               & 1733 & Heurística \\
+8  & \texttt{v9}                & 1730 & Heurística \\
+9  & \texttt{v21}               & 1729 & IL híbrid \\
+10 & \texttt{v17}               & 1722 & Minimax \\
+\midrule
+-- & \texttt{v22}               & 1529 & IL pur \\
+-- & \texttt{random}            & 1000 & Baseline (àncora) \\
+\bottomrule
+\end{tabular}
+\end{table}

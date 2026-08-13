@@ -1,0 +1,20 @@
+\begin{table}[H]
+\centering
+\caption{Minimax analític d'1-ply (253.000 partides). La cerca s'executa en $\sim$16--18\% dels torns; la resta són dreceres de KO ($\sim$14 comprovacions/partida). La fulla posicional de \texttt{v16} no puja els usos de setup ($\sim$0,21, com \texttt{v14}). Només el prior $+0{,}15$ de \texttt{v17} mou la taxa de victòries.}
+\label{tab:minimax_head}
+\small
+\begin{tabular}{lrrr}
+\toprule
+ & \textbf{\texttt{v15} HP} & \textbf{\texttt{v16} bonuses} & \textbf{\texttt{v17} prior $+0{,}15$} \\
+\midrule
+WR global (\%) & 53,80 & 54,30 & \textbf{57,89} \\
+IC 95\% (pp) & $\pm 0{,}19$ & $\pm 0{,}19$ & $\pm 0{,}19$ \\
+Cerca (\% torns) & 17,6 & 17,6 & 16,3 \\
+Override de \texttt{v14} (\%) & 66,5 & 67,3 & \textbf{36,6} \\
+Setup / partida & 0,21 & 0,21 & 0,21 \\
+Hazards / partida & 0,05 & 0,04 & 0,04 \\
+Tera / partida & 0,40 & 0,39 & 0,38 \\
+Mons restants (nosaltres) & 1,28 & 1,29 & 1,39 \\
+\bottomrule
+\end{tabular}
+\end{table}

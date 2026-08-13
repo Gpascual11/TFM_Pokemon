@@ -1,12 +1,35 @@
-\chapter{Conclusions}
+\chapter{Conclusions i Treball Futur}
 \label{chap:conclusions}
 
-Aquest capítol sintetitza les fites assolides durant el desenvolupament del TFM.
+\section{El que aquest TFM ha mesurat}
 
-\section{Resum de Contribucions}
+S'ha comparat, en un sol format ---Singles \texttt{gen9randombattle}---, quatre paradigmes de decisió sobre la mateixa matriu de 28 agents. El Dobles/VGC no forma part de la contribució. El PPO no forma part d'aquest gauntlet.
 
-S'ha construït una infraestructura robusta i paral·lela capaç d'executar milers de batalles simulades de Pokémon en formats tant de Singles com de Doubles. L'evolució de les heurístiques expertes ha demostrat que, encara que el format de Singles es pot dominar amb dany i pivots defensius simples, el format de Doubles exigeix una coordinació tàctica (\textit{Focus Fire} i \textit{Protect}) per ser realment eficaç.
+El protocol és tan part del resultat com el rànquing. Cada partida és un Bernoulli. A 10.000 jocs l'IC del 95\% és $\pm 0{,}98$~pp; a 1.000, $\pm 3{,}1$~pp. MCTS es queda al pis de validació perquè 100 rollouts de \texttt{LocalSim} no caben en una nit de 10k. El Pokédex no entra a la variància. Els recíprocs sumen $\sim$100\%. L'autojoc és $\sim$50\%.
 
-L'agent heurístic final (\textbf{v5 Apex} a Dobles i \textbf{v12} a Singles) s'ha consolidat com un baseline de referència molt fort, superant tots els baselines natius de la llibreria \textit{poke-env} i competint fre a fre amb agents d'estat de l'art com els de \textit{Pokechamp}.
+\section{Respostes a la pregunta de recerca}
 
-En conclusió, aquest treball ha establert les bases per a la investigació avançada en VGC, proporcionant tant els agents de referència com el pipeline d'entrenament necessari per a futurs desenvolupaments en l'àmbit de la intel·ligència artificial aplicada a jocs d'estratègia complexos.
+En aquest POSG, \textbf{el coneixement heurístic té un sostre bot-contra-bot, i ni la cerca rasa ni el clonatge de macros humans el superen.}
+
+\begin{enumerate}
+    \item \textbf{L'escala \texttt{v1}--\texttt{v14} no és lineal.} Altiplà de dany (44--46\%). Salt posicional \texttt{v7} ($+$9~pp). Salt de tempo \texttt{v9} ($+$4~pp). Salt de format \texttt{v12} ($+$10~pp): Tera, preview, switch-in. \texttt{v12} és el primer intern que supera Abyssal ($59{,}91\%$, $n=10.000$).
+    \item \textbf{Inversió.} $\texttt{v12}\,(69{,}01)\ge\texttt{v13}\,(67{,}63)>\texttt{v14}\,(62{,}03)$. \texttt{v12} vs \texttt{v13} és una moneda a 10k. \texttt{v14} és l'agent orientat a humans, tercer al round-robin. La ladder (431 partides, 39,44\% $\pm 4{,}6$~pp, Elo $1085\to 1038$) valida ecològicament aquest disseny; no inverteix el rànquing.
+    \item \textbf{1-ply.} La matriu corre en el 16--18\% dels torns. Override 67\% (\texttt{v15}/\texttt{v16}) vs 37\% (\texttt{v17}). La fulla posicional de \texttt{v16} no puja el setup. \texttt{v17} vs \texttt{v14} $=43{,}6\%$ a 10k.
+    \item \textbf{5-ply IS-MCTS} ($n=1.000$). Override 71\% (UCB1) vs 19\% (PUCT). \texttt{v19} no ajuda. \texttt{v20} vs \texttt{v12} $=42{,}7\%$; vs \texttt{v14} $=47{,}0\%$. Setup/hazards nivell \texttt{v14}.
+    \item \textbf{IL.} Mateix XGB, $\tau=0{,}5525$. \texttt{v21} (15\% dels torns, guarda \texttt{v14}): 58,71\%, nivell \texttt{v9}. \texttt{v22} (80\%, zero KO): 33,49\%, sota \texttt{v1}. \texttt{v21} supera \texttt{v22} 28/28.
+    \item \textbf{Moral jeràrquica.} El residual que substitueix \texttt{v14} perd. El que el conserva (\texttt{v17}, \texttt{v20}, \texttt{v21}) és l'única millora. \textbf{Cap no supera \texttt{v12}.}
+\end{enumerate}
+
+\section{Contribucions}
+
+Infraestructura master--worker capaç de 10k per cel·la; escala d'ablació heurística amb telemetria; cerca 1-ply i IS-MCTS instrumentades (override, no només WR); contrast híbrid vs pur en imitació sobre dades \emph{in-format}; protocol honest 10k/1k i ladder com a canal separat.
+
+\section{Treball futur: PPO contra \texttt{v12}}
+
+El framework MaskablePPO existeix (\texttt{v23+}). L'experiment d'aquesta memòria no el cobreix. El pla és una avaluació \textbf{separada}, gairebé segur \textbf{només contra \texttt{v12}} ---el sostre bot-contra-bot---, no contra la matriu de 28. Qualsevol WR de PPO que es publiqui haurà de dir $n$, l'oponent, i si el residual conserva o substitueix l'heurística: el gauntlet d'aquesta tesi diu que aquesta distinció pesa més que el nom del paradigma.
+
+Altres extensions naturals, no fetes aquí: MCTS amb més simulacions o un rollout que no sigui golós; un cap d'IL que imiti Tera i KO com a accions de primera classe; un ladder de \texttt{v12} (sense usar-lo per reescriure el rànquing bot). Cap d'aquestes línies reobre el Dobles.
+
+\section{Tancament}
+
+Random Battle de la Generació~IX, vist de prop i amb $n$ de tesi, no premia la puresa algorísmica. Premia saber qui ha de ser al camp, quan gastar el Tera, i no deixar escapar un KO. La cerca i l'imitació, a aquests pressupostos, només afegeixen quan se'ls impedeix oblidar-ho.

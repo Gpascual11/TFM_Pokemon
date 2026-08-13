@@ -1,162 +1,625 @@
-\chapter{Resultats i Avaluació de les Heurístiques}
+\chapter{Resultats}
 \label{chap:resultats}
 
-Aquest capítol presenta els resultats obtinguts de l'avaluació exhaustiva d'ambdós entorns de simulació (Singles i Doubles). S'analitza l'efectivitat i fiabilitat de les versions estructurades respecte als baselines, utilitzant les eines de \textit{benchmark} internes de l'entorn Core, desenvolupades sota el disseny \textit{Round-Robin} automatitzat explicat prèviament.
+Aquest capítol llegeix la matriu acabada. Fonts: \texttt{data/benchmarks/all\_10k/gen9randombattle} (784 CSV), les notes de família a \texttt{src/p00\_core/reporting/agents/}, i l'argumentari \texttt{heuristics\_and\_imitation\_thesis\_analysis.md}. No es ressusciten els reports individuals \texttt{agents/v1}--\texttt{v14}: etiquetaven malament \texttt{v17} com a MCTS i \texttt{v19}--\texttt{v20} com a IL.
 
-\section{Infraestructura d'Execució: Gestió de Recursos}
+Un lector que no hagi obert cap notebook ha de poder seguir el protocol, la taxonomia, per què $n$ canvia, i què fa cada paradigma de veritat ---no el que el nom suggereix.
 
-Un aspecte crític del procés de benchmarking massiu és la \textbf{gestió de memòria RAM}. Cada batalla Pokémon consumeix memòria tant al procés Python (objectes Battle, Players) com al servidor Showdown (processos \texttt{room-battle.js} de Node.js). Sense mecanismes de neteja, la memòria creix de forma il·limitada.
+% ============================================================
+\section{Protocol: com es llegeix un nombre}
+\label{sec:res_protocol}
 
-La Figura~\ref{fig:ram_usage} mostra el perfil de consum de RAM durant l'execució d'un benchmark complet de Singles:
+\subsection{La matriu}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\linewidth]{images/ram_usage_singles1.png}
-    \caption{Consum de RAM durant un benchmark de Singles. S'observa com la memòria puja progressivament durant cada matchup (acumulació de batalles) i cau bruscament quan el servidor Showdown es reinicia i el Garbage Collector de Python s'executa entre grups de matchups.}
-    \label{fig:ram_usage}
-\end{figure}
+28 agents, cadascun com a \emph{nosaltres} contra 28 oponents, format \texttt{gen9randombattle}. Fitxers dirigits \texttt{A\_vs\_B.csv}. PPO no hi és. Dobles no hi és.
 
-El patró de dents de serra reflecteix el mecanisme de reinici controlat: cada $N$ matchups \textbf{actius} (aquells on realment s'han executat partides i no s'han saltat per existència de dades prèvies), l'orquestrador reinicia els servidors Showdown. Aquest refinament és crucial, ja que evita reinicis innecessaris quan es reprenen experiments gairebé completats, optimitzant el temps total d'execució en un factor de $\times 4$. Combinat amb l'aïllament per subprocessos, aquest sistema garanteix estabilitat total durant setmanes de computació ininterrompuda.
+\input{tables/taxonomy}
 
-\section{Avaluació Exhaustiva al Format 1 vs 1 (Singles)}
+La fila d'una taula o d'un heatmap és l'agent que decideix; la columna, l'oponent. Un 59,91 a la cel·la \texttt{v12} $\times$ Abyssal vol dir: de 10.000 partides on \texttt{v12} era \texttt{heuristic} al CSV i Abyssal l'\texttt{opponent}, \texttt{v12} n'ha guanyat 5.991.
 
-L'anàlisi sistemàtic del format \textit{Singles} s'ha ampliat per confrontar la línia completa d'heurístiques dissenyades (des de la versió \textit{v1} fins a la \textit{v12}) amb els agents basats en recerca de Pokechamp (\textit{abyssal}, \textit{one\_step}, \textit{safe\_one\_step}) i els baselines clàssics (\textit{random}, \textit{max\_power}, \textit{simple\_heuristic}). L'avaluació comprèn un total de 18 agents lluitant en format Round-Robin complet, a raó de 10.000 partides per matchup en cadascuna de les 9 generacions de Pokémon Showdown (sumant més de 29,16 milions de partides simulades).
+\subsection{Per què 10.000, amb fórmula}
 
-La Taula~\ref{tab:win_rate_matrix} mostra els resultats detallats de la matriu de percentatge de victòries (\textit{Win Rate}) per a la Generació 9, la qual representa l'estat de l'art del format de Singles amb mecàniques complexes.
+Cada partida és un Bernoulli $W\in\{0,1\}$. L'IC de Wald al 95\%, cas $p=0{,}5$, és l'equació~\eqref{eq:ci95} del Capítol~\ref{chap:metodologia}:
+\[
+\pm 1{,}96\sqrt{0{,}25/n}.
+\]
+A $n=10.000$ això és $\pm 0{,}98$~pp. És el pis on un buit de 2~pp (p.~ex.\ 50 vs 52) es distingeix del soroll. A $n=1.000$ és $\pm 3{,}1$~pp: calen buits de l'ordre de 6~pp. A $n=100$ és $\pm 10$~pp: una «victòria 9 de 10» no diu res.
 
-\input{tables/singles_gen9_wr}
+La mida del Pokédex no apareix a $\mathrm{Var}(\hat p)=p(1-p)/n$. No cobrim l'espai d'equips. El mateix $n$ a totes les gens seria comparabilitat, no cens. Aquí, tot és Gen~9.
 
-\subsubsection{Anàlisi de Dominància i la Matriu de Win-Rate}
+La Taula~\ref{tab:ci_n} (metodologia) recull els tres pisos. Aquí només cal recordar-los abans de llegir MCTS.
 
-La matriu de victòries confirma la clara superioritat de l'heurística expert \textbf{v12 (The Meta Master)}. Aquest agent integra selecció de Pokémon inicial basada en matchups històrics (\textit{lead selection}), canvi de Pokémon en debilitar-se basat en tipus (\textit{fainted switch-in selection}), i ús estratègic de la \textit{Terastal·lització}. Els resultats destaquen:
+\subsection{El que el disc conté de veritat}
+
 \begin{itemize}
-    \item La \textbf{v12} aconsegueix una taxa de victòria del \textbf{98,6\%} contra l'agent \textit{random} i un \textbf{90,3\%} contra \textit{max\_power}.
-    \item Supera de manera clara els millors baselines del projecte: un \textbf{59,9\%} contra \textit{abyssal} i un \textbf{59,8\%} contra \textit{simple\_heuristic}.
-    \item Manté taxes de victòria positives (superiors al 60\%) contra totes les versions heurístiques pròpies anteriors (\textit{v1} a \textit{v11}), confirmant que cada millora incremental en la línia de disseny ha aportat un increment de rendiment net.
+    \item Cel·la per defecte: \textbf{10.000} partides. Heurística, minimax i IL com a nosaltres: \textbf{253.000} partides ($25\times 10$k $+\;3\times 1$k contra MCTS). IC global Wilson $\approx\pm 0{,}19$~pp; IC d'una cel·la 10k $\pm 0{,}98$~pp.
+    \item Si un dels dos és \texttt{v18}, \texttt{v19} o \texttt{v20}: \textbf{1.000} partides. Motiu: 100 rollouts de \texttt{LocalSim} per decisió de cerca. MCTS com a nosaltres: \textbf{28.000} partides. IC de cel·la $\pm 3{,}1$~pp. Un buit de 2~pp en una cel·la MCTS \textbf{no és un resultat}.
+    \item Recíprocs \texttt{A\_vs\_B} i \texttt{B\_vs\_A}: la suma $\approx 100\%$. Autojoc $\approx 50\%$. Es compleix.
 \end{itemize}
 
-\subsubsection{Anàlisi de l'Agressivitat: Diferencial de Fainted Pokémon}
+No es mescla un global de 28k amb un de 253k. Es comparen \textbf{cel·les}. El WR global serveix per ordenar a ull, sabent que \texttt{random} l'infla.
 
-Per avaluar el grau de dominància de les victòries, la Taula~\ref{tab:fainted_diff} mostra el diferencial mitjà de Pokémon debilitats per partida (definit com a $\text{Pokémon rivals fainted} - \text{Pokémon propis fainted}$).
+Les 100 partides de desenvolupament no entren en cap taula d'aquest capítol. L'anècdota «\texttt{v13} va fer 90\% vs \texttt{v12} en 10 partides» es cita una vegada, com a contraexemple del protocol.
 
-\input{tables/singles_gen9_fainted}
+% ============================================================
+\section{L'escala heurística: tres salts}
+\label{sec:res_heur}
 
-Un valor proper a $+6$ representa una victòria gairebé perfecta (\textit{sweep}), mentre que valors propers a $0$ reflecteixen enfrontaments molt anivellats. L'agent \textbf{v12} registra un diferencial de \textbf{+4,26} contra \textit{random} i de \textbf{+2,62} contra \textit{max\_power}, indicant victòries extremadament solvents. Fins i tot contra els oponents més durs com \textit{abyssal} i \textit{simple\_heuristic}, la \textbf{v12} manté un diferencial positiu de \textbf{+0,68} i \textbf{+0,70} respectivament, superant en mitjana a l'oponent per més de la meitat d'un Pokémon.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.9\linewidth]{images/singles_gen9_heatmap_10k.png}
-    \caption{Matriu de calor mostrant el percentatge de victòries (\textit{Win Rate}) de tots els encreuaments de \textit{Singles} (Gen 9) avaluant baselines, heurístiques pròpies (v1-v12) i els agents experts de Pokechamp. S'observa la forta dominància del bloc de la versió v12.}
-    \label{fig:singles_heatmap}
-\end{figure}
-
-\subsubsection{Rànquing Elo Cross-Generacional (Generacions 1--9)}
-
-Per obtenir una mètrica unificada que reflecteixi la força competitiva de cada agent tenint en compte la qualitat dels oponents enfrontats, s'ha aplicat el model de Bradley-Terry via estimació per màxima versemblança (MLE) sense regularització. La Taula~\ref{tab:elo_singles_all_gens} presenta els ratings Elo calculats de forma independent per a cadascuna de les 9 generacions, ancorant el rendiment de l'agent \textit{random} a exactament 1000 punts de referència.
-
-\input{tables/elo_singles_gen9}
+\input{tables/heur_ladder}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\linewidth]{images/bt_elo_ratings_10k.png}
-    \caption{Rànquing Elo Bradley-Terry dels agents de Singles a les generacions representatives 1, 5 i 9. S'evidencia la bretxa competitiva de la v12 i la seva robustesa en entorns tant clàssics com moderns.}
-    \label{fig:elo_singles_gen9}
+    \includegraphics[width=0.95\linewidth]{heur_overall_wr.png}
+    \caption{Taxa de victòries global de \texttt{v1}--\texttt{v14} com a nosaltres (253.000 partides; les tres cel·les vs MCTS pesen 1k). Tres salts (v7, v9, v12) i una inversió (v12 $\ge$ v13 $>$ v14). L'altiplà v1--v6 cap a 44--46\% és pla de veritat, no una il·lusió d'escala.}
+    \label{fig:heur_overall_wr}
 \end{figure}
 
-L'anàlisi de l'Elo revela conclusions clau:
+\subsection{Altiplà \texttt{v1}--\texttt{v6}: el dany no n'hi ha prou}
+
+El WR global recorre \textbf{1,61~pp} (44,25 $\to$ 45,86). Cara a cara, s'estan al 50\% entre ells. Vs Abyssal queden al 30,6--32,5\%: perden contra un one-step competent.
+
+Tesi: un cop tens efectivitat de tipus, la fidelitat extra de la fórmula de dany té retorns decreixents. Random Battle es gana per \emph{posició} ---qui és al camp, quan es Tera, si hi ha hazards---, no per un estimador d'HP esperat un xic millor.
+
+Al tall de cinc oponents (\texttt{abyssal}, \texttt{v12}, \texttt{v14}, \texttt{v21}, \texttt{random}) juguen el mateix joc: $\sim$1,04 canvis voluntaris/partida, zero Tera, zero hazards/setup/KO logged, $\sim$4,3 fallbacks. Són atacants golosos amb una via d'escape dèbil.
+
+\subsection{Primer salt: \texttt{v7} (i \texttt{v8}/\texttt{v10})}
+
+\texttt{v7} reescriu: hazards, setup, KO, switch de matchup. WR $45{,}5\%\to\mathbf{54{,}25\%}$. Vs Abyssal $32\%\to\mathbf{40{,}8\%}$.
+
+\texttt{v8} (items, habilitats, pantalles, Trick Room) afegeix $+1{,}2$~pp: real, petit. \texttt{v10} (status, sack, pivots) empat tècnic amb \texttt{v8} (55,66 vs 55,43).
+
+El comportament canvia: canvis voluntaris $\sim$1,55, \texttt{matchup\_switches} deixa de ser zero ($\sim$0,48), fallbacks $4{,}4\to 2{,}0$. L'agent ara \emph{tria} canviar.
+
+Els comptadors \texttt{setup\_uses}/\texttt{hazard\_sets} són 0 per a \texttt{v7}/\texttt{v8}/\texttt{v10} \textbf{per esquema}, no perquè no posin Stealth Rock. El salt de \texttt{v9} en el comptador s'interpreta com «la porta de torn lliure fa el setup prou freqüent per mesurar-lo».
+
+\subsection{Segon salt: \texttt{v9} / \texttt{v11}}
+
+Una sola restricció ---hazards i setup només si outspeed i resist STAB--- val més que la taula d'objectes de \texttt{v8}: \textbf{58,86\%} global, \textbf{46,64\%} vs Abyssal. \texttt{v11} híbriditza i afegeix $+0{,}4$~pp. Un cop existeix el setup de tempo, status/sack/pivot a sobre és gairebé redundant \emph{en aquest gauntlet}.
+
+\texttt{v9}/\texttt{v11} són els primers amb \texttt{setup\_uses} $\sim$1,6/partida i \texttt{hazard\_sets} $\sim$0,16.
+
+\subsection{Tercer salt: \texttt{v12}}
+
+Tera + lead de preview + switch-in per matchup. WR \textbf{69,01\%}. Primer intern que supera \textbf{Abyssal i Simple Heuristic} a escala: \textbf{59,91\% / 59,75\%} ($n=10.000$, IC $\pm 0{,}96$). Vs \texttt{one\_step} / \texttt{safe\_one\_step} salta de $\sim$65\% (\texttt{v9}/\texttt{v11}) a $\sim$76,5\%.
+
+Al tall, Tera \textbf{0,95 / partida}: cristal·litza gairebé cada combat. Fallbacks \textbf{0,02}. HP restant propi, gauntlet: \textbf{1,84} mons vs 1,44 de \texttt{v11}. No és un pedaç cosmètic. És l'habilitat de format que \texttt{v1}--\texttt{v11} no tenien.
+
+Tesi: a \texttt{gen9randombattle}, Tera més switch-ins amb criteri és una regla més grossa que consciència d'objectes, status o una fórmula de dany més exacta. Qualsevol paradigma posterior que no sàpiga fer Tera ni triar leads juga amb una mà lligada.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{heur_vs_baselines.png}
+    \caption{\texttt{v1}--\texttt{v14} vs els sis baselines ($n=10.000$ per cel·la). \texttt{v12} és el primer que deixa Abyssal i Simple Heuristic clarament per sota del 50\% des de la fila. Vs \texttt{random} tothom està al 97--98\%: aquesta columna no discrimina.}
+    \label{fig:heur_vs_baselines}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{heur_fingerprint_bars.png}
+    \caption{Empremta tàctica de l'escala heurística. Tera gairebé 1/partida a \texttt{v12}; Tera conservador a \texttt{v13} (0,20); \texttt{ko\_checks} que exploten a \texttt{v14} ($\sim$15/partida). Setup visible a \texttt{v9}/\texttt{v11}/\texttt{v12}/\texttt{v13}, no a \texttt{v7} (forat d'esquema).}
+    \label{fig:heur_fingerprint}
+\end{figure}
+
+% ============================================================
+\section{La inversió: \texttt{v12} $\ge$ \texttt{v13} $>$ \texttt{v14}}
+\label{sec:res_inversion}
+
+Aquest és el resultat que no s'ha d'allisar. El codi diu $\texttt{v14}\supset\texttt{v13}\supset\texttt{v12}$. El round-robin diu el contrari.
+
+\input{tables/heur_h2h}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{heur_inversion_h2h.png}
+    \caption{Cara a cara de la inversió, $n=10.000$ cada sentit. \texttt{v12} vs \texttt{v13} és un llançament de moneda (50,65 / 48,85). \texttt{v14} perd 44,74 vs \texttt{v12} i 41,60 vs \texttt{v13}. L'anècdota de 9/10 a $n=10$ queda refutada.}
+    \label{fig:heur_inversion}
+\end{figure}
+
+\texttt{v12} vs \texttt{v13}: buit 1,8~pp, cada IC $\pm 0{,}98$. Compatible amb un avantatge mínim de \texttt{v12} o amb igualtat. \texttt{v14} perd clarament.
+
+\subsection{On \texttt{v13} encara guanya}
+
+No està estrictament dominat. És el \textbf{millor heurístic contra cerca i contra l'IL híbrid}:
+
+\begin{center}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Oponent & \texttt{v12} & \texttt{v13} & \texttt{v14} \\
+\midrule
+Minimax \texttt{v15} & 63,96 & \textbf{67,59} & 60,07 \\
+Minimax \texttt{v17} & 60,37 & \textbf{64,12} & 56,70 \\
+MCTS \texttt{v18} ($n=1$k) & 66,1 & \textbf{67,7} & 59,8 \\
+IL \texttt{v21} & 59,12 & \textbf{62,46} & 54,74 \\
+Baselines (bloc) & \textbf{76,91} & 74,36 & 71,06 \\
+Altres heurístiques (bloc) & \textbf{67,01} & 64,71 & 58,58 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\texttt{v13} acaba amb més HP (\texttt{avg\_hp\_us} 2,01 vs 1,84 / 1,49) i partides més llargues (19,1 torns vs 17,9 / 18,5). És un jugador d'atrició i predicció.
+
+\subsection{Per què no supera \texttt{v12} en global}
+
+Tera conservador: 0,19 /partida al tall vs 0,95 de \texttt{v12}. Canvis voluntaris 4,0 vs 1,5; \texttt{matchup\_switches} salta a 3,0. La predicció de set compra HP contra cerca; contra altres heurístiques els canvis extra filtren tempo. El Tera golós i el switch-in simple de \texttt{v12} exploten millor bots estàtics que no faran bluff.
+
+\subsection{Per què \texttt{v14} perd bot-contra-bot (i per què no és un fracàs)}
+
+\texttt{v14} es va construir per \textbf{humans}: Yomi, scouting T1--3, Tera parany, 16 rolls, endgame 1-ply. Contra una heurística això és sovint over-respect:
+
 \begin{itemize}
-    \item \textbf{La v12 és el líder indiscutible} en la generació moderna (Gen 9, 1817 Elo) i en la generació fundacional (Gen 1, 1846 Elo). A la Gen 1, supera lleugerament a \textit{simple\_heuristic} (1841 Elo) i a \textit{abyssal} (1841 Elo).
-    \item \textbf{Consistència a la Gen 5}: A la Generació 5 (l'era de la transició climàtica complexa), la \textbf{v12} s'enfronta a un metagame molt particular on el control del clima és crític. Aquí la \textbf{v12} obté 1771,2 Elo, empatant tècnicament amb \textit{simple\_heuristic} (1771,4 Elo) i superant a \textit{abyssal} (1757 Elo).
-    \item \textbf{La bretxa dels Baselines}: S'identifiquen clarament quatre nivells competitius:
-    \begin{itemize}
-        \item \textit{Tier 3 (Baselines bàsics)}: \textit{random} (1000 Elo) i \textit{max\_power} (mitjana de ~1430 Elo).
-        \item \textit{Tier 2 (Heurístiques bàsiques v1-v6)}: Agrupats estretament al voltant d'uns 1615 Elo en Gen 9 i uns 1775 Elo en Gen 1.
-        \item \textit{Tier 1 (Heurístiques avançades v7-v11)}: On la introducció del maneig de trampes d'entrada (\textit{hazards}), moviments de \textit{setup} en torns lliures i lògica de sacrifici (\textit{sack logic}) eleva el rendiment fins a la franja de 1690--1730 Elo en Gen 9.
-        \item \textit{Tier 0 (Líders de Meta)}: Dominat per la \textbf{v12}, \textit{simple\_heuristic} i \textit{abyssal}.
-    \end{itemize}
+    \item El scouting gasta torns que \texttt{v12} gasta atacant.
+    \item Perfilar un bot determinista és ajustar soroll.
+    \item \texttt{ko\_checks} $\sim$15/partida; \texttt{setup\_uses} cau a 0,22: caça KO en lloc de construir.
+    \item Vs Abyssal \textbf{51,36\%}, llançament de moneda. \texttt{v12} és \textbf{59,91\%}.
 \end{itemize}
 
-\subsection{Anàlisi de Metagames i Dinàmiques de Joc}
-
-L'avaluació massiva a través de les 9 generacions permet extreure dinàmiques de joc històriques de Pokémon. La Figura~\ref{fig:turns_switches_by_gen} analitza la durada mitjana de les batalles (en torns) i la taxa de canvis voluntaris realitzats pels jugadors per partida.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{heur_key_matchups.png}
+    \caption{Matchups clau de \texttt{v12}/\texttt{v13}/\texttt{v14}. Fila $=$ nosaltres. Cel·les MCTS $n=1.000$; resta $n=10.000$. \texttt{v12} domina baselines; \texttt{v13} és més fort contra cerca i \texttt{v21}; \texttt{v14} queda al mig-baix.}
+    \label{fig:heur_key}
+\end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\linewidth]{images/turns_switches_by_gen.png}
-    \caption{Durada mitjana de la batalla (torns) i taxa de canvis voluntaris per partida segons la generació de Pokémon Showdown. S'observa clarament l'efecte de stall de la Generació 2.}
-    \label{fig:turns_switches_by_gen}
+    \includegraphics[width=0.95\linewidth]{heur_wr_by_paradigm.png}
+    \caption{WR de l'inversió agregat per paradigma d'oponent. \texttt{v12} millor contra baselines i altres heurístiques; \texttt{v13} millor contra minimax, MCTS i IL híbrid.}
+    \label{fig:heur_paradigm}
 \end{figure}
 
-Les dades revelen dos comportaments macro-estratègics:
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{heur_switching_vs_wr.png}
+    \caption{Volum de canvis vs WR. \texttt{v13} canvia com un agent perdut i guanya com \texttt{v12}: el volum de switch no és habilitat. Sempre cal qui l'inicia (\texttt{matchup\_switches} vs faint vs loop guard).}
+    \label{fig:heur_switch}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\linewidth]{heur_length_hp.png}
+    \caption{Durada i HP restant. \texttt{v13} juga més llarg i acaba amb més mons; \texttt{v12} tanca abans amb WR més alt. Atrició $\neq$ sostre.}
+    \label{fig:heur_length}
+\end{figure}
+
+Tesi: afegir maquinària de modelatge humà a una heurística \emph{pot baixar} el WR bot-contra-bot. Això evidencia especialització, no un agent trencat. El protocol s'ha de quedar partit: round-robin per comparar paradigmes, ladder per la pretensió humana.
+
+La ladder de \texttt{v14} (secció~\ref{sec:res_ladder}) \textbf{no} permet invertir \texttt{v12} vs \texttt{v14}. Tampoc el rànquing bot permet dir que \texttt{v12} batria més humans.
+
+% ============================================================
+\section{Minimax 1-ply: la resposta del rival, un torn}
+\label{sec:res_mm}
+
+Pregunta: considerar la millor resposta d'aquest torn, supera l'expert d'un ply que ja viu dins de cada agent de cerca? Mateixa telemetria que MCTS: la cerca dispara? discrepa de \texttt{v14}? els que perden discrepen més?
+
+\input{tables/minimax_headline}
+
+\subsection{La cerca gairebé no corre}
+
+$\sim$14 KO checks/partida vs $\sim$4,5 decisions maximin. La matriu es consulta en el \textbf{16--18\% dels torns}. Descripció honesta:
+
+\begin{quote}
+Un jugador \texttt{v14} que prioritza el KO i, als torns residuals, puntua un torn analític contra respostes predites.
+\end{quote}
+
+El mateix fet estructural que \texttt{v21} (XGB al 15\%) i \texttt{v18}--\texttt{v20} (MCTS al 16--18\%).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{minimax_override.png}
+    \caption{\textbf{Figura clau.} Taxa d'override de \texttt{v14} entre els torns que la matriu 1-ply s'executa. \texttt{v15}/\texttt{v16} sobreescriuen $\sim$67\%; \texttt{v17} (prior $+0{,}15$) baixa a $\sim$37\%. Els derrotats sobreescriuen més que els guanyadors (search\_diff/torn 0,13 vs 0,10 a v15/v16). 253.000 partides.}
+    \label{fig:minimax_override}
+\end{figure}
+
+\subsection{\texttt{v16} $\approx$ \texttt{v15}: decorar la fulla no allarga l'horitzó}
+
+\texttt{v16} havia de «posar setup i roques a l'avaluador». WR \textbf{$+0{,}50$~pp} (detectable a 253k, irrellevant). Cara a cara, moneda (49,28 / 51,14). Setup 0,213 vs 0,207; hazards 0,044 vs 0,049. Els bonuses 0,25--0,35 perden contra el terme $\times 1{,}5$ de dany rival: en un món maximin d'un torn, atacar supera ballar.
+
+Override \textbf{67\%} igual. La fulla no canvia \emph{quan} la cerca discrepa, només l'àlgebra.
+
+Tesi: l'efecte horitzó a 1-ply no és un bonus que falta. És l'objectiu maximin més un horitzó d'un torn. No es recupera el setup de torn lliure de \texttt{v9} posant $+0{,}3$ a Dragon Dance dins una fulla que també multiplica el dany incoming per 1,5.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{minimax_future_proxies.png}
+    \caption{Proxies de «futur»: setup, hazards, Tera. \texttt{v16} no puja el setup ($\sim$0,21, nivell \texttt{v14}, no \texttt{v12} $\sim$1,7). La hipòtesi «la fulla posicional valora payoffs retardats» queda refutada pels comptadors.}
+    \label{fig:minimax_future}
+\end{figure}
+
+\subsection{\texttt{v17}: l'únic upgrade 1-ply}
+
+$+0{,}15$ a l'acció de \texttt{v14} després del maximin. Override \textbf{67\% $\to$ 37\%}. WR \textbf{$+4{,}1$~pp} vs \texttt{v15}. Cara a cara 54,7\% / 54,3\% vs \texttt{v15}/\texttt{v16} a 10k. El biaix és \emph{més feble} que el prior PUCT 0,70 de \texttt{v20} (override 19\%), així que \texttt{v17} encara discrepa en més d'un terç dels torns de cerca i s'asseu \textbf{per sota} de \texttt{v20}/\texttt{v21} (57,9 vs 59,7 / 58,7). Direccionalment és el mateix híbrid.
+
+Vs el sostre, $n=10.000$ tret de MCTS:
+
+\begin{center}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Oponent & \texttt{v15} & \texttt{v16} & \texttt{v17} \\
+\midrule
+\texttt{v12} & 36,04 & 35,92 & \textbf{40,94} \\
+\texttt{v13} & 32,82 & 33,50 & 35,10 \\
+\texttt{v14} (professor) & 39,43 & 39,56 & \textbf{43,61} \\
+Abyssal & 41,72 & 41,86 & \textbf{46,79} \\
+\texttt{v20} ($n=1$k) & 39,7 & 44,6 & \textbf{50,4} \\
+\texttt{v21} & 43,65 & 44,75 & 47,50 \\
+\texttt{v22} & 69,67 & 70,22 & 71,27 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\texttt{v17} vs \texttt{v14} és \textbf{43,6\%}: la cerca 1-ply \textbf{perd contra el seu professor} a 10k, no és una moneda. Vs \texttt{v12} \textbf{40,9\%}. Vs Abyssal 46,8\%, lluny del 59,9\% de \texttt{v12}. Vs \texttt{v20} 50,4\% a 1k: els dos híbrids que es fien de \texttt{v14} són intercanviables dins el soroll.
+
+Tesi: mirar un torn endavant amb maximin de informació «completa» (sets predits) no supera \texttt{v14}, i posar bonuses de payoff retardat a la fulla no fa que valori el futur. L'únic 1-ply que es mou és el que se li diu que es quedi a prop de \texttt{v14}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{minimax_fingerprint_bars.png}
+    \caption{Empremta \texttt{v15}--\texttt{v17}: KO checks $\sim$14, cerca $\sim$16--18\% dels torns, Tera $\sim$0,39 (nivell \texttt{v14}, no \texttt{v12}).}
+    \label{fig:minimax_fp}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{minimax_key_matchups.png}
+    \caption{Matchups discriminants del 1-ply. Fila $=$ nosaltres. MCTS $n=1.000$. \texttt{v17} millora vs Abyssal i vs \texttt{v12} però no creua el 50\% contra el professor.}
+    \label{fig:minimax_key}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{minimax_winrate_grouped.png}
+    \caption{WR agrupat. \texttt{v15} i \texttt{v16} superposats; \texttt{v17} separat cap amunt, encara sota \texttt{v9}/\texttt{v11}.}
+    \label{fig:minimax_grouped}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{minimax_wr_by_paradigm.png}
+    \caption{WR 1-ply per paradigma d'oponent. El prior de \texttt{v17} ajuda sobretot vs heurístiques i vs MCTS; vs IL pur tothom ja guanya.}
+    \label{fig:minimax_paradigm}
+\end{figure}
+
+% ============================================================
+\section{IS-MCTS: cinc torns de lookahead són un backup}
+\label{sec:res_mcts}
+
+\textbf{Recordatori: totes les cel·les d'aquesta secció tenen $n=1.000$.} IC $\approx\pm 3$~pp. El WR global 59,66\% de \texttt{v20} no es compara amb el 57,89\% de \texttt{v17} com si tinguessin el mateix error.
+
+Pregunta: mirar 5 torns en futurs mostrejats, supera l'expert d'un ply que ja viu dins de cada MCTS?
+
+\input{tables/mcts_headline}
+
+\texttt{v20} supera \texttt{v18} en \textbf{28/28} matchups (mitjana $+5{,}64$~pp). Cara a cara a 1k: \texttt{v18} vs \texttt{v19} moneda (49,3 / 51,4); \texttt{v20} vs tots dos $\sim$56,6\%. Una fulla 5-ply més rica \textbf{no ha ajudat}.
+
+\subsection{Altra vegada: la cerca gairebé no corre}
+
+$\sim$14 KO/partida vs $\sim$3--4 decisions MCTS. Arbre en el \textbf{16--18\%} dels torns:
+
+\begin{quote}
+Un jugador \texttt{v14} que prioritza el KO i, als residuals, tira 100 $\times$ 5-ply IS-MCTS.
+\end{quote}
+
+El pressupost de 100 sims no té ocasió de valorar un Dragon Dance en un torn on existeix un KO, que és la majoria del mid-game.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{mcts_override.png}
+    \caption{\textbf{Figura clau.} Override de \texttt{v14} entre decisions d'arbre. UCB1 (\texttt{v18}/\texttt{v19}) $\sim$71\%; PUCT (\texttt{v20}) $\sim$19\%. Els derrotats sobreescriuen més (search\_diff/torn 0,15 vs 0,11): l'efecte horitzó al replay, no al comentari de l'algorisme. $n=1.000$ per cel·la, 28.000 partides per agent.}
+    \label{fig:mcts_override}
+\end{figure}
+
+\subsection{Override correlaciona amb perdre}
+
+\texttt{search\_diff} és la definició empírica de «el lookahead ha fet alguna cosa». Entre torns d'arbre:
+
 \begin{itemize}
-    \item \textbf{El fenomen de Stall de la Gen 2}: La Generació 2 (\textit{gen2randombattle}) és amb diferència la més llarga de la història, amb una mitjana de \textbf{28,78 torns} per batalla, a més de registrar la taxa de canvis voluntaris més elevada de tot el dataset (\textbf{~2,5 canvis per batalla}). Això es deu al fet que pràcticament tots els Pokémon en aquest format estan equipats amb l'objecte \textit{Restes} (\textit{Leftovers}), fet que atorga recuperació passiva constant, i alhora no existeixen objectes hiper-ofensius com la \textit{Cinta Triada} o la \textit{Vidaesfera} per trencar defenses fàcilment, forçant un metagame de canvis defensius constants.
-    \item \textbf{Aceleració moderna (Gen 4--9)}: A partir de la Generació 4, la durada mitjana s'estabilitza en un rang estret de \textbf{18 a 19 torns}, sent la Generació 9 la més ràpida de totes amb només \textbf{18,27 torns} de mitjana. L'augment de moviments ofensius d'alta potència i mecàniques explosives redueix dràsticament la viabilitat de les estratègies defensives pures.
+    \item \texttt{v18}/\texttt{v19} sobreescriuen \texttt{v14} en el \textbf{71\%}. L'arbre no confirma l'expert: el substitueix.
+    \item Els que perden sobreescriuen més. El desacord extra no és «una línia millor»; s'associa a derrota.
+    \item Un rollout golós de 5 torns amb fulla d'HP prefereix dany immediat i salta les regles de payoff retardat de \texttt{v14} (conservar sweeper, torn de hazard, scouting).
 \end{itemize}
 
-\subsection{Freqüència de Moviments i Popularitat de Pokémon}
+\texttt{v19} havia d'arreglar-ho amb fulla posicional. Override \textbf{71,1\%}, WR \textbf{0,7~pp pitjor} que \texttt{v18}. La fulla no és el constraint vinculant. Ho és: 100 simulacions sorolloses a través d'un rollout golós en un arbre d'informació oculta enorme.
 
-Mitjançant la projecció i l'anàlisi de freqüències dels logs de combat extrets de les 29,16 milions de partides, s'ha identificat quins són els moviments i els Pokémon més freqüents en el format de combats aleatoris. La Figura~\ref{fig:top_pokemon_moves} reflecteix aquestes distribucions.
+\subsection{PUCT funciona discrepant menys, no veient més lluny}
+
+Prior 0,70 sobre \texttt{v14}. Override \textbf{18,7\%}. WR \textbf{59,7\%}, HP restant 1,40. Únic MCTS que entra a la conversa amb \texttt{v9}/\texttt{v11}/\texttt{v21}.
+
+Els guanys PUCT vs \texttt{v18} són exactament contra els agents de coneixement i de cerca que l'arbre lliure manegava malament: $+11{,}1$~pp vs \texttt{v17}, $+10{,}5$ vs \texttt{v13}, $+9{,}8$ vs \texttt{v15}, $+8{,}7$ vs \texttt{v12}. Vs \texttt{random} el buit és 0,3~pp: no hi havia res a arreglar.
+
+Tesi: amb aquest pressupost, l'agent de cerca útil no és «MCTS en lloc de \texttt{v14}». És «\texttt{v14}, amb 100 simulacions permeses de reordenar aquest prior». La mateixa moral que \texttt{v21}. UCT sense guia és el \texttt{v22} d'aquest paradigma: més pur, pitjor.
+
+\subsection{Cinc torns golosos no compren el futur}
+
+\begin{center}
+\small
+\begin{tabular}{lrrr}
+\toprule
+ & Setup/partida & Hazards/partida & Tera/partida \\
+\midrule
+\texttt{v12} (sostre) & $\sim$1,73 & $\sim$0,18 & $\sim$0,95 \\
+\texttt{v14} (professor) & $\sim$0,22 & $\sim$0,03 & $\sim$0,31 \\
+1-ply \texttt{v15}--\texttt{v17} & 0,21 & 0,04--0,05 & 0,38--0,40 \\
+5-ply \texttt{v18}--\texttt{v20} & 0,20--0,22 & 0,04--0,05 & 0,39--0,41 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Setup i hazards queden a \textbf{nivell \texttt{v14}}, no \texttt{v12}. El problema d'horitzó que motivava MCTS sobre 1-ply \textbf{no el resolen} 5 passos golosos de LocalSim. Una política de rollout que puntua setup a 80 només si HP $>75\%$ i hazards a 70 només als torns $\le 3$ continua sent una heurística rasa, executada dins l'arbre.
+
+\texttt{v20} té més \texttt{search\_switches} (36\% de les decisions d'arbre vs 14\% a \texttt{v18}) amb \emph{menys} \texttt{search\_diff}: PUCT empeny visites cap al \textbf{switch de \texttt{v14}}, no n'inventa de llarg horitzó.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\linewidth]{images/top_pokemon_moves_10k.png}
-    \caption{Distribució de freqüències dels 10 moviments més utilitzats (esquerra) i dels 10 Pokémon més convocats als equips (dreta) al llarg de tot el benchmark de Singles.}
-    \label{fig:top_pokemon_moves}
+    \includegraphics[width=0.92\linewidth]{mcts_future_proxies.png}
+    \caption{Proxies de futur a 5-ply. Setup/hazards nivell \texttt{v14}. Cinc torns de LocalSim no recuperen la política de \texttt{v12}. Cel·les $n=1.000$.}
+    \label{fig:mcts_future}
 \end{figure}
 
-Els resultats confirmen:
+\subsection{Vs el sostre ($n=1.000$, IC $\sim\pm 3$~pp)}
+
+\begin{center}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Oponent & \texttt{v18} & \texttt{v19} & \texttt{v20} \\
+\midrule
+\texttt{v12} & 34,0 & 33,1 & \textbf{42,7} \\
+\texttt{v13} & 28,6 & 34,1 & 39,1 \\
+\texttt{v14} & 40,0 & 41,7 & \textbf{47,0} \\
+Abyssal & 42,2 & 38,7 & \textbf{49,0} \\
+\texttt{v15} & 49,3 & 51,6 & \textbf{59,1} \\
+\texttt{v17} & 44,7 & 45,3 & 55,8 \\
+\texttt{v21} & 44,1 & 46,5 & 49,6 \\
+\texttt{v22} & 71,1 & 66,9 & 73,0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\texttt{v20} vs \texttt{v14}: \textbf{47,0\%}, moneda amb el professor. Vs \texttt{v12}: \textbf{42,7\%}, sota el sostre. Vs Abyssal: \textbf{49,0\%}, tornant a la moneda que \texttt{v12} ja havia deixat (59,9\% a 10k). Amb PUCT, el 5-ply supera l'1-ply no constrenyit (59,1\% vs \texttt{v15}) i esclafen IL pur ---el mateix patró que qualsevol heurística competent.
+
+Blocs: \texttt{v20} 69,9\% vs baselines, 56,7\% vs heurístiques, 57,4\% vs minimax. \texttt{v18}/\texttt{v19} $\sim$50\% vs heurístiques i \emph{sota} 50\% vs minimax. Cerca 5-ply sense guia ni tan sols supera la cerca 1-ply.
+
+Tesi: IS-MCTS a 100 $\times$ 5 torns golosos no supera \texttt{v12} ni \texttt{v14}. Supera la cerca \emph{sense guia} de la mateixa família, i només quan se li diu que es fii de l'heurística.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{mcts_fingerprint_bars.png}
+    \caption{Empremta MCTS. Cerca 16--18\% dels torns; KO $\sim$14/partida. \texttt{v20} busca menys i acaba amb més HP. $n=1.000$ per oponent.}
+    \label{fig:mcts_fp}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{mcts_key_matchups.png}
+    \caption{Matchups discriminants MCTS. Fila $=$ nosaltres, \textbf{totes $n=1.000$}. \texttt{v20} s'acosta a Abyssal (49\%) i no creua \texttt{v12} (42,7\%).}
+    \label{fig:mcts_key}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{mcts_winrate_grouped.png}
+    \caption{WR agrupat MCTS. \texttt{v18} i \texttt{v19} superposats; \texttt{v20} separat. No mesclar aquest global de 28k amb els 253k de la resta.}
+    \label{fig:mcts_grouped}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{mcts_wr_by_paradigm.png}
+    \caption{WR MCTS per paradigma d'oponent ($n=1$k a cada cel·la contribuent). PUCT ajuda vs heurístiques i vs minimax; vs IL pur ja es guanyava.}
+    \label{fig:mcts_paradigm}
+\end{figure}
+
+% ============================================================
+\section{Imitació: el mateix expert, dues execucions}
+\label{sec:res_il}
+
+Mateix cap XGBoost, mateix $\tau=0{,}5525$. Divergeixen després.
+
+\input{tables/il_headline}
+
+\texttt{v21} supera \texttt{v22} en \textbf{28/28} (mitjana $+25{,}2$~pp). Cara a cara: 71,74 / 29,07 (suma 1,008). Autojoc 49,92 / 49,58. La puresa de \texttt{v22} és exacta: \texttt{ko\_guards}, \texttt{endgame\_solves}, \texttt{ko\_checks}, \texttt{search\_*} són 0 al 100\% de partides. No són la mateixa política amb una etiqueta diferent.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{il_fingerprint_bars.png}
+    \caption{\textbf{Figura clau.} Empremta IL. \texttt{v21}: $\sim$14 KO guards/partida, XGB al 15\% dels torns. \texttt{v22}: zero KO guards, XGB al 80\%, loop guards 1,92/partida (97\% dels combats). El contrast aïlla l'execució, no la qualitat de les dades.}
+    \label{fig:il_fp}
+\end{figure}
+
+\subsection{On s'asseguren a l'escala}
+
+\texttt{v21} 58,71\% $\approx$ \texttt{v9}/\texttt{v11}. \texttt{v22} 33,49\%, \textbf{per sota de \texttt{v1}} (44,25\%). \texttt{v1} vs \texttt{v22} $=65{,}72\%$: el clon pur no és «un expert feble»; és pitjor que $\mathrm{bp}\times\mathrm{tipus}\times\mathrm{STAB}$ golós.
+
+Matchups que importen ($n=10$k tret de \texttt{v20}):
+
+\begin{center}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+ & vs \texttt{v12} & vs \texttt{v13} & vs \texttt{v14} & vs Abyssal & vs SimpleH \\
+\midrule
+\texttt{v21} & 41,28 & 38,39 & 45,43 & 46,98 & 47,76 \\
+\texttt{v17} & 40,94 & 35,10 & 43,61 & 46,79 & 46,75 \\
+\texttt{v20} ($n=1$k) & 42,7 & 39,1 & 47,0 & 49,0 & 49,2 \\
+\texttt{v22} & 19,80 & 22,03 & 25,81 & 22,90 & 21,73 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\texttt{v14} vs \texttt{v21} $=54{,}74\%$ (recíproc 45,43). Empeltar un model de timing de switch \textbf{sobre \texttt{v14} no supera \texttt{v14}}. Juga com un \texttt{v14} un xic pitjor: 58,7 vs 62,0 global; 47,0 vs 51,4 vs Abyssal.
+
+\subsection{\texttt{v21} encara és, sobretot, una heurística}
+
+Només el \textbf{15\%} dels torns arriben a XGBoost. El 85\% se'ls menja el camí de KO de \texttt{v14} ($\texttt{ko\_guards}\approx 14$/partida). Als torns que sí arriben al model, $p(\mathrm{switch})$ mitjana és 0,08, lluny de $\tau=0{,}5525$: el macro diu gairebé sempre \emph{queda't}, i \texttt{v14} tria el moviment.
+
+Descripció honesta:
+
+\begin{quote}
+Un \texttt{v14} que, en la minoria de torns sense KO, pregunta a un clon humà si cal canviar, i tot i així executa amb \texttt{v14}.
+\end{quote}
+
+Per això s'agrupa amb \texttt{v9}/\texttt{v11} i no amb \texttt{v12}--\texttt{v14} (Tera com \texttt{v14}, no com \texttt{v12}) i no pot batre el professor. La capa d'imitació és un \textbf{prior de timing de switch}, no un motor tàctic nou.
+
+Això continua sent un resultat d'IL. El \emph{quan canviar} expert és un senyal aprenable (\texttt{v21} $\gg$ \texttt{v22} $\gg$ \texttt{ml\_baseline}). També és \textbf{més feble} que les taules de matchup de \texttt{v14} en joc bot-contra-bot.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{il_policy_firing.png}
+    \caption{On dispara la política. \texttt{v21}: XGB residual (15\%). \texttt{v22}: XGB és el camí per defecte (80\%). Sense aquesta figura es podria vendre \texttt{v21} com a «agent que juga com humans».}
+    \label{fig:il_fire}
+\end{figure}
+
+\subsection{Per què falla \texttt{v22}: tres raons estructurals, no «XGBoost és dolent»}
+
+\begin{enumerate}
+    \item \textbf{Semàntica d'acció.} Un slot de Showdown no és una classe estable. El macro només predice $\{\mathrm{move},\mathrm{switch}\}$. El segon model puntua atributs, no moviments amb nom. És un substitut amb pèrdua del calculador de \texttt{v14}. Els cops SE es queden similars (4,47 vs 4,16 /partida); el WR no, perquè l'ordre de KO i els switch-in dominen.
+    \item \textbf{Biaix d'exposició.} Un mal canvi posa \texttt{v22} en un banc que l'expert no va ocupar; el macro contrafactual puntua aquest estat aliè; el loop guard dispara en el \textbf{97\%} de partides (1,92 vs 0,38). La política lluita contra el propi distribution shift. Partides més llargues (20,1 vs 18,2) i \textbf{0,70} mons restants vs 1,33.
+    \item \textbf{Restriccions dures absents.} Els experts gairebé mai salten un KO garantit. \texttt{v21} ho codifica \emph{abans} de consultar el clon. \texttt{v22} no. Tera 0,99/partida (sense disciplina, a diferència del 0,19 de \texttt{v13}): gasta el recurs d'una vegada per batalla com un script.
+\end{enumerate}
+
+Tesi: l'IL en aquest domini està limitat per \emph{què} es clona (macro mou/canvia) i per \emph{qui} executa (heurística vs segon XGB), no per manca de dades. 1,1 milions de torns in-format arriben per un prior de switch. No arriben per substituir dany, KO i disciplina de Tera.
+
+Una objecció de tribunal: «un IL de veritat hauria de triar el moviment, no cridar \texttt{v14}». La rèplica és a la taula: aquest agent és \texttt{v22}, i està dominat. El clonatge jeràrquic (macro de dades, micro d'un solver) és estàndard en control d'informació imperfecta. La contribució és la \textbf{mesura}: la jerarquia recupera un jugador nivell \texttt{v9} i no recupera \texttt{v12}. El que falta és coneixement de format (Tera, preview, KO), que el macro de 1.150 features no havia de treure.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{il_tactical_proxies.png}
+    \caption{Proxies tàctics. \texttt{v22} Tera gairebé cada partida (0,99) com \texttt{v12} (0,95) i s'asseu a l'extrem oposat del rànquing: freqüència de Tera $\neq$ disciplina de Tera.}
+    \label{fig:il_tac}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{il_winrate_grouped.png}
+    \caption{WR agrupat híbrid vs pur. \texttt{v21} a la banda \texttt{v9}; \texttt{v22} sota \texttt{v1}. 253.000 partides.}
+    \label{fig:il_grouped}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{il_wr_by_paradigm.png}
+    \caption{WR IL per paradigma d'oponent. \texttt{v21} davant en 6/6 blocs (delta $\sim$20--26~pp). El buit és estructural, no un matchup aïllat.}
+    \label{fig:il_paradigm}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{il_wr_scatter.png}
+    \caption{WR de \texttt{v21} vs \texttt{v22} per oponent. Tots els punts sobre la diagonal: 28/28. El gap més gros és vs \texttt{safe\_one\_step} ($+32{,}6$~pp).}
+    \label{fig:il_scatter}
+\end{figure}
+
+% ============================================================
+\section{Rànquing entre paradigmes}
+\label{sec:res_cross}
+
+\input{tables/overall_wr}
+
+\input{tables/vs_discriminators}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{gen9_winrate_heatmap.png}
+    \caption{Heatmap de WR a \texttt{gen9randombattle}. Fila $=$ nosaltres, columna $=$ oponent. Prefixos: (H)~\texttt{v1}--\texttt{v14}, (MM)~\texttt{v15}--\texttt{v17}, (MCT)~\texttt{v18}--\texttt{v20}, (IL)~\texttt{v21}--\texttt{v22}, (B)~baselines. Cel·les on intervé (MCT): $n=1.000$; resta $n=10.000$. La diagonal d'autojoc $\approx 50\%$. El bloc (H) \texttt{v12}/\texttt{v13} és la franja més calenta; (IL) \texttt{v22} la més freda després de \texttt{random}/\texttt{max\_power}.}
+    \label{fig:heatmap}
+\end{figure}
+
+\subsection{Abyssal és el regle extern}
+
+Fins \texttt{v12}, \textbf{cap} heurística interna no supera Abyssal. \texttt{v7}--\texttt{v11} s'asseguren al 41--48\%. \texttt{v12} és el canvi de règim (59,9\%). \texttt{v14} torna a la moneda (51,4\%). \texttt{v21} per sota (47,0\%). \texttt{v20} moneda a 1k (\textbf{49,0\% $\pm 3{,}1$}). \texttt{v17} 46,79\% a 10k. \texttt{v22} esclafat (22,9\%). Si cal un sol nombre per «hem superat el baseline publicat de regles», continua sent \textbf{\texttt{v12} vs Abyssal, 59,91\% $\pm 0{,}96$, $n=10.000$}.
+
+\subsection{Elo Bradley--Terry}
+
+\input{tables/elo_gen9}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{gen9_elo_bars.png}
+    \caption{Elo Bradley--Terry (àncora \texttt{random}${}=1000$), ambdós seients. \texttt{v12} i \texttt{v13} clars primers. \texttt{v14} empatat amb Abyssal i Simple Heuristic ($\sim$1755). \texttt{v20}/\texttt{v21}/\texttt{v17} segueixen, sota el sostre. MCTS té menys partides al model (56k vs 506k).}
+    \label{fig:elo_bars}
+\end{figure}
+
+% ============================================================
+\section{Ladder pública: \texttt{v14} contra humans}
+\label{sec:res_ladder}
+
+\input{tables/ladder_v14}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{ladder_wr_elo.png}
+    \caption{WR i Elo de \texttt{v14} a la ladder, 431 partides (9--10 juny 2026). Headline: 39,44\% $\pm 4{,}6$~pp, Elo $1085\to 1038$ (pic 1263). El snapshot de 98 partides / 40,8\% / Elo $\sim$1151 del pla de juny és un prefix d'aquest log, pres a prop del pic: no és la mostra final.}
+    \label{fig:ladder_wr}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{live_ladder_evolution.png}
+    \caption{Evolució de l'Elo al llarg de les 431 partides. El pic 1263 i la caiguda fins 1038 expliquen per què un tall a 98 partides enganya.}
+    \label{fig:ladder_evo}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{ladder_win_vs_loss.png}
+    \caption{Victòries vs derrotes a la ladder. Torns $\ge 10$ ($n=398$, WR 35,43\%) és per taules tàctiques; el titular és 431. Les 33 partides curtes (sobretot abandons) inflen el WR brut.}
+    \label{fig:ladder_wl}
+\end{figure}
+
+A partides amb torns $\ge 10$, \texttt{v14} Tera en 45/398 i en guanya el 20\%: Tera des de darrere, no l'opener cada partida de \texttt{v12}. KO checks alts ($\sim$16/partida), setup quasi zero (0,03). La mateixa empremta que al gauntlet.
+
+Com usar el nombre. Bot-contra-bot: \texttt{v14} és tercer entre heurístiques (62\% / 51\% vs Abyssal) i \texttt{v12} és primer (69\% / 60\%). La ladder \textbf{no inverteix} aquest rànquing. \texttt{v14} es va construir per perfilar humans; la mostra diu que aquest disseny encara no és el 50\% vs la ladder pública. No diu que \texttt{v12} ho faria millor en línia.
+
+% ============================================================
+\section{Discussió}
+\label{sec:res_disc}
+
+\subsection{La moral jeràrquica, tres vegades}
+
+\texttt{v21} (IL), \texttt{v17} (1-ply) i \texttt{v20} (MCTS) són la mateixa arquitectura amb roba diferent: \textbf{conservar KO i tàctica de \texttt{v14}, afegir un mòdul residual} (prior de switch XGB / biaix maximin $+0{,}15$ / arbre PUCT). Tots tres residuals disparen en el $\sim$15--18\% dels torns. Els germans més «purs» (\texttt{v22}, \texttt{v15}/\texttt{v16}, \texttt{v18}/\texttt{v19}) sobreescriuen l'expert més i guanyen menys.
+
+Les tres figures que ho ensenyen: \ref{fig:il_fp}, \ref{fig:minimax_override}, \ref{fig:mcts_override}.
+
+El control a batre per a qualsevol paradigma posterior (MCTS més profund, PPO, LLM) continua sent \textbf{\texttt{v12}/\texttt{v13}}, no \texttt{v14}, no \texttt{v17}, no \texttt{v20}, no \texttt{v21}.
+
+\subsection{En aquest POSG, el coneixement supera el clonatge i el lookahead ras}
+
+\begin{enumerate}
+    \item El retorn del coneixement heurístic és \textbf{no lineal}: altiplà de dany, salts de posició i tempo, salt gros de mecàniques de format.
+    \item El sostre bot-contra-bot és \texttt{v12}, no \texttt{v14}. Les regles extra de modelatge humà poden fer mal contra bots deterministes.
+    \item L'imitació de timing macro és real i més feble que \texttt{v12}--\texttt{v14}. El clon pur, amb aquesta representació, és insuficient.
+    \item 1-ply no supera el professor. 5-ply IS-MCTS tampoc. Tots dos només es mouen quan se'ls obliga a quedar-se a prop de \texttt{v14}.
+    \item Cap híbrid (\texttt{v17}, \texttt{v20}, \texttt{v21}) no supera \texttt{v12}.
+\end{enumerate}
+
+\subsection{El que no es reivindica}
+
 \begin{itemize}
-    \item \textbf{Terratrèmol} (\textit{Earthquake}) és el moviment més executat de tot el dataset, registrant més de \textbf{2,25 milions} d'usos. La seva alta potència base (100), precisió perfecta (100\%) i excel·lent cobertura contra tipus molt comuns com Acer, Foc, Roca i Elèctric el converteixen en un moviment indispensable en qualsevol Pokémon físic.
-    \item Pokémon singulars i llegendaris com \textbf{Mew} i \textbf{Mewtwo} apareixen en més de \textbf{47.000 equips} de la mostra, sent els personatges més recurrents en les alineacions aleatòries generades per Showdown.
+    \item «\texttt{v14} és la millor heurística.» És la millor \emph{dissenyada per humans}; és tercera al round-robin.
+    \item «\texttt{v13} esclafa \texttt{v12}.» Fals a $n=10.000$.
+    \item «\texttt{v21} juga com humans.» És \texttt{v14} de KO primer amb un prior de switch al residual.
+    \item «L'IL ha fallat.» L'híbrid és un jugador competent nivell \texttt{v9}. El pur ha fallat. Són frases distintes.
+    \item «Minimax/MCTS miren endavant, per tant valoren setup.» Els comptadors ho refuten.
+    \item «\texttt{v20}/\texttt{v17} és un agent de cerca fort.» Cadascun és una cerca \emph{esbiaixada a \texttt{v14}} forta. La cerca sense guia és una heurística mitjana.
+    \item El WR global com a proxy d'Elo humà. \texttt{random} és a la mitjana.
+    \item Mesclar 28k MCTS amb 253k sense dir-ho.
+    \item 40,8\% / Elo 1151 com a mostra final de ladder.
+    \item Dobles/VGC com a contribució.
+    \item PPO com a experiment acabat.
 \end{itemize}
 
-\section{Avaluació al Format 2 vs 2 (Doubles)}
+\subsection{Limitacions que afecten la lectura}
 
-L'avaluació en el format de Dobles constitueix un dels reptes més importants d'aquest TFM. A diferència de Singles, on les heurístiques v1-v6 ja estaven consolidades, a Dobles s'ha realizat un procés de recerca des de zero que ha culminat en la versió \textbf{v5 (Apex Heuristic)}.
+\begin{itemize}
+    \item El WR global ponderat inclou oponents fàcils. El rànquing és robust (\texttt{v12} primer vs Abyssal, vs heurístiques i en global); el 69\% absolut no és un nivell real contra humans.
+    \item Comptadors d'estratègia incomplets a \texttt{v7}/\texttt{v8}/\texttt{v10} i als dos IL (\texttt{setup}/\texttt{hazards} a 0).
+    \item El tall de telemetria de Tera/switch de les heurístiques a les seccions 3--4 de la nota d'anàlisi és cinc matchups, no 28. IL/minimax/MCTS sí que són gauntlet complet.
+    \item \texttt{endgame\_solves} de \texttt{v18} està contaminat per la sonda \texttt{v14} post-cerca. No es cita com a «\texttt{v18} crida el solver».
+    \item El clon no va tenir mai un cap de «quan fer Tera».
+    \item LocalSim $\neq$ Showdown: soroll plausible a \texttt{v18}/\texttt{v19}. El 1-ply no té aquesta excusa.
+    \item Ladder: 431 partides, pilot ecològic, no un paral·lel de la matriu 10k.
+\end{itemize}
 
-S'han realitzat experiments en dues generacions clau per observar la consistència de les heurístiques:
-
-\paragraph{Resultats a la Generació 9 (Format Actual).}
-A la Figura~\ref{fig:doubles_gen9_heatmap} s'observa el rendiment de les 5 versions de Dobles en Gen 9. Es confirma que totes les versions superen el 80\% de victòries contra \texttt{maxDUMMY\_UNDERSCOREpower} i gairebé el 100\% contra \texttt{random}. Les dades exactes es recullen a la Taula~\ref{tab:doubles_win_rate_gen9}.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\linewidth]{images/doubles_gen9_heatmap.png}
-    \caption{Matriu de win-rate per a \textit{Random Doubles Battle} Generació 9.}
-    \label{fig:doubles_gen9_heatmap}
-\end{figure}
-
-\input{tables/doubles_gen9_wr}
-
-\paragraph{Resultats a la Generació 8 (L'Era de la Coordinació).}
-Els resultats a Gen 8 (Figura~\ref{fig:doubles_gen8_heatmap}) són encara més reveladors. Aquí, les versions amb coordinació avançada (\textbf{v4} i \textbf{v5}) treuen un avantatge massiu a les versions més simples. La versió \textbf{v4 (Tactical Coordination)} es posiciona com la millor de tot el projecte en aquest format.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\linewidth]{images/doubles_gen8_heatmap.png}
-    \caption{Matriu de win-rate per a \textit{Random Doubles Battle} Generació 8. S'observa clarament com v4 i v5 dominen el quadrant superior dret.}
-    \label{fig:doubles_gen8_heatmap}
-\end{figure}
-
-A la Taula~\ref{tab:doubles_win_rate_gen8} es detallen els percentatges exactes de victòria per a la Generació 8, on el rendiment de la versió \textbf{v4} marca el rècord absolut de superioritat estratègica del projecte.
-
-\input{tables/doubles_gen8_wr}
-
-\subsubsection{Comparativa Elo i Consistència Cross-Generacional}
-
-L'anàlisi de l'Elo en Dobles (Taules~\ref{tab:elo_doubles_gen_9} i \ref{tab:elo_doubles_gen_8}) revela la solidesa de l'arquitectura \textit{Score-then-Combine}. 
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.48\linewidth]{images/elo_doubles_gen8.png}
-    \includegraphics[width=0.48\linewidth]{images/elo_doubles_gen9.png}
-    \caption{Comparativa de Rànquing Elo en Dobles: Generació 8 (esquerra) vs Generació 9 (dreta).}
-    \label{fig:elo_doubles_comparison}
-\end{figure}
-
-\input{tables/elo_doubles_gen8}
-\input{tables/elo_doubles_gen9}
-
-S'observa que la versió \textbf{v4} és la més forta a Gen 8, mentre que a Gen 9 les versions \textbf{v3}, \textbf{v4} i \textbf{v5} es mantenen molt properes. Això suggereix que l'heurística de coordinació és fonamental en ambdós metagames, però l'impacte de mecàniques com el Dynamax a la Gen 8 feia que la coordinació tàctica de la v4 fos encara més discriminant que en el format actual.
-
-\textbf{Conclusió Científica}: El canvi metodològic del 1vs1 al 2vs2 confirma que la coordinació (\textit{Focus Fire} i \textit{Protect}) és la clau per dominar el format de Dobles. Mentre que en Singles el dany pur és molt efectiu, en Dobles la capacitat de triar un objectiu comú per assegurar un KO és el que marca la diferència entre un agent mediocre i un expert.
+PPO es deixa per una passada separada, contra \texttt{v12}.

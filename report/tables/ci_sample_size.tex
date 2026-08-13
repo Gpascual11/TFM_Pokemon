@@ -1,0 +1,17 @@
+\begin{table}[H]
+\centering
+\caption{Amplada de l'interval de confiança del 95\% per a una proporció binomial en el cas pitjor ($p=0{,}5$). Fórmula: $\pm 1{,}96\sqrt{0{,}25/n}$. El llindar de detecció és l'ordre de magnitud de la diferència que es pot distingir de manera fiable entre dos agents independents.}
+\label{tab:ci_n}
+\small
+\begin{tabular}{rrll}
+\toprule
+\textbf{$n$ (partides)} & \textbf{IC 95\%} & \textbf{Detecta buits $\gtrsim$} & \textbf{Ús en aquest TFM} \\
+\midrule
+100     & $\pm 10$~pp  & $20$~pp & Prova de fum (desenvolupament); \textbf{mai} un resultat. \\
+1.000   & $\pm 3{,}10$~pp & $6$~pp & Nivell de validació. Totes les cel·les amb \texttt{v18}/\texttt{v19}/\texttt{v20}. \\
+5.000   & $\pm 1{,}39$~pp & $2{,}8$~pp & (no usat) \\
+10.000  & $\pm 0{,}98$~pp & $2$~pp & Nivell de publicació. Cel·la per defecte del gauntlet. \\
+20.000  & $\pm 0{,}69$~pp & $1{,}4$~pp & (no usat; cost doble per un guany marginal) \\
+\bottomrule
+\end{tabular}
+\end{table}

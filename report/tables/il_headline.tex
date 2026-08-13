@@ -1,0 +1,22 @@
+\begin{table}[H]
+\centering
+\caption{Imitació: el mateix macro XGBoost ($\tau=0{,}5525$) i dues piles d'execució. 253.000 partides cadascuna. \texttt{v21} pregunta el model en el 15\% dels torns; \texttt{v22} en el 80\%, sense guards de KO, i dispara el loop-guard en el 97\% de les partides.}
+\label{tab:il_head}
+\small
+\begin{tabular}{lrr}
+\toprule
+ & \textbf{\texttt{v21} híbrid} & \textbf{\texttt{v22} pur} \\
+\midrule
+WR global (\%) & \textbf{58,71} $\pm 0{,}19$ & 33,49 $\pm 0{,}18$ \\
+Torns mitjans & 18,20 & 20,07 \\
+Mons restants (nosaltres) & 1,33 & 0,70 \\
+Canvis voluntaris / partida & 1,98 & 3,72 \\
+XGBoost (\% torns) & 15,2 & 79,9 \\
+Entre decisions XGB, \% SWITCH & 35,5 & 15,2 \\
+Mitjana $p(\mathrm{switch})$ & 0,080 & 0,351 \\
+KO guards / partida & 13,85 & \textbf{0} \\
+Endgame solves / partida & 0,032 & \textbf{0} \\
+Loop guards / partida (\% partides) & 0,38 (33\%) & 1,92 (\textbf{97\%}) \\
+\bottomrule
+\end{tabular}
+\end{table}

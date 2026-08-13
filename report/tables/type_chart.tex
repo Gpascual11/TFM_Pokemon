@@ -1,6 +1,6 @@
 % Taula de Tipus de Pokémon — Matriu 18×18 de multiplicadors de dany
 % Fila = Tipus de l'atac, Columna = Tipus del defensor
-% Requereix: \usepackage[table]{xcolor}, \usepackage{booktabs}, \usepackage{textcomp}
+% Requereix: \usepackage{xcolor}, \usepackage{booktabs}, \usepackage{textcomp}
 
 % Definició de colors per tipus
 \definecolor{typNormal}{HTML}{A8A878}
@@ -22,14 +22,14 @@
 \definecolor{typAcer}{HTML}{B8B8D0}
 \definecolor{typFada}{HTML}{EE99AC}
 
-% Comandes per cel·les d'efectivitat
-\newcommand{\SE}{\cellcolor{green!40}\textbf{2}}
-\newcommand{\NV}{\cellcolor{red!20}{\textonehalf}}
-\newcommand{\IM}{\cellcolor{gray!70}\textcolor{white}{\textbf{0}}}
+% Comandes per cel·les d'efectivitat (colorbox evita colortbl, incompatible amb booktabs)
+\newcommand{\SE}{\colorbox{green!40}{\strut\textbf{2}}}
+\newcommand{\NV}{\colorbox{red!20}{\strut\textonehalf}}
+\newcommand{\IM}{\colorbox{gray!70}{\strut\textcolor{white}{\textbf{0}}}}
 \newcommand{\NE}{}
 
 % Comanda per capçaleres de tipus amb color
-\newcommand{\ty}[2]{\cellcolor{#1}\textcolor{white}{\textbf{#2}}}
+\newcommand{\ty}[2]{\colorbox{#1}{\strut\textcolor{white}{\textbf{#2}}}}
 
 \begin{table}[H]
 \centering

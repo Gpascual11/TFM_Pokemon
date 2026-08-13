@@ -1,31 +1,40 @@
-\documentclass[11pt,a4paper]{report}
+\documentclass[11pt,a4paper,catalan]{report}
 
 % --- Essential Packages ---
 \usepackage[utf8]{inputenc}
-\usepackage[catalan]{babel}
-\usepackage[a4paper, margin=2.5cm]{geometry} % Adjusting margins
-\usepackage{microtype} % Millora enormement la justificació de text i elimina 'overfull hboxes'
+\usepackage[T1]{fontenc}
+\IfFileExists{lmodern.sty}{\usepackage{lmodern}}{}
+\usepackage[provide=*]{babel}
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{microtype}
 \usepackage{graphicx}
-\usepackage{amsmath, amssymb} % For TFM math/formulas
-\usepackage{hyperref}
-\usepackage{biblatex}
-\usepackage[table]{xcolor} % For colored table cells
-\usepackage{textcomp} % For \textonehalf symbol
-\usepackage{booktabs} % For nicer tables
-\usepackage{array} % For advanced table column formatting
-\usepackage{adjustbox} % For scaling tables to fit textwidth
-\usepackage{float} % For [H] figure placement
+\usepackage{amsmath, amssymb}
+\usepackage{xcolor}
+\usepackage{textcomp}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{adjustbox}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
 \usepackage{tikz}
 \usetikzlibrary{shapes,arrows,positioning}
+\usepackage[backend=bibtex]{biblatex}
+\usepackage{hyperref}
 
 % --- Path to your images ---
-\graphicspath{{images/}{../data/}} 
+\graphicspath{{images/}{../data/}}
 \addbibresource{bibliography.bib}
+
+\captionsetup{font=small, labelfont=bf, skip=6pt}
+\hypersetup{colorlinks=true, linkcolor=blue!50!black, citecolor=blue!50!black, urlcolor=blue!60!black}
 
 \begin{document}
 
-\title{Desenvolupament d'un agent de Deep Reinforcement Learning per a la presa de decisions estratègiques en entorns estocàstics d'informació imperfecta: El cas de Pokémon VGC}
+\title{Comparació de paradigmes d'intel·ligència artificial en un joc estocàstic d'observació parcial: heurístiques, cerca adversària i aprenentatge per imitació a \texttt{gen9randombattle}}
 \author{Gerard Pascual Fontanilles}
+\date{Agost 2026}
 \maketitle
 
 \tableofcontents

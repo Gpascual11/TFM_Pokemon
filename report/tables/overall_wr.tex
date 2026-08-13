@@ -1,0 +1,35 @@
+\begin{table}[H]
+\centering
+\caption{Taxa de victòries global com a \emph{nosaltres} contra els 28 oponents. Heurístiques, minimax i IL: $253.000$ partides (25 oponents $\times 10.000$ + 3 MCTS $\times 1.000$). MCTS: $28.000$ partides, totes les cel·les amb $n=1.000$. No es poden comparar els dos globals com si tinguessin la mateixa precisió; per ordenar \texttt{v20} contra \texttt{v17} cal mirar cel·les de matchup. Font: \texttt{data/benchmarks/all\_10k/gen9randombattle}.}
+\label{tab:overall_wr}
+\small
+\begin{tabular}{rlrrl}
+\toprule
+\textbf{Rang} & \textbf{Agent} & \textbf{Partides} & \textbf{WR (\%)} & \textbf{Paradigma} \\
+\midrule
+1  & \texttt{v12}              & 253.000 & 69,01 & Heurística \\
+2  & \texttt{v13}              & 253.000 & 67,63 & Heurística \\
+3  & \texttt{v14}              & 253.000 & 62,03 & Heurística \\
+4  & \texttt{abyssal}          & 253.000 & 62,00 & Baseline \\
+5  & \texttt{simple\_heuristic}& 253.000 & 61,93 & Baseline \\
+6  & \texttt{v20}              &  28.000 & 59,66 & MCTS (cel·les $n=1$k) \\
+7  & \texttt{v11}              & 253.000 & 59,26 & Heurística \\
+8  & \texttt{v9}               & 253.000 & 58,86 & Heurística \\
+9  & \texttt{v21}              & 253.000 & 58,71 & IL híbrid \\
+10 & \texttt{v17}              & 253.000 & 57,89 & Minimax \\
+11 & \texttt{v10}              & 253.000 & 55,66 & Heurística \\
+12 & \texttt{v8}               & 253.000 & 55,43 & Heurística \\
+13 & \texttt{v16}              & 253.000 & 54,30 & Minimax \\
+14 & \texttt{v7}               & 253.000 & 54,25 & Heurística \\
+15 & \texttt{v18}              &  28.000 & 54,02 & MCTS (cel·les $n=1$k) \\
+16 & \texttt{v15}              & 253.000 & 53,80 & Minimax \\
+17 & \texttt{v19}              &  28.000 & 53,29 & MCTS (cel·les $n=1$k) \\
+\midrule
+-- & \texttt{v5}               & 253.000 & 45,86 & Heurística (altiplà) \\
+-- & \texttt{v1}               & 253.000 & 44,25 & Heurística (altiplà) \\
+-- & \texttt{v22}              & 253.000 & 33,49 & IL pur \\
+-- & \texttt{max\_power}       & 253.000 & 19,66 & Baseline \\
+-- & \texttt{random}           & 253.000 &  4,20 & Baseline (àncora Elo $=1000$) \\
+\bottomrule
+\end{tabular}
+\end{table}
