@@ -74,6 +74,7 @@ start_telegram_monitor() {
         LAST_MATCHUP=""
         TELEM_COUNTER=0
         STALL_COUNTER=0
+        MATCHUP_START_SEC=$(date +%s)
 
         while true; do
             sleep 60  # Check every 60 seconds
@@ -82,36 +83,58 @@ start_telegram_monitor() {
             if [ -d "$OUT_DIR" ]; then
                 ACTIVE_FILE=$(ls -t "$OUT_DIR"/_tmp_*.csv 2>/dev/null | head -n 1 || true)
                 if [ -n "$ACTIVE_FILE" ]; then
-                    MATCHUP_TAG=$(basename "$ACTIVE_FILE" | sed -E 's/_tmp_(.*)_p[0-9]+_b[0-9]+\.csv/\1/')
-                    TOTAL_ROWS=$(wc -l "$OUT_DIR"/_tmp_${MATCHUP_TAG}_p*.csv 2>/dev/null | tail -n 1 | awk '{print $1}')
-                    NUM_FILES=$(ls "$OUT_DIR"/_tmp_${MATCHUP_TAG}_p*.csv 2>/dev/null | wc -l || echo 0)
+                    AGENT=$(awk -F',' 'NR==2 {print $3}' "$ACTIVE_FILE" 2>/dev/null || echo "")
+                    OPPONENT=$(awk -F',' 'NR==2 {print $4}' "$ACTIVE_FILE" 2>/dev/null || echo "")
+                    MATCHUP_TAG=$(basename "$ACTIVE_FILE" | sed -E 's/_tmp_(.*)_p[0-9]+_b[0-9]+\.csv/\1/' | sed -E 's/^(v[0-9]+)_(v[0-9]+)$/\1_vs_\2/')
+                    [ -n "$AGENT" ] && [ -n "$OPPONENT" ] && MATCHUP_TAG="${AGENT}_vs_${OPPONENT}"
+
+                    MATCHUP_FILES=$(ls "$OUT_DIR"/_tmp_*${AGENT}_*${OPPONENT}*_p*.csv "$OUT_DIR"/_tmp_*${MATCHUP_TAG}*_p*.csv "$OUT_DIR"/_tmp_$(echo "$MATCHUP_TAG" | sed 's/_vs_/_/g')_p*.csv 2>/dev/null | sort -u || true)
+                    TOTAL_ROWS=0
+                    NUM_FILES=0
+                    if [ -n "$MATCHUP_FILES" ]; then
+                        TOTAL_ROWS=$(wc -l $MATCHUP_FILES | tail -n 1 | awk '{print $1}')
+                        NUM_FILES=$(echo "$MATCHUP_FILES" | wc -l)
+                    fi
                     ACTUAL_ROWS=$(( TOTAL_ROWS - NUM_FILES ))
                     [ $ACTUAL_ROWS -lt 0 ] && ACTUAL_ROWS=0
 
                     TARGET_N=10000
                     IS_MCTS=false
+                    IS_MINIMAX=false
                     if [[ "$MATCHUP_TAG" =~ (v18|v19|v20) ]]; then
                         TARGET_N=1000
                         IS_MCTS=true
+                    elif [[ "$MATCHUP_TAG" =~ (v15|v16|v17) ]]; then
+                        IS_MINIMAX=true
                     fi
 
-                    EXIST_CSV="${OUT_DIR}/${MATCHUP_TAG}.csv"
-                    SAVED_GAMES=0
-                    if [ -f "$EXIST_CSV" ]; then
-                        S_ROWS=$(wc -l < "$EXIST_CSV" 2>/dev/null || echo 0)
-                        [ $S_ROWS -gt 0 ] && SAVED_GAMES=$(( S_ROWS - 1 ))
+                    # Track when this matchup started (reset on matchup change)
+                    if [ "$MATCHUP_TAG" != "$LAST_MATCHUP" ]; then
+                        MATCHUP_START_SEC=$(date +%s)
                     fi
-                    TOTAL_DONE=$(( SAVED_GAMES + ACTUAL_ROWS ))
+
+                    SAVED_ROWS=0
+                    if [ -n "$AGENT" ] && [ -n "$OPPONENT" ]; then
+                        TARGET_CSV="$OUT_DIR/${AGENT}_vs_${OPPONENT}.csv"
+                        if [ -f "$TARGET_CSV" ] && [ -s "$TARGET_CSV" ]; then
+                            SAVED_L=$(wc -l < "$TARGET_CSV" 2>/dev/null || echo 0)
+                            [ $SAVED_L -gt 1 ] && SAVED_ROWS=$(( SAVED_L - 1 ))
+                        fi
+                    fi
+
+                    COMBINED_ROWS=$(( SAVED_ROWS + ACTUAL_ROWS ))
+                    [ $COMBINED_ROWS -gt $TARGET_N ] && COMBINED_ROWS=$TARGET_N
+                    TOTAL_DONE=$COMBINED_ROWS
 
                     # ── MCTS Fast-Restart Check: >25% threads finished & rest stalled ──
                     MUST_RESTART=false
                     if [ "$IS_MCTS" = true ] && [ "$NUM_FILES" -gt 0 ]; then
-                        MAX_L_CNT=$(wc -l "$OUT_DIR"/_tmp_${MATCHUP_TAG}_p*.csv 2>/dev/null | grep -v "total" | awk '{print $1}' | sort -nr | head -n 1 || echo 0)
+                        MAX_L_CNT=$(wc -l $MATCHUP_FILES 2>/dev/null | grep -v "total" | awk '{print $1}' | sort -nr | head -n 1 || echo 0)
                         THRESH=$(( MAX_L_CNT * 85 / 100 ))
                         [ $THRESH -lt 5 ] && THRESH=5
 
                         FINISHED_THREADS=0
-                        for TMP_F in "$OUT_DIR"/_tmp_${MATCHUP_TAG}_p*.csv; do
+                        for TMP_F in $MATCHUP_FILES; do
                             if [ -f "$TMP_F" ]; then
                                 L_CNT=$(wc -l < "$TMP_F" 2>/dev/null || echo 0)
                                 if [ "$L_CNT" -ge "$THRESH" ] && [ "$MAX_L_CNT" -ge 10 ]; then
@@ -122,11 +145,11 @@ start_telegram_monitor() {
 
                         PCT_FINISHED=$(( (FINISHED_THREADS * 100) / NUM_FILES ))
                         if [ "$PCT_FINISHED" -ge 25 ] && [ "$FINISHED_THREADS" -lt "$NUM_FILES" ]; then
-                            if [ "$MATCHUP_TAG" = "$LAST_MATCHUP" ] && [ "$TOTAL_DONE" -eq "$LAST_ROWS" ]; then
+                            if [ "$MATCHUP_TAG" = "$LAST_MATCHUP" ] && [ "$COMBINED_ROWS" -eq "$LAST_ROWS" ]; then
                                 STALL_COUNTER=$(( STALL_COUNTER + 1 ))
                                 if [ "$STALL_COUNTER" -ge 2 ]; then
                                     MUST_RESTART=true
-                                    avis_telegram "⚡ [MCTS Fast-Restart] ${MATCHUP_TAG}: ${FINISHED_THREADS}/${NUM_FILES} threads finished (${PCT_FINISHED}% >= 25%). Remaining threads stalled. Merging ${ACTUAL_ROWS} games and restarting..."
+                                    avis_telegram "⚡ [MCTS Fast-Restart] ${MATCHUP_TAG}: ${FINISHED_THREADS}/${NUM_FILES} threads finished (${PCT_FINISHED}% >= 25%). Remaining threads stalled. Merging ${COMBINED_ROWS} games and restarting..."
                                 fi
                             else
                                 STALL_COUNTER=0
@@ -136,20 +159,63 @@ start_telegram_monitor() {
                         fi
                     fi
 
-                    # ── Inactivity Check: Trigger fast-restart if any active thread hasn't written in >10 mins (600s) ──
+                    # ── Relative Thread Lag & 10-Min Inactivity Check ──
                     NOW_SEC=$(date +%s)
-                    for TMP_F in "$OUT_DIR"/_tmp_${MATCHUP_TAG}_p*.csv; do
+                    MAX_THREAD_ROWS=$(wc -l $MATCHUP_FILES 2>/dev/null | grep -v "total" | awk '{print $1}' | sort -nr | head -n 1 || echo 0)
+                    ACTUAL_THREADS=$NUM_FILES
+                    [ "$ACTUAL_THREADS" -lt 1 ] && ACTUAL_THREADS=8
+                    PER_THREAD_TARGET=$(( (TARGET_N / ACTUAL_THREADS) * 80 / 100 ))
+                    [ $PER_THREAD_TARGET -lt 50 ] && PER_THREAD_TARGET=50
+
+                    for TMP_F in $MATCHUP_FILES; do
                         if [ -f "$TMP_F" ]; then
                             FILE_MTIME=$(stat -c %Y "$TMP_F" 2>/dev/null || echo "$NOW_SEC")
                             IDLE_SEC=$(( NOW_SEC - FILE_MTIME ))
+                            L_CNT=$(wc -l < "$TMP_F" 2>/dev/null || echo 0)
+
+                            # 1. Hard inactivity limit (10 minutes = 600s)
                             if [ "$IDLE_SEC" -ge 600 ]; then
                                 MUST_RESTART=true
                                 INACTIVE_PORT=$(basename "$TMP_F" | sed -E 's/.*_(p[0-9]+)_b[0-9]+\.csv/\1/')
                                 avis_telegram "⏳ [Thread Inactivity] Matchup ${MATCHUP_TAG} port ${INACTIVE_PORT} idle for $(( IDLE_SEC / 60 ))m (>10m limit). Saving progress and restarting batch..."
                                 break
                             fi
+
+                            # 2a. Extreme Thread Lag: Thread has <10% of max rows → restart immediately
+                            #     (Catches: 7/8 threads at ~1250 games, 1 thread at ~35 games, still writing every 2min)
+                            if [ "$MAX_THREAD_ROWS" -ge "$PER_THREAD_TARGET" ] && [ "$L_CNT" -lt $(( MAX_THREAD_ROWS * 10 / 100 )) ]; then
+                                MUST_RESTART=true
+                                LAGGING_PORT=$(basename "$TMP_F" | sed -E 's/.*_(p[0-9]+)_b[0-9]+\.csv/\1/')
+                                avis_telegram "⚡ [Extreme Thread Lag] Matchup ${MATCHUP_TAG}: Port ${LAGGING_PORT} has only ${L_CNT} games (vs max ${MAX_THREAD_ROWS}, <10%). Saving progress and restarting..."
+                                break
+                            fi
+
+                            # 2b. Moderate Thread Lag: Thread has <35% of max rows AND idle >2min
+                            if [ "$MAX_THREAD_ROWS" -ge "$PER_THREAD_TARGET" ] && [ "$L_CNT" -lt $(( MAX_THREAD_ROWS * 35 / 100 )) ] && [ "$IDLE_SEC" -ge 120 ]; then
+                                MUST_RESTART=true
+                                LAGGING_PORT=$(basename "$TMP_F" | sed -E 's/.*_(p[0-9]+)_b[0-9]+\.csv/\1/')
+                                avis_telegram "⚡ [Relative Thread Lag] Matchup ${MATCHUP_TAG}: Port ${LAGGING_PORT} has only ${L_CNT} games (vs max ${MAX_THREAD_ROWS}). Saving progress and restarting..."
+                                break
+                            fi
                         fi
                     done
+
+                    # ── Matchup Elapsed-Time Guard ──
+                    # Hard ceiling: if a single matchup has been running too long, force restart.
+                    # Non-MCTS (heuristic/minimax) normally finish in 3-5 min → cap at 30 min.
+                    # MCTS normally finishes in 90-100 min → cap at 150 min.
+                    MATCHUP_ELAPSED=$(( NOW_SEC - MATCHUP_START_SEC ))
+                    if [ "$IS_MCTS" = true ]; then
+                        MAX_MATCHUP_SEC=9000  # 150 min
+                    elif [ "$IS_MINIMAX" = true ]; then
+                        MAX_MATCHUP_SEC=28800 # 8 hours (minimax 10k games take ~4-6h)
+                    else
+                        MAX_MATCHUP_SEC=1800  # 30 min
+                    fi
+                    if [ "$MATCHUP_ELAPSED" -ge "$MAX_MATCHUP_SEC" ] && [ "$TOTAL_DONE" -lt "$TARGET_N" ]; then
+                        MUST_RESTART=true
+                        avis_telegram "⏰ [Matchup Timeout] ${MATCHUP_TAG} running for $(( MATCHUP_ELAPSED / 60 ))m (>${MAX_MATCHUP_SEC}s limit). ${TOTAL_DONE}/${TARGET_N} done. Forcing restart..."
+                    fi
 
                     # ── Standard 20-Minute Progress Telemetry & General Stall Check ──
                     if [ "$TELEM_COUNTER" -ge 20 ]; then
@@ -158,11 +224,17 @@ start_telegram_monitor() {
                         echo "[$(date '+%H:%M')] Checking matchup ${MATCHUP_TAG}: ${TOTAL_DONE}/${TARGET_N} (${PCT}%)"
                         avis_telegram "📊 [20m Progress] ${MATCHUP_TAG}: ~${TOTAL_DONE}/${TARGET_N} games (${PCT}%) | $(date '+%H:%M')"
 
-                        if [ "$IS_MCTS" = false ] && [ "$MATCHUP_TAG" = "$LAST_MATCHUP" ]; then
+                        if [ "$MATCHUP_TAG" = "$LAST_MATCHUP" ]; then
                             REMAINING=$(( TARGET_N - TOTAL_DONE ))
-                            MIN_ADVANCE=$(( TARGET_N / 10 ))
+                            if [ "$IS_MCTS" = true ]; then
+                                MIN_ADVANCE=$(( TARGET_N / 20 ))  # MCTS: expect at least 5% progress in 20min
+                            elif [ "$IS_MINIMAX" = true ]; then
+                                MIN_ADVANCE=$(( TARGET_N / 50 ))  # Minimax: expect at least 2% progress (200 games) in 20min
+                            else
+                                MIN_ADVANCE=$(( TARGET_N / 10 ))  # Non-MCTS: expect at least 10%
+                            fi
                             [ $MIN_ADVANCE -gt $REMAINING ] && MIN_ADVANCE=$REMAINING
-                            [ $MIN_ADVANCE -lt 50 ] && MIN_ADVANCE=50
+                            [ $MIN_ADVANCE -lt 10 ] && MIN_ADVANCE=10
 
                             DIFF=$(( TOTAL_DONE - LAST_ROWS ))
                             if [ $DIFF -lt $MIN_ADVANCE ] && [ $REMAINING -gt 0 ]; then
@@ -178,7 +250,8 @@ start_telegram_monitor() {
 import glob, os, pandas as pd
 matchup = '$MATCHUP_TAG'
 out_dir = '$OUT_DIR'
-files = glob.glob(f'{out_dir}/_tmp_{matchup}_p*.csv')
+tag_alt = matchup.replace('_vs_', '_')
+files = list(set(glob.glob(f'{out_dir}/_tmp_{matchup}_p*.csv') + glob.glob(f'{out_dir}/_tmp_{tag_alt}_p*.csv')))
 if files:
     dfs = []
     for f in files:
@@ -222,7 +295,9 @@ if files:
                         for PORT in $(seq 8000 8040); do
                             fuser -k "${PORT}/tcp" 2>/dev/null || true
                         done
+                        sleep 5  # Let ports fully release before outer loop retries
                         STALL_COUNTER=0
+                        TELEM_COUNTER=0
                         LAST_ROWS=0
                         LAST_MATCHUP=""
                     else
@@ -272,13 +347,14 @@ merge_active_tmp_files() {
     if [ -d "$OUT_DIR" ]; then
         ACTIVE_FILE=$(ls -t "$OUT_DIR"/_tmp_*.csv 2>/dev/null | head -n 1 || true)
         if [ -n "$ACTIVE_FILE" ]; then
-            MATCHUP_TAG=$(basename "$ACTIVE_FILE" | sed -E 's/_tmp_(.*)_p[0-9]+_b[0-9]+\.csv/\1/')
+            MATCHUP_TAG=$(basename "$ACTIVE_FILE" | sed -E 's/_tmp_(.*)_p[0-9]+_b[0-9]+\.csv/\1/' | sed -E 's/^(v[0-9]+)_(v[0-9]+)$/\1_vs_\2/')
             echo "💾 Auto-merging active progress for ${MATCHUP_TAG} before exit..."
             uv run python -c "
 import glob, os, pandas as pd
 matchup = '$MATCHUP_TAG'
 out_dir = '$OUT_DIR'
-files = glob.glob(f'{out_dir}/_tmp_{matchup}_p*.csv')
+tag_alt = matchup.replace('_vs_', '_')
+files = list(set(glob.glob(f'{out_dir}/_tmp_{matchup}_p*.csv') + glob.glob(f'{out_dir}/_tmp_{tag_alt}_p*.csv')))
 if files:
     dfs = []
     for f in files:
@@ -321,11 +397,13 @@ if files:
 }
 
 cleanup_all() {
-    echo "🛑 SIGINT/SIGTERM caught! Merging active files and terminating processes..."
-    merge_active_tmp_files
+    echo "🛑 SIGINT/SIGTERM caught! Killing monitor and workers first, then merging..."
+    # Kill monitor FIRST to prevent race with its own merge logic
     [ -n "$MONITOR_PID" ] && kill -9 "$MONITOR_PID" 2>/dev/null || true
     pkill -9 -f "benchmark.py" 2>/dev/null || true
     pkill -9 -f "worker.py" 2>/dev/null || true
+    sleep 1  # Let workers flush any partial CSV writes
+    merge_active_tmp_files
     cleanup
 }
 
@@ -372,13 +450,13 @@ for AGENT in $NEW_AGENTS; do
             fi
 
             # Hardware Tuning for Ryzen 7 5700X3D (8C/16T) & 30GB RAM:
-            # - MCTS (v18..v20): 1,000 battles/matchup, 10 ports / 20 concurrency.
+            # - MCTS (v18..v20): 1,000 battles/matchup, 8 ports / 15 concurrency (heavy tree search, ~6s/game).
             # - Heavy Minimax (v15..v17): 10,000 battles, 8 ports / 15 concurrency (prevents CPU cache/RAM contention).
             # - Fast & Baselines (v1..v14, v21, v22, baselines): 10,000 battles, 8 ports / 25 concurrency.
             if [[ "$AGENT" =~ ^v(18|19|20)$ ]] || [[ "$OPPONENT" =~ ^v(18|19|20)$ ]]; then
                 CURRENT_N=1000
-                CURRENT_PORTS=10
-                CURRENT_CONCURRENCY=20
+                CURRENT_PORTS=8
+                CURRENT_CONCURRENCY=15
             elif [[ "$AGENT" =~ ^v(15|16|17)$ ]] || [[ "$OPPONENT" =~ ^v(15|16|17)$ ]]; then
                 CURRENT_N=${N_BATTLES:-10000}
                 CURRENT_PORTS=8

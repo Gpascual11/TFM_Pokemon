@@ -142,9 +142,30 @@ bash src/p00_core/scripts/seguretat_tfm.sh
 
 ---
 
-## Docs & Evaluation Notebooks
+## Benchmark Results (gen9randombattle, 10k games each)
 
-| Document / Notebook | Description & Contents |
+All results in `data/benchmarks/all_10k/gen9randombattle/` (326 CSV files).
+
+The complete paradigm comparison matrix (v15, v16 MCTS, XGBoost IL, PPO) is pending — see [`THESIS_PLAN.md`](THESIS_PLAN.md) for the full roadmap.
+
+---
+
+## Developer Tools
+
+```bash
+uv run ruff format .    # auto-format
+uv run ruff check .     # lint
+uv run ty check src/    # type check
+
+# Always run from project root with uv:
+uv run python src/...
+```
+
+---
+
+## Docs
+
+| File | Contents |
 |---|---|
 | [`THESIS_PLAN.md`](THESIS_PLAN.md) | Research question, paradigm comparison, phase-by-phase implementation plan |
 | [`SETUP.md`](SETUP.md) | Full installation guide (Python, Showdown, extras, poke-env version notes) |

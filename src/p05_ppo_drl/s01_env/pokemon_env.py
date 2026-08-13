@@ -110,7 +110,8 @@ class PokemonMaskedEnv(SinglesEnv):
         # Suppress noisy poke-env warnings during training
         logging.getLogger("poke_env").setLevel(logging.ERROR)
 
-    def action_to_order(self, action: int, battle, **kwargs):
+    @staticmethod
+    def action_to_order(action: int, battle, fake: bool = False, strict: bool = True, **kwargs):
         """
         Maps the neural network's integer action back into a valid BattleOrder.
 

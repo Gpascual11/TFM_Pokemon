@@ -15,9 +15,10 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from poke_env import AccountConfiguration, ServerConfiguration
 from poke_env.player import RandomPlayer
 from poke_env.player.baselines import MaxBasePowerPlayer, SimpleHeuristicsPlayer
+
+from poke_env import AccountConfiguration, ServerConfiguration
 
 from .factory import HeuristicFactory
 

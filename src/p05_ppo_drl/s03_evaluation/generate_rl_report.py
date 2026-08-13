@@ -23,7 +23,7 @@ def generate_visual_report(
 
     # Set style
     sns.set_theme(style="whitegrid")
-    fig = plt.figure(figsize=(16, 12))
+    plt.figure(figsize=(16, 12))
 
     # Order versions if possible
     version_order = ["B", "P15", "P2", "P3"]

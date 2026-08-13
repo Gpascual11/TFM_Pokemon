@@ -224,22 +224,36 @@ while true; do
 
             PROGRESS_MSG="No active matchup in progress."
             if [ -n "$ACTIVE_FILE" ]; then
-                MATCHUP_TAG=$(basename "$ACTIVE_FILE" | sed -E 's/_tmp_(.*)_p[0-9]+_b[0-9]+\.csv/\1/')
-                TOTAL_ROWS=$(wc -l "$OUT_DIR"/_tmp_${MATCHUP_TAG}_p*.csv 2>/dev/null | tail -n 1 | awk '{print $1}')
-                NUM_FILES=$(ls "$OUT_DIR"/_tmp_${MATCHUP_TAG}_p*.csv 2>/dev/null | wc -l || echo 0)
+                AGENT=$(awk -F',' 'NR==2 {print $3}' "$ACTIVE_FILE" 2>/dev/null || echo "")
+                OPPONENT=$(awk -F',' 'NR==2 {print $4}' "$ACTIVE_FILE" 2>/dev/null || echo "")
+
+                MATCHUP_TAG="${AGENT}_vs_${OPPONENT}"
+                if [ -z "$AGENT" ] || [ -z "$OPPONENT" ]; then
+                    MATCHUP_TAG=$(basename "$ACTIVE_FILE" | sed -E 's/_tmp_(.*)_p[0-9]+_b[0-9]+\.csv/\1/')
+                fi
+
+                MATCHUP_FILES=$(ls "$OUT_DIR"/_tmp_*${AGENT}_*${OPPONENT}*_p*.csv "$OUT_DIR"/_tmp_*${MATCHUP_TAG}*_p*.csv 2>/dev/null | sort -u || true)
+                TOTAL_ROWS=0
+                NUM_FILES=0
+                if [ -n "$MATCHUP_FILES" ]; then
+                    TOTAL_ROWS=$(wc -l $MATCHUP_FILES | tail -n 1 | awk '{print $1}')
+                    NUM_FILES=$(echo "$MATCHUP_FILES" | wc -l)
+                fi
                 ACTUAL_ROWS=$(( TOTAL_ROWS - NUM_FILES ))
                 [ $ACTUAL_ROWS -lt 0 ] && ACTUAL_ROWS=0
 
                 EXIST_CSV="${OUT_DIR}/${MATCHUP_TAG}.csv"
                 SAVED_GAMES=0
-                if [ -f "$EXIST_CSV" ]; then
+                if [ -f "$EXIST_CSV" ] && [ -s "$EXIST_CSV" ]; then
                     S_ROWS=$(wc -l < "$EXIST_CSV" 2>/dev/null || echo 0)
-                    [ $S_ROWS -gt 0 ] && SAVED_GAMES=$(( S_ROWS - 1 ))
+                    [ $S_ROWS -gt 1 ] && SAVED_GAMES=$(( S_ROWS - 1 ))
                 fi
                 TOTAL_DONE=$(( SAVED_GAMES + ACTUAL_ROWS ))
 
                 TARGET_N=10000
                 [[ "$MATCHUP_TAG" =~ (v18|v19|v20) ]] && TARGET_N=1000
+
+                [ $TOTAL_DONE -gt $TARGET_N ] && TOTAL_DONE=$TARGET_N
 
                 PCT=$(awk -v done="$TOTAL_DONE" -v target="$TARGET_N" 'BEGIN { printf "%.1f", (done/target)*100 }')
                 PROGRESS_MSG="⚔️ *${MATCHUP_TAG}*: ${TOTAL_DONE}/${TARGET_N} (${PCT}%)"

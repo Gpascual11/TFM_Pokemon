@@ -33,9 +33,8 @@ _SRC = _DIR.parent.parent.parent.parent  # src/
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from poke_env import AccountConfiguration, ServerConfiguration
-
 from p00_core.core.factory import AgentFactory
+from poke_env import AccountConfiguration, ServerConfiguration
 
 
 async def _run_single(

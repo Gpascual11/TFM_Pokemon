@@ -38,10 +38,11 @@ _POKECHAMP = _ROOT / "pokechamp"
 if _POKECHAMP.exists() and str(_POKECHAMP) not in sys.path:
     sys.path.insert(0, str(_POKECHAMP))
 
-from poke_env import AccountConfiguration, ServerConfiguration
-from poke_env.data import GenData
 from poke_env.environment.battle import Battle
 from poke_env.player.player import Player
+
+from poke_env import AccountConfiguration, ServerConfiguration
+from poke_env.data import GenData
 
 
 class StatsBattle(Battle):

@@ -17,6 +17,7 @@ if str(pokechamp_path) not in sys.path:
             sys.modules.pop(key)
 
 from poke_env.environment.move import Move
+
 from p00_core.core.common import get_status_name
 from p01_heuristics.agents.internal.v14 import HeuristicV14
 
@@ -52,7 +53,8 @@ class MCTSNode:
         if self.visits == 0:
             return float("inf")
         exploitation = self.value / self.visits
-        exploration = exploration_c * math.sqrt(math.log(self.parent.visits) / self.visits)
+        parent_visits = self.parent.visits if self.parent is not None else 1
+        exploration = exploration_c * math.sqrt(math.log(max(1, parent_visits)) / self.visits)
         return exploitation + exploration
 
 
@@ -71,12 +73,12 @@ class HeuristicV18MCTS(HeuristicV14):
         super().__init__(**kwargs)
 
         from pokechamp.data_cache import (
-            get_cached_move_effect,
-            get_cached_pokemon_move_dict,
             get_cached_ability_effect,
-            get_cached_pokemon_ability_dict,
             get_cached_item_effect,
+            get_cached_move_effect,
+            get_cached_pokemon_ability_dict,
             get_cached_pokemon_item_dict,
+            get_cached_pokemon_move_dict,
         )
 
         self.move_effect = get_cached_move_effect()
@@ -238,8 +240,8 @@ class HeuristicV18MCTS(HeuristicV14):
 
     def _rollout(self, battle, initial_action: Any, opp_determinization: dict) -> float:
         """Simulates ROLLOUT_DEPTH turns using LocalSim and returns team HP difference."""
-        from poke_env.player.local_simulation import LocalSim
         from poke_env.data.gen_data import GenData
+        from poke_env.player.local_simulation import LocalSim
 
         gen_data = GenData.from_format(battle._format or "gen9randombattle")
 

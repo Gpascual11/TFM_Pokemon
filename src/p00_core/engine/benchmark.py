@@ -160,8 +160,8 @@ async def run_worker_batch(
     batch_timeout = max(7200, int(n_battles * 40))
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=batch_timeout)
-    except (TimeoutError, asyncio.CancelledError, KeyboardInterrupt):
-        print(f"      ⚠️  {batch_info} -> Port {port} interrupted/timed out. Terminating worker...", flush=True)
+    except (asyncio.CancelledError, KeyboardInterrupt) as exc:
+        print(f"      ⚠️  {batch_info} -> Port {port} interrupted. Terminating worker...", flush=True)
         try:
             proc.terminate()
             await asyncio.sleep(0.5)
@@ -169,8 +169,16 @@ async def run_worker_batch(
                 proc.kill()
         except OSError:
             pass
-        if isinstance(Exception, (asyncio.CancelledError, KeyboardInterrupt)):
-            raise
+        raise
+    except TimeoutError:
+        print(f"      ⚠️  {batch_info} -> Port {port} timed out. Terminating worker...", flush=True)
+        try:
+            proc.terminate()
+            await asyncio.sleep(0.5)
+            if proc.returncode is None:
+                proc.kill()
+        except OSError:
+            pass
         return 0
 
     total_done = 0
@@ -247,7 +255,7 @@ async def run_matchup(
         async def task_wrapper(n, b_idx):
             port = await port_queue.get()
             # Use a unique temporary file for this specific worker batch
-            tmp_csv = out_dir / f"_tmp_{agent}_{opponent}_p{port}_b{b_idx}.csv"
+            tmp_csv = out_dir / f"_tmp_{agent}_vs_{opponent}_p{port}_b{b_idx}.csv"
 
             # Ensure fresh start: delete tmp CSV if it exists from a previous attempt
             if tmp_csv.exists():

@@ -10,6 +10,7 @@ except ImportError:
     from poke_env.battle import Move
 
 from p00_core.core.common import get_status_name
+
 from .v16_minimax import HeuristicV16Minimax
 
 
@@ -109,7 +110,7 @@ class HeuristicV17MinimaxHybrid(HeuristicV16Minimax):
             if hasattr(self, "_try_status_absorption"):
                 status_order = self._try_status_absorption(battle, me, opp)
                 if status_order:
-                    return status_order
+                    return self.create_order(status_order)
 
             # Early game scouting check
             if battle.turn <= 3 and hasattr(self, "_is_switch_allowed"):

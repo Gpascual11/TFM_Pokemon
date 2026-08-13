@@ -14,7 +14,9 @@ import random
 from typing import Any
 
 from poke_env.environment.move import Move
+
 from p00_core.core.common import get_status_name
+
 from .v19_mcts import HeuristicV19MCTS, MCTSNode
 
 
@@ -29,10 +31,11 @@ class PUCTNode(MCTSNode):
         if self.visits == 0:
             return float("inf") if self.prior == 0 else 1000.0 + self.prior * 100.0
         exploitation = self.value / self.visits
+        parent_visits = self.parent.visits if self.parent is not None else 1
         if self.prior > 0:
-            exploration = exploration_c * self.prior * math.sqrt(self.parent.visits) / (1 + self.visits)
+            exploration = exploration_c * self.prior * math.sqrt(parent_visits) / (1 + self.visits)
         else:
-            exploration = exploration_c * math.sqrt(math.log(self.parent.visits) / self.visits)
+            exploration = exploration_c * math.sqrt(math.log(max(1, parent_visits)) / self.visits)
         return exploitation + exploration
 
 
@@ -184,8 +187,8 @@ class HeuristicV20MCTSHybrid(HeuristicV19MCTS):
 
         # Track search difference vs raw v14 heuristic
         if v14_order and actual_order:
-            v14_act = v14_order.order
-            act_act = actual_order.order
+            v14_act = getattr(v14_order, "order", str(v14_order))
+            act_act = getattr(actual_order, "order", str(actual_order))
 
             v14_id = (
                 v14_act.id

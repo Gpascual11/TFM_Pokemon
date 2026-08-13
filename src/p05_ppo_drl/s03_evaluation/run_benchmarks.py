@@ -213,14 +213,14 @@ async def main():
     import sys
 
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-    from p01_heuristics.agents import (
-        HeuristicV1,
-        HeuristicV2,
-        HeuristicV3,
-        HeuristicV4,
-        HeuristicV5,
-        HeuristicV6,
-    )
+    from p01_heuristics.agents import get_agent_class
+
+    HeuristicV1 = get_agent_class("v1")
+    HeuristicV2 = get_agent_class("v2")
+    HeuristicV3 = get_agent_class("v3")
+    HeuristicV4 = get_agent_class("v4")
+    HeuristicV5 = get_agent_class("v5")
+    HeuristicV6 = get_agent_class("v6")
 
     opponents = [
         (

@@ -41,14 +41,14 @@ from sb3_contrib import MaskablePPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from p01_heuristics.agents import (
-    HeuristicV1,
-    HeuristicV2,
-    HeuristicV3,
-    HeuristicV4,
-    HeuristicV5,
-    HeuristicV6,
-)
+from p01_heuristics.agents import get_agent_class
+
+HeuristicV1 = get_agent_class("v1")
+HeuristicV2 = get_agent_class("v2")
+HeuristicV3 = get_agent_class("v3")
+HeuristicV4 = get_agent_class("v4")
+HeuristicV5 = get_agent_class("v5")
+HeuristicV6 = get_agent_class("v6")
 from p05_ppo_drl.s01_env.pokemon_env import PokemonMaskedEnv, PokemonMaskedEnvWrapper
 
 # Registry for workers to look up opponent classes
@@ -137,7 +137,7 @@ async def _async_worker_matchup(model_name, model_path, opp_label, port, games, 
         await player.battle_against(opp_player, n_battles=games)
 
         results = []
-        for battle_id, battle in player.battles.items():
+        for _battle_id, battle in player.battles.items():
             results.append(
                 {
                     "won": 1 if battle.won else 0,

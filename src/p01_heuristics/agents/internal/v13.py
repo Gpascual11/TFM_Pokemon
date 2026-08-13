@@ -12,13 +12,13 @@ import json
 from pathlib import Path
 from typing import Any
 
-from poke_env.data import GenData
 from poke_env.environment.move_category import MoveCategory
 from poke_env.environment.pokemon_type import PokemonType
 from poke_env.environment.side_condition import SideCondition
 
 from p00_core.core.base import BaseHeuristic1v1
 from p00_core.core.common import get_status_name
+from poke_env.data import GenData
 
 SPEED_TIER_COEFF = 0.1
 HP_FRACTION_COEFF = 0.4
