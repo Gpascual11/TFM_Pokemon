@@ -1,25 +1,24 @@
 # Heuristics, search, and imitation learning: thesis analysis
 
-This note is the results-chapter argument for the four paradigms that are fully
-measured in `data/benchmarks/all_10k/gen9randombattle`: heuristics **v1–v14**,
-1-ply minimax **v15–v17**, Information-Set MCTS **v18–v20**, and imitation
-learning **v21–v22**. It is written from the round-robin (10,000 games per matchup;
-**1,000** when either side is v18/v19/v20), not from n = 10 validation anecdotes or
-the June 2026 thesis plan.
+This note is the results-chapter argument for the four families in
+`data/benchmarks/all_10k/gen9randombattle`: heuristics **v1–v14**,
+**1-ply minimax** **v15–v17**, **shallow MCTS** **v18–v20** (root UCB + LocalSim),
+and imitation **v21–v22**. Protocol: 10,000 games per directed
+matchup; **1,000** when either side is v18/v19/v20.
 
-**Research question.** In a partially observable stochastic game (`gen9randombattle`),
-which decision paradigm gets closest to the knowledge ceiling of a strong heuristic:
-explicit rules, one-turn adversarial search, multi-turn Monte Carlo search, or
-cloning expert humans?
+**Research question.** In `gen9randombattle`, which family wins
+this bot-vs-bot gauntlet: explicit rules, one-turn maximin, shallow Monte Carlo
+rollouts, or cloning expert **stay vs switch**?
 
 **Short answer.** Domain knowledge has a clear ladder with two real jumps and one
-inversion; **v12 is the bot-vs-bot ceiling**. Neither 1-ply minimax nor 5-ply MCTS
-nor imitation learning beats it. In every learned/search family the same pattern
-appears: the **unconstrained** residual (v15/v16, v18/v19, v22) overrides v14 and
-loses more; the **hybrid that trusts v14** (v17, v20, v21) is the only variant that
-moves the win rate — and it still sits at v9/v11, below v12–v14. Search and cloning
-are backups behind a KO short-circuit (~14 checks / game, ~16% of turns), not
-replacements for knowledge.
+inversion; **v12 is the bot-vs-bot ceiling**. Neither 1-ply minimax nor 5-turn
+root-UCB MCTS nor imitation learning beats it. In every learned/search family the
+same pattern appears: the unconstrained residual (v15/v16, v18/v19, v22) overrides
+v14 and loses more; the hybrid that trusts v14 (v17, v20, v21) is the only variant
+that moves the win rate — and it still sits at v9/v11, below v12–v14. Search and
+cloning are backups behind a KO short-circuit (~14 checks / game, ~16% of turns),
+not replacements for knowledge.
+
 
 ---
 
@@ -31,13 +30,15 @@ replacements for knowledge.
 | Seat | Each agent as **us** vs 28 opponents (directed files `agent_vs_opponent.csv`) |
 | Sample | 10,000 games per matchup; **1,000** if either side is v18, v19 or v20 |
 | Pool | Heuristics / IL / minimax: **253,000** games (10k × 25 opponents + 1k × 3 MCTS). MCTS agents: **28,000** games (1k × 28). |
-| Uncertainty | At n = 10,000 and p ≈ 0.5, a 95% interval is **±0.98 pp**. At n = 1,000 it is **±3.1 pp**. Do not treat a 2 pp MCTS-cell gap as a result. |
+| Uncertainty | At n = 10,000 and p ≈ 0.5, a 95% interval is **±0.98 pp**. At n = 1,000 it is **±3.1 pp**. Gaps of ~2 pp on MCTS cells sit inside that interval. |
 | Overall win rate | Weighted mean across the 28-opponent gauntlet. It is **not** a single skill number: `random` and `max_power` inflate everyone. Use it to rank, then read specific matchups. |
 | Reciprocal check | Independent files `A_vs_B` and `B_vs_A`. Win rates should sum to ~100%. They do (typically 99.3–100.9). Self-play sits at ~50%. |
 
-Opponents in the gauntlet: six baselines (`random`, `max_power`, `one_step`,
-`safe_one_step`, `abyssal`, `simple_heuristic`), heuristics v1–v14, minimax v15–v17,
-MCTS v18–v20, IL hybrid v21, IL pure v22.
+Opponents in the gauntlet: six baseline **labels** (`random`, `max_power`, `one_step`,
+`safe_one_step`, `abyssal`, `simple_heuristic`) — `one_step` and `safe_one_step` both use
+`SafeOneStepPlayer` — heuristics v1–v14, 1-ply minimax v15–v17, shallow MCTS v18–v20,
+IL hybrid v21, IL v22 (attribute-based move head).
+
 
 **How to read overall WR.** Beating `random` at 98% is uninformative. The discriminating
 baselines are **Abyssal** and **Simple Heuristic** (Pokechamp-style / local clones of
@@ -56,16 +57,17 @@ Figures and per-agent tables live next to this file:
 
 ### 2.1 Heuristics v1–v14 — explicit knowledge as an ablation ladder
 
-These agents do not learn. At every decision they score legal moves and switches with a
+These agents score legal moves and switches with a
 fixed formula and pick the argmax. The series is an **ablation by construction**: each
-version adds a capability that a human expert would name (damage math, hazards, Tera,
-set prediction, …). That is the point for the thesis. A 14-step ladder lets you say
-*which piece of knowledge moved the win rate*, not just that “heuristics work”.
+version adds a capability. Hazards and setup start at v9. v12 scores Terastallization
+and fainted switch-ins. v13/v14 estimate matchup damage from revealed moves.
+Damage uses an approximate 0.85–1.0 scalar range.
 
-Inheritance is not a single chain. v1→v2→v3→v6 is one family (damage + light switching).
-v4/v5 add field and boosts. v7 is a rewrite (hazards, setup, KO, matchup switching).
-v8–v14 grow from that strategic core. v14 is v13 plus Yomi profiling, early scouting,
-16-step damage rolls, and a 1-ply endgame solver.
+v1→v2→v3→v6 is one family (damage + light switching).
+v4/v5 add field and boosts. v7 is boost-aware matchup switching.
+v8–v14 grow as separate subclasses of the base class. v14 adds Yomi, early scouting,
+an approximate damage range, and a 1-ply endgame solver.
+
 
 ### 2.2 Imitation learning v21–v22 — behavioural cloning of expert macro play
 
@@ -81,28 +83,28 @@ They diverge after that prediction:
 | Inheritance | Full `HeuristicV14` | `BaseHeuristic1v1` only — **no v14** |
 | Before XGB | Guaranteed KO → endgame minimax (≤2 mons) → setup / status absorb | Nothing — XGB is first |
 | If switch | Pivot (U-turn / Volt Switch) or v14 `_get_best_switch` | Counterfactual: score every bench mon as if it were active, pick lowest \(p(\text{switch})\) |
-| If move | v14 `_score_move` | Second model `xgboost_move_evaluator.json` |
+| If move | v14 `_score_move` | Second model `xgboost_move_evaluator.json` (scores BP / STAB / effectiveness) |
+
 | Overrides | Weak-move tactical switch-back | Loop guard only |
 
 This is a hierarchical policy (macro: stay/switch; micro: which move / which mon).
-v21 is the hybrid. v22 is the “pure clone” control that a defence committee will ask
-for. Without v22 you cannot claim the hybrid is necessary; without v21 you cannot
-claim imitation of *timing* is useful at all.
+v21 is the hybrid. v22 is the low-v14 control: stay/switch from humans, move ranking
+from candidate attributes. v22 measures whether the macro head is enough on its own;
+v21 measures whether human *timing* helps when v14 still executes.
 
-The older `ml_baseline` (three features, random execution) is **not** in this
-round-robin. It belonged to the diagnostic that showed “predict move vs switch and then
-pick uniformly” collapses to ~8–16% WR. v22 is the honest pure successor.
+The older `ml_baseline` (three features, random execution) is a diagnostic that showed
+“predict move vs switch and then pick uniformly” collapses to ~8–16% WR. v22 is the
+pure successor in this round-robin.
 
 ### 2.3 1-ply minimax v15–v17 — adversarial search without a simulator
 
-1-ply minimax is the classical answer to “the heuristic does not consider the
+1-ply minimax is the classical answer to “the heuristic considers the
 opponent’s reply.” All three agents inherit `HeuristicV14` and, on turns without a
 guaranteed KO, enumerate our legal actions against **predicted** opponent replies
-(revealed moves, filled from the Showdown set DB, plus a hypothetical switch). The
+(revealed moves plus a hypothetical switch). The
 score is maximin of a risk-averse leaf \(V = \mathrm{HP}_{me} - 1.5\,\mathrm{HP}_{opp}\).
 Speed and priority are resolved analytically; if the faster Pokémon KOs, the slower
-action is nullified. There is **no** `LocalSim` rollout — this is exact damage math,
-one turn deep.
+action is nullified. Damage is scored analytically, one turn deep.
 
 | | **v15** | **v16** | **v17** |
 |---|---|---|---|
@@ -114,17 +116,15 @@ v16 tests whether decorating the leaf with delayed-payoff bonuses fixes the hori
 effect. v17 is the hierarchical sibling of MCTS v20 / IL v21: keep the expert, let
 search only re-rank.
 
-### 2.4 Information-Set MCTS v18–v20 — lookahead under hidden information
+### 2.4 Shallow Monte Carlo search v18–v20 — lookahead with LocalSim
 
-1-ply minimax cannot value delayed payoffs that take more than one turn and treats
-the opponent’s remaining moves as a known set. IS-MCTS is the standard next step:
-sample a plausible hidden state, simulate several turns, average.
+1-ply minimax values a single reply. v18–v20 look further by sampling rollouts:
+copy revealed opponent moves, simulate several turns with LocalSim, average.
 
 All three MCTS agents inherit `HeuristicV14` and share the same budget:
 
 - **100 simulations / turn**, **5-turn** `LocalSim` rollouts, UCB exploration \(C = 1.4\)
-- Each simulation **determinizes** the opponent (moves / item / ability from the
-  Showdown random-battle set database)
+- Each simulation **determinizes** the opponent from revealed moves / item / ability
 - Root children are legal moves **and** switches; the played action is argmax visits
 
 They differ in leaf evaluation, pre-search overrides, and tree bias:
@@ -148,14 +148,15 @@ Gauntlet win rate (253,000 games each):
 
 | Rank | Agent | Overall WR | What was added | vs Abyssal | vs SimpleHeuristic |
 |---:|---|---:|---|---:|---:|
-| 1 | **v12** | **69.01%** | Tera + teampreview lead + fainted switch-in | **59.91%** | **59.75%** |
-| 2 | v13 | 67.63% | Set prediction, stat-aware matchups, conservative Tera, recovery, choice-lock | 55.34% | 56.10% |
-| 3 | v14 | 62.03% | Yomi 2, turns 1–3 scouting, 16-step damage, 1-ply endgame | 51.36% | 50.66% |
+| 1 | **v12** | **69.01%** | Tera + fainted switch-in | **59.91%** | **59.75%** |
+| 2 | v13 | 67.63% | Recovery, choice-lock, conservative Tera; revealed-move matchups | 55.34% | 56.10% |
+| 3 | v14 | 62.03% | Yomi, T1–3 scouting, approx. damage range, 1-ply endgame | 51.36% | 50.66% |
 | 4 | v11 | 59.26% | v9 tight setup + v10 status/sack/pivot | 47.50% | 47.32% |
 | 5 | v9 | 58.86% | Hazards / setup **only on free turns** | 46.64% | 47.01% |
 | 6 | v10 | 55.66% | Status, sack ≤20% HP, Volt Switch / U-turn | 41.86% | 42.70% |
-| 7 | v8 | 55.43% | Items, abilities, screens, Trick Room | 42.30% | 42.80% |
-| 8 | v7 | 54.25% | Hazards, setup, KO check, Abyssal-style matchup switch | 40.80% | 40.67% |
+| 7 | v8 | 55.43% | Priority KO + known-ability immunity | 42.30% | 42.80% |
+| 8 | v7 | 54.25% | Boost-aware damage + matchup switch | 40.80% | 40.67% |
+
 | 9–14 | v5 … v1 | 45.86–44.25% | Damage math, weather, boosts, tracking | 32.50–30.64% | 31.99–30.26% |
 
 Self-play for every heuristic is 49.3–50.5%. Reciprocals sum to ~100%. The ranking is
@@ -183,8 +184,8 @@ with a weak escape hatch.
 
 ### 3.2 First jump: v7 (and v8/v10) — positional play, +9 pp
 
-v7 is the first strategic rewrite: entry hazards, setup on a good matchup, guaranteed-KO
-pre-check, and matchup-score switching (the Abyssal formula). Overall WR jumps from
+v7 is the first strategic rewrite: boost-aware damage and matchup-score switching
+(the Abyssal formula). Overall WR jumps from
 ~45.5% (v4–v6) to **54.25%**. vs Abyssal jumps from ~32% to **40.8%**.
 
 v8 (items, abilities, screens, Trick Room) adds only **+1.2 pp** overall. That is a
@@ -208,18 +209,14 @@ tempo-safe setup exists, grafting status/sack/pivot on top is nearly redundant i
 gauntlet.
 
 Logged behaviour: v9/v11 are the first agents with real `setup_uses_us` (~1.6 / game)
-and `hazard_sets_us` (~0.16). v7/v8/v10 log those counters at 0 in this schema — either
-the code paths did not increment the counters, or they almost never took the action.
-Do not over-interpret a zero in v7 as “v7 never sets rocks”; interpret the **v9 jump
-in the counter** as “v9’s free-turn gate made setup frequent enough to measure”.
+and `hazard_sets_us` (~0.16). Those counters fire from v9’s free-turn gate.
 
 ### 3.4 Third jump: v12 — Gen 9 actually played as Gen 9, +10 pp
 
-v12 adds three things that are native to this format:
+v12 adds two things that are native to this format:
 
 1. **Terastallization** scored offensively and defensively.
-2. **Teampreview lead** (best average matchup against the known six).
-3. **Matchup-based fainted switch-in** (no more slot-0 replacement).
+2. **Matchup-based fainted switch-in** (no more slot-0 replacement).
 
 Overall WR **69.01%**. First heuristic in the project to beat **both** Abyssal and
 Simple Heuristic at scale: **59.91% / 59.75%** (n = 10,000, CI ±0.96). vs `one_step` /
@@ -231,9 +228,7 @@ is **1.84** mons versus **1.44** for v11. This is not a cosmetic patch. It is th
 format-specific skill that v1–v11 were missing.
 
 **Thesis sentence.** In gen9randombattle, Terastallization plus principled switch-ins
-is a larger rule than item awareness, status, or a more accurate damage formula. Any
-later paradigm that cannot Tera and cannot choose leads is competing with one hand
-tied.
+is a larger rule than item awareness, status, or a more accurate damage formula.
 
 ---
 
@@ -251,11 +246,7 @@ The round-robin says the opposite.
 | v13 vs v14 | 57.71% | 41.60% | 99.31 |
 
 v12 vs v13 is a **coin flip** (gap 1.8 pp, each CI ±0.98; consistent with a tiny v12
-edge or with equality). v14 loses clearly to both.
-
-The old v13 write-up claimed **90% vs v12 in 10 games**. That anecdote is false at
-n = 10,000. Cite the 10k number; mention the n = 10 figure only as a cautionary
-example of why the benchmark exists.
+edge or with equality). v14 loses clearly to both. The gen9 10k matrix is the result.
 
 ### 4.2 Where v13 still wins
 
@@ -286,24 +277,24 @@ better exploit of *static, non-bluffing* bots.
 ### 4.4 Why v14 loses in bot-vs-bot (and why that is not a failure)
 
 v14 was built to beat **humans**: Yomi 2 (predictive vs conservative opponent), turns
-1–3 scouting (Protect / U-turn / Knock Off), defensive Tera bait, 16-step damage rolls,
+1–3 scouting (Protect / U-turn / Knock Off), defensive Tera bait, approximate damage range,
+
 1-ply endgame when ≤2 mons remain.
 
 Against a heuristic, those extras are often **over-respect**:
 
 - Scouting spends early turns that v12 spends attacking.
 - Yomi profiling of a deterministic bot is fitting noise.
-- `ko_checks_us` explodes to **~15 / game** (the 16-step calculator fires constantly)
+- `ko_checks_us` explodes to **~15 / game** (the KO hook fires constantly; damage vs foe HP is approximate)
+
   while `setup_uses_us` drops to 0.22 — v14 is KO-hunting instead of building.
 - vs Abyssal it is only **51.36%**, statistically a coin flip with a strong baseline.
   v12 is **59.91%**.
 
 Online, the current v14 ladder log is **431 games, 39.44% ± 4.6 pp**, Elo **1085 → 1038**
 (peak 1263). The June 2026 snapshot (98 games / 40.8% / Elo ~1151) is a prefix of the
-same log, taken near a local Elo high — do not cite it as the final sample. That is
-still the right *human* baseline. Do **not** use the bot-vs-bot ranking to claim v12
-would beat humans more than v14. Do **not** use the ladder sample to claim v14 is the
-best bot.
+same log, taken near a local Elo high. The 431-game end-of-log figure is the sample.
+Bot-vs-bot ranks v12 first among heuristics; the ladder measures v14 vs humans.
 They answer different questions. The thesis should say that out loud.
 
 **Thesis sentence.** Adding human-modelling machinery to a heuristic can *lower*
@@ -389,7 +380,7 @@ v14’s `ko_checks_us`). Mean \(p(\text{switch})\) on the turns that do reach th
 is 0.08, far below τ = 0.5525, so the macro head almost always says *stay*, and v14
 picks the move.
 
-So the honest description of v21 in this benchmark is:
+So v21 in this benchmark is:
 
 > A v14 agent that, on the minority of turns without a KO, asks a human-clone whether
 > to switch, then still uses v14 to execute.
@@ -435,8 +426,9 @@ A committee objection: “a true IL agent should pick the move, not call v14.”
 rebuttal is in the table: that agent is v22, and it is dominated. Hierarchical
 cloning (macro from data, micro from a solver) is standard in imperfect-information
 control. The contribution is the **measurement**: the hierarchy recovers a v9-level
-player and does not recover v12. The missing piece is format-specific knowledge
-(Tera, preview, KO), which the 1,150-feature macro never had to output.
+player and recovers a v9-level result. The remaining gap to v12 is format-specific
+knowledge (Tera, KO, fainted switch-in) that the 1,150-feature macro scores as context
+rather than as a first-class action.
 
 ---
 
@@ -492,8 +484,8 @@ vs 0.207**; hazards **0.044 vs 0.049**. The leaf bonuses (0.25–0.35) lose to t
 beats dancing.
 
 Override rate stays **67%**. Losers still override more than winners (+0.036
-search_diff/turn). v16 did not change *when* search disagrees with v14, only the
-algebra of the leaf.
+search_diff/turn). v16 keeps the same disagreement timing as v15; only the
+algebra of the leaf changes.
 
 **Thesis sentence.** Horizon effect at 1-ply is not a missing bonus in the formula.
 It is the maximin objective plus a one-turn horizon. You cannot recover v9’s
@@ -569,24 +561,22 @@ v20 beats v18 in **28 / 28** matchups (mean **+5.64 pp**). Direct H2H (n = 1,000
 | v18 vs v20 | 43.6% | 56.6% | 1.002 |
 | v19 vs v20 | 41.2% | 56.6% | 0.978 |
 
-v18 vs v19 is a coin flip: **a richer 5-turn leaf did not help**. v20 vs both is a
+v18 vs v19 is a coin flip: a richer 5-turn leaf stays at the same win rate. v20 vs both is a
 clear ~7–15 pp gap (each CI ±3.1, still significant). Self-play 52.3 / 49.5 / 49.9%.
 
 `endgame_solves_us` on v18 (~0.03 / game) is mostly a side-effect of the post-search
-v14 probe (v18 never calls the endgame solver). On v19/v20 the solver really runs
-before the tree.
+v14 probe. On v19/v20 the solver runs before the tree.
 
 ### 7.2 Search barely runs — the KO short-circuit is the policy
 
 ~14 guaranteed-KO checks per game, vs ~3–4 MCTS decisions. The tree is consulted on
-**16–18% of turns**. The honest description of all three agents is:
+**16–18% of turns**. All three agents are:
 
-> A v14 KO-first player that, on the residual turns, runs 100 × 5-ply IS-MCTS.
+> A v14 KO-first player that, on the residual turns, runs 100 × 5-turn **root-UCB LocalSim** rollouts.
 
 That is the same structural fact as v15–v17 (1-ply on 16–18% of turns) and v21 (XGB
-on 15%). Any claim that “MCTS plays by looking into the future” has to be restricted
-to that residual. The 100-sim budget never gets a chance to value a Dragon Dance on a
-turn where a KO exists, which is most mid-game turns.
+on 15%). Lookahead applies on that residual. On KO turns the short-circuit takes the
+win; the 100-sim budget scores the remaining positions.
 
 ### 7.3 Horizon effect, measured: overriding v14 correlates with losing
 
@@ -668,9 +658,10 @@ Paradigm blocks: v20 is 69.9% vs baselines, 56.7% vs heuristics, 57.4% vs minima
 v18/v19 are ~50% vs heuristics and *below* 50% vs minimax. Unconstrained 5-ply search
 does not even beat 1-ply search.
 
-**Thesis sentence.** IS-MCTS with 100 × 5-turn greedy rollouts does not surpass v12
-or v14. It surpasses *unguided* search of the same family, and only when the tree is
-told to trust the heuristic.
+**Thesis sentence.** Shallow MCTS (100 × 5-turn greedy LocalSim rollouts, root UCB)
+does not surpass v12 or v14. It surpasses *unguided* search of the same family, and
+only when the tree is told to trust the heuristic.
+
 
 ---
 
@@ -736,13 +727,13 @@ search matchups.
 
 ---
 
-## 9. What to claim in the thesis (and what not to)
+## 9. What the results support
 
 ### Claims that are supported
 
 1. **Heuristic knowledge has a non-linear return.** Damage-formula refinements (v1–v6)
    are a plateau. Positional play (v7) and tempo-safe setup (v9) are discrete jumps.
-   Format mechanics (Tera + preview + switch-in, v12) are the largest jump.
+   Format mechanics (Tera + fainted switch-in, v12) are the largest jump.
 
 2. **The knowledge ceiling in bot-vs-bot is v12, not v14.** v12 ≥ v13 ≫ v14 against
    the gauntlet. Extra human-modelling rules can hurt against deterministic bots.
@@ -767,7 +758,8 @@ search matchups.
    prior (**v17**) is the only 1-ply upgrade that matters (+4.1 pp, override 37%).
    v17 vs v14 is **43.6%** at n = 10k; vs v12 **40.9%**.
 
-7. **Five-turn IS-MCTS does not beat the knowledge ceiling either.** Same KO backup
+7. **Five-turn root-UCB MCTS does not beat the knowledge ceiling either.** Same KO backup
+
    (16–18% search). Unconstrained UCB1 overrides v14 on 71%; a richer leaf (v19) does
    not help. PUCT with a v14 prior (v20) is the only 5-ply variant that moves WR
    (+5.6 pp vs v18) — by *disagreeing less*. v20 vs v12 is 42.7%; vs v14 is 47.0%
@@ -779,25 +771,16 @@ search matchups.
    v18/v19). Pure search and pure cloning both fail in this domain at the budgets
    tested.
 
-### Claims to avoid
+### How the ranking reads
 
-- “v14 is the best heuristic.” It is the best *designed for humans*; it is third in
-  the round-robin.
-- “v13 crushes v12.” False at n = 10,000.
-- “v21 is an IL agent that plays like humans.” It is a KO-first v14 with a human
-  switch prior on the residual turns.
-- “IL failed.” Hybrid IL is a competent v9-level player from static data. Pure IL
-  failed. Those are different sentences.
-- “Minimax looks at the opponent’s reply, therefore it is safer than v14.” It loses
-  to v14 at 10k games. The 1.5× damage term plus a 1-turn horizon is not safety; it
-  is myopia.
-- “v16 values setup because the leaf has a setup bonus.” Setup counts refute that.
-- “MCTS looks 5 turns ahead, therefore it values setup.” Same refutation.
-- “v20 / v17 is a strong search agent.” Each is a strong *v14-biased search*. Unguided
-  search is a mid heuristic.
-- Using overall WR as a proxy for human Elo. `random` is in the average. Report
-  vs Abyssal, vs v12, and ladder separately. Do not mix 28k MCTS overall WR with 253k
-  heuristic/minimax/IL overall WR without noting the sample.
+- **v12** is the bot-vs-bot ceiling among heuristics. **v14** is the human-oriented design; it is third in the round-robin.
+- **v12 vs v13** is a coin flip at n = 10,000.
+- **v21** is a KO-first v14 with a human switch prior on residual turns; it plays at v9/v11 level.
+- Hybrid IL (v21) is a competent v9-level player from static data. v22 (macro + attribute move scoring) sits much lower.
+- **1-ply maximin** loses to v14 at 10k games: the 1.5× damage term plus a one-turn horizon is myopic.
+- **v16** keeps setup counts at v14 levels (~0.21 / game); the leaf bonus sits under the 1.5× damage term.
+- **v18–v20** search the residual after KO; setup stays at v14 levels. **v20 / v17** are v14-biased search.
+- Overall WR includes `random`. Report vs Abyssal, vs v12, and the ladder separately. MCTS overall is 28k games (n=1k cells); heuristic / minimax / IL overall is 253k.
 
 ### Suggested results-chapter spine
 
@@ -815,31 +798,21 @@ search matchups.
 
 ---
 
-## 10. Caveats
+## 10. Protocol notes
 
 - **Gauntlet-weighted overall WR** includes easy opponents. Rankings are robust
-  (v12 is first on Abyssal, on heuristics, and overall) but the absolute 69% is not a
-  “true skill”.
+  (v12 is first on Abyssal, on heuristics, and overall); the absolute 69% includes `random`.
 - **MCTS overall WR is 28k games, all n = 1,000.** Heuristic / IL / minimax overall is
-  253k with MCTS opponents underweighted. Compare **matchup cells**, not the two
-  overall percentages, when ranking v20 against v17. Per-cell gaps under ~3 pp
-  involving v18–v20 are noise.
-- **Strategy counters are schema-incomplete.** `hazard_sets_us` / `setup_uses_us` are
-  0 for v7/v8/v10 and for both IL agents; they are non-zero for v9/v11/v12/v13/v14
-  and for minimax/MCTS (at v14-like levels). Use them only where they fire.
+  253k with MCTS opponents underweighted. Compare **matchup cells** when ranking v20 against v17. Per-cell gaps under ~3 pp
+  involving v18–v20 sit inside the n=1k interval.
+- **Strategy counters.** `hazard_sets_us` / `setup_uses_us` fire from v9 (and later
+  agents that inherit that gate). They are 0 for v7/v8/v10 and for both IL agents in this schema.
 - **Telemetry slice** in §3–§4 (switches, Tera, KO checks for heuristics) is five
-  matchups, not the full 28. IL, minimax, and MCTS numbers in §5–§7 are the full
-  gauntlet.
-- **v18 `endgame_solves_us`** is contaminated by the post-search v14 probe. Do not
-  cite it as “v18 runs the endgame solver”. v15–v17 do call the solver before search.
-- **No human IL labels on Tera/KO.** The clone never had to imitate “when to Tera” as
-  a first-class head.
-- **LocalSim ≠ Showdown.** Rollout noise is a plausible contributor to v18/v19
-  override-and-lose. 1-ply minimax does **not** use LocalSim, so v15/v16’s
-  override-and-lose cannot be blamed on simulator mismatch — it is the maximin
-  objective itself.
-- **v14 ladder evidence is a pilot** (431 games, 39.44% ± 4.6 pp, Elo 1085 → 1038).
-  Treat it as ecological validation against humans, not as a parallel of the 10k matrix.
+  matchups. IL, minimax, and MCTS numbers in §5–§7 are the full gauntlet.
+- **v18 `endgame_solves_us`** includes the post-search v14 probe. v15–v17 and v19/v20 call the solver before search.
+- **IL heads.** Stay/switch is cloned from humans. Tera and KO remain heuristic guards (v21) or unconstrained (v22 Tera).
+- **LocalSim** is the MCTS rollout engine. 1-ply minimax scores damage analytically, so v15/v16 override-and-lose is the maximin objective.
+- **v14 ladder** is a 431-game sample (39.44% ± 4.6 pp, Elo 1085 → 1038): ecological check against humans, separate from the 10k matrix.
 
 ---
 
@@ -884,7 +857,7 @@ IL internals
 Minimax internals (analytic 1-ply, opp dmg × 1.5)
   search fire      v15 18%   v16 18%   v17 16%
   override of tree v15 67%   v16 67%   v17 37%
-  setup/game       ~0.21 (v14-like; v16 bonuses did not raise it)
+  setup/game       ~0.21 (v14-like)
 
 MCTS internals (100 sims × 5-turn LocalSim)
   search fire      v18 18%   v19 18%   v20 16%

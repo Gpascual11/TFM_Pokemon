@@ -17,7 +17,7 @@ def get_agent_class(name: str) -> type:
         ValueError: If the name is not recognized.
     """
 
-    # Internal Heuristics (v1-v8), Search (v7_minimax), and ML (ml_baseline)
+    # Internal heuristics v1–v14, search v15–v20, IL v21–v22
     if name.startswith("v"):
         try:
             if name in ["v15", "v15_minimax"]:

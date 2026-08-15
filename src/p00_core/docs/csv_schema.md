@@ -1,6 +1,7 @@
 # CSV Schema: Battle Output Columns
 
-Every matchup CSV (`{agent}_vs_{opponent}.csv`) produced by the benchmark engine contains 46 columns per battle. This document describes each column, its source, and how to interpret it.
+Every matchup CSV (`{agent}_vs_{opponent}.csv`) produced by the current worker contains **~70 telemetry columns** per battle (older docs said 46). This document lists the core fields; extra search/XGB columns appear on later agents.
+
 
 ---
 

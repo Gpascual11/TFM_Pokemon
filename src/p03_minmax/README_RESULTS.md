@@ -4,9 +4,10 @@ This document summarizes the evaluation of the 1-Ply Adversarial Minimax agents 
 
 ## 1. Experimental Setup
 
-* **Base Model:** **`v15_minimax`** (HeuristicV15Minimax) — Base 1-ply minimax using a simplified HP/matchup evaluator.
-* **Upgraded Model:** **`v16_minimax`** (HeuristicV16Minimax) — Upgraded 1-ply minimax incorporating `v14` action-specific bonuses (setup, hazards, hazard removal, and recovery).
-* **Evaluation Metric:** Head-to-head win rate (WR%) over 1,000 games per matchup.
+* **Base Model:** **`v15_minimax`** — 1-ply maximin.
+* **Upgraded Model:** **`v16_minimax`** — 1-ply; leaf includes extra v14-style bonuses.
+* **Evaluation Metric:** Head-to-head win rate. The **gauntlet** uses 10,000 games (1,000 vs MCTS). The table below is an older n=1k lab slice.
+
 
 ---
 

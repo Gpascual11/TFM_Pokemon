@@ -1,18 +1,8 @@
-"""HeuristicV22PureIL (v22_pure_il) — Pure End-to-End Imitation Learning Agent.
+"""v22: stay/switch XGB (human labels) + synthetic move scorer (not human move IDs).
 
-Unlike `v21_xgboost` which relies on `HeuristicV14` (`v14`) for damage math and tactical
-execution, `v22_pure_il` inherits ONLY from `BaseHeuristic1v1` (`p00_core/core/base.py`).
-It performs all decisions using two trained XGBoost models:
-
-1. **Macro Policy Engine (`xgboost_advanced_model.json`)**:
-   - Evaluates the 1,150-dimensional live battle state to predict Move (`0`) vs Switch (`1`).
-   - For switching (`action_type == 1`), performs **Counterfactual Policy Evaluation**:
-     scores every bench candidate `c` by passing `c.species` into the macro model and
-     selecting the candidate with the highest expert stay probability (`argmin prob_switch`).
-2. **Move Policy Engine (`xgboost_move_evaluator.json`)**:
-   - For attacking (`action_type == 0`), scores each available move based on its conditional
-     candidate features (`base_power`, `STAB`, `type_multiplier`, `is_status`), selecting
-     the move predicted to have the highest expert preference.
+Unlike v21, this class does not inherit HeuristicV14. Macro Stay/Switch still uses
+the 1,150-feature replay model. Move ranking uses `xgboost_move_evaluator.json`
+trained on synthesized BP/STAB/effectiveness, not replay move identities.
 """
 
 from __future__ import annotations
@@ -35,7 +25,7 @@ except ImportError:
 
 
 class HeuristicV22PureIL(BaseHeuristic1v1):
-    """Pure Imitation Learning Agent (`v22_pure_il`) — ZERO dependency on HeuristicV14."""
+    """Stay/switch XGB plus a synthetic move scorer. Not a full human-move clone."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

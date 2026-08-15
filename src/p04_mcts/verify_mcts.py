@@ -67,12 +67,12 @@ def verify_agent(agent_name: str, opp_name: str = "v14"):
     if error_moves > 0:
         print(f"  ❌ FAIL: {error_moves} unhandled error moves in {agent_name}!")
         sys.exit(1)
-    print(f"✅ PASS: {agent_name} Information Set MCTS functions cleanly.")
+    print(f"✅ PASS: {agent_name} ran without error_moves (does not prove IS-MCTS).")
 
 
 def main():
     print("=================================================================")
-    print("  VERIFYING PARADIGM: p04_mcts (Information Set MCTS)")
+    print("  VERIFYING PARADIGM: p04_mcts (root-UCB LocalSim MCTS)")
     print("=================================================================")
 
     import shutil

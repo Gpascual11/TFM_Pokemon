@@ -1,41 +1,16 @@
-# s03_evaluation: Performance Benchmarking
+# s03_evaluation: Random sanity + v12 claim
 
-This directory contains the tools to evaluate the final performance of the trained RL models against expert heuristics.
+Claim opponent is HeuristicV12. **34.1%** at n=10k is on disk.
 
-## Main Tools
-
-### 1. `run_benchmarks.py`
-The primary evaluation suite. It tests two types of agents against a gauntlet of 9 different opponents (Random, MaxBP, and Heuristics v1-v6).
-- **Pure PPO**: The neural network making 100% of the decisions.
-- **Ensemble Agent**: A "Hybrid" player that blends the PPO's overall strategy with the Heuristic's tactical math using a weighted average (`alpha`).
-
-### 2. `benchmark_rl.py`
-The high-performance benchmarking engine. It performs a distributed "Gauntlet Study" across 4 parallel Showdown servers to collect high-quality data (1000+ games per matchup) with RAM-isolated subprocesses.
-
-### 3. `generate_rl_report.py`
-A visualization script that parses the `results/*.csv` data and produces a 4-panel visual heatmap and trend report.
-
----
-
-## How to Run
-
-To run a basic benchmark:
 ```bash
-python src/p05_ppo_drl/s03_evaluation/run_benchmarks.py
+uv run python -m src.p05_ppo_drl.s03_evaluation.eval_checkpoint \
+  --model data/models/ppo/p3_v12/p3_v12_lr5e5_flat.zip --opponent v12 --games 10000 --both-seats --ports 8
 ```
 
-To run the full 4-server parallel gauntlet:
-```bash
-python src/p05_ppo_drl/s03_evaluation/benchmark_rl.py --games 1000
-```
+JSON: `data/models/ppo/eval/pure_ppo_vs_v12_n10000.json`. Re-running overwrites those filenames.
 
-To generate victory heatmaps:
-```bash
-python src/p05_ppo_drl/s03_evaluation/generate_rl_report.py
-```
-
----
-
-## Results Location
-- **Raw Data**: `src/p05_ppo_drl/s03_evaluation/results/benchmark_rl_summary.csv`
-- **Visual Report**: `src/p05_ppo_drl/s03_evaluation/results/rl_model_report.png`
+| n | Meaning |
+|---|---|
+| 100 | smoke ±10 pp |
+| 1k | diagnostic ±3.1 pp |
+| 10k | claim ±0.93 pp |

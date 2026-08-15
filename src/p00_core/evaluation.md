@@ -34,13 +34,14 @@ This is the main entry point for large-scale experiments. It manages the "Matchu
 ### The Subprocess Worker (`worker.py`)
 Each worker runs in its own **isolated OS process**. This ensures that if a battle logic or server communication error occurs, it is contained within that process and doesn't crash the entire benchmark.
 - **Chunked Processing**: Battles are processed in batches (e.g., 250 at a time) with explicit Garbage Collection calls between them.
-- **46-Column CSV Output**: Each battle records identity, outcome, decision quality, team state, tactical tracking, RNG metrics, and strategy counters. See [docs/s01_csv_schema.md](../docs/s01_csv_schema.md) for the full schema.
+- **46-Column CSV Output** is outdated; workers write ~70 telemetry columns. See csv_schema.md.
 
 ---
 
-## 3. Battle Data Captured (46 Columns)
+## 3. Battle Data Captured (~70 columns)
 
-Every battle produces a rich data row covering 7 categories:
+Every battle produces a rich data row. Strategy counters are 0 on v1–v6. Hazards/setup counters are meaningful from **v9**.
+
 
 | Category | Columns | Purpose |
 | :--- | :--- | :--- |
@@ -92,10 +93,8 @@ When a specific agent version starts behaving unexpectedly, use the **`debug_run
 
 ## 7. Statistical Methodology
 
-All benchmarks use **10,000 games per matchup** per generation, providing:
-- ±0.98% precision at 95% confidence
-- Reliable detection of win rate differences ≥2 percentage points
-- Same sample size across all generations (gen1-gen9) for uniform methodology
+The gen9 **paradigm** matrix uses **10,000** games per directed matchup except **1,000** when either side is v18/v19/v20. Other generations / older scripts may differ. At n=10,000 and p≈0.5, a 95% interval is about ±0.98 pp.
+
 
 Pool size (number of Pokémon per gen) does NOT affect required sample size — the binary outcome variance `p(1-p)/n` is independent of game complexity. See [docs/s01_statistical_justification.md](../docs/s01_statistical_justification.md) for the full mathematical justification.
 

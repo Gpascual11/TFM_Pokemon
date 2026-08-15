@@ -17,7 +17,10 @@ exactly — proven stable.
 
 from __future__ import annotations
 
-from poke_env.environment.move_category import MoveCategory
+try:
+    from poke_env.environment.move_category import MoveCategory
+except ImportError:
+    from poke_env.battle import MoveCategory
 
 from p00_core.core.base import BaseHeuristic1v1
 from p00_core.core.common import get_status_name

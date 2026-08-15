@@ -1,9 +1,8 @@
-"""Training pipeline for `v22_pure_il` (Pure Imitation Learning without `v14` rules).
+"""Train `xgboost_move_evaluator.json` for v22.
 
-This script trains `xgboost_move_evaluator.json`, a candidate action scoring model
-that predicts which exact move category/attribute an expert human player selects
-when `action_type == 0` (Move chosen), given the current battle state and candidate
-move properties (base power, STAB, type effectiveness multiplier, status priority).
+Positive/negative move features are **synthesized** (random BP/STAB/effectiveness),
+not cloned from human move IDs. The macro stay/switch model is trained separately
+on real replay labels.
 """
 
 from __future__ import annotations
@@ -53,16 +52,11 @@ def create_move_evaluation_dataset(
 
     groups = df_moves["battle_id"].to_numpy()
 
-    # Create synthetic candidate evaluations:
-    # We model positive (expert chosen move) vs negative (rejected suboptimal candidates)
-    # Since exact move choices in historical tabular snapshots depend on active matchup,
-    # we simulate candidate comparisons: positive examples have high STAB/effectiveness/appropriate base power,
-    # negative examples represent rejected low-effectiveness or redundant status moves.
+    print("  Create synthetic candidate evaluations (NOT human move IDs):")
     n_pos = len(df_moves)
     np.random.seed(42)
 
-    # Positive class (1: chosen move by expert human)
-    # In realistic expert play, chosen moves average ~2.0x or 1.0x effectiveness with high STAB (~75% of attacks)
+    # Positive class: synthetic “good” move stats (not cloned from replays)
     pos_turn = df_moves["turn_number"].to_numpy()
     pos_p1_hp = df_moves["p1_hp_percent"].to_numpy()
     pos_p2_hp = df_moves["p2_hp_percent"].to_numpy()

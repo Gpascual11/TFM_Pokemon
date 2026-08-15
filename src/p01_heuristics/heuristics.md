@@ -49,18 +49,18 @@ Each version builds upon the successes and failures of the previous ones:
 | **V4** | V3 + weather/terrain + accuracy × priority | V3 triggers + smart type-based target |
 | **V5** | V4 + stat-boost-aware damage | V3 triggers + smart type-based target |
 | **V6** | V3 + weather/terrain/priority (lightweight) | V3 triggers (slot 0) |
-| **V7** | Hazards + setup + KO check + matchup switching | Matchup score (Abyssal formula) |
-| **V8** | V7 + item/ability/screen/Trick Room awareness | Matchup + Trick Room reversal |
+| **V7** | Boost-aware damage + matchup switching | Matchup score (Abyssal formula) |
+| **V8** | V7 + priority KO + known-ability immunity | Same as V7 |
 | **V9** | V7 boost core + tight hazards & setup on free turns | Same as V7 |
-| **V10** | V8 core + status moves (Toxic/WoW/TWave) | V8 matchup switch + ≤20% HP sack logic + Volt Switch/U-turn pivot |
+| **V10** | Status moves (Toxic/WoW/TWave) + sack + pivots | Matchup switch + ≤20% HP sack + Volt Switch/U-turn |
 | **V11** | Hybrid (V9 + V10) + Gen-Aware adaptations | Same as V10 |
-| **V12** | V11 + Gen 9 Terastallization | V11 + Matchup-based Lead (teampreview) & Matchup-based Fainted switch-in |
-| **V13** | V12 + Showdown sets prediction + Sweeper reaction + Smart recovery/draining + Dynamic hazards + Conservative Tera | V12 + Move- & Stat-Aware matchup damage calculations + Choice-lock exploitation + Fixed bench switch fallback bug |
-| **V14** | V13 + Advanced opponent switch prediction (Yomi Layer 1) | V13 + Profiling of human strategic playstyles (predictive vs conservative) |
+| **V12** | Gen 9 Terastallization + fainted switch-in | Matchup-based fainted switch-in |
+| **V13** | Recovery, choice-lock, phazing, conservative Tera | Revealed-move matchup damage |
+| **V14** | Yomi / scouting / 1-ply endgame; damage range ≈ 0.85–1.0× | Tendency-aware switches |
 
 ### Key Research Finding
 
-V1, V2, V3, and V6 perform similarly, proving that naive damage optimization plateaus quickly. Positional awareness (V7/V8) and tactical refinements (V9/V10/V11) close the gap to strong baselines. **Heuristic V12 is the first agent in project history to beat both Abyssal and SimpleHeuristic in Gen 9 Random Battles over a large-scale 10,000-game tournament**, achieving a **59.8% win rate** against Abyssal. **Heuristic V13 takes this a step further**, achieving a **90% win rate against V12** in validation tests. **Heuristic V14** adds predictive counter-switching to further exploit opponent patterns.
+V1, V2, V3, and V6 perform similarly, proving that naive damage optimization plateaus quickly. Positional play starts at **V7** (boost-aware matchup switching); hazards and setup start at **V9**. **Heuristic V12** is the first internal agent in the gen9 10k matrix to beat both Abyssal and SimpleHeuristic (~59.8% vs Abyssal), via Terastallization and fainted switch-in. The 10k gauntlet is the result. **V14** adds scouting, Yomi, and endgame heuristics; v12 remains first in the bot matrix.
 
 ---
 
@@ -125,7 +125,7 @@ The CSV output includes per-battle counters proving intelligent play:
 - `ko_checks_us`: Times a guaranteed KO was detected and executed
 - `matchup_switches_us`: Times switching was triggered by type matchup analysis
 
-These are always 0 for V1-V6, providing direct evidence that V7+ agents make qualitatively different decisions.
+These are always 0 for V1-V6. Hazards and setup counters become meaningful from **V9**.
 
 ### 3. Thinking Logs (LLM Agents)
 
@@ -142,7 +142,7 @@ The benchmark automatically launches the required number of local Showdown serve
 
 ## 6. Battle Analytics
 
-The evaluation engine captures deeply granular data for every battle (46 columns per game). See [docs/csv_schema.md](../p00_core/docs/csv_schema.md) for the complete schema.
+The evaluation engine captures ~70 telemetry columns per battle (not 46). See [docs/csv_schema.md](../p00_core/docs/csv_schema.md) for the schema.
 
 ### Decision Quality
 - **Fallback rate**: How often the agent couldn't decide and fell back to random.
@@ -166,7 +166,7 @@ The evaluation engine captures deeply granular data for every battle (46 columns
 
 See [docs/statistical_justification.md](../p00_core/docs/statistical_justification.md) for the full analysis.
 
-- **10,000 games per matchup** provides ±0.98% precision at 95% confidence.
+- **10,000 games per matchup** (non-MCTS) provides ±0.98% precision at 95% confidence. **v18–v20 cells are 1,000 games** (± ~3 pp).
 - Can reliably detect win rate differences of ≥2 percentage points.
 - Pool size (number of Pokemon per gen) does NOT affect required sample size.
 

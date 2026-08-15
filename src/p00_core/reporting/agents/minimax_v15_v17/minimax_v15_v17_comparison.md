@@ -4,15 +4,16 @@ Deep thesis write-up: [`../../heuristics_and_imitation_thesis_analysis.md`](../.
 
 Source: `data/benchmarks/all_10k/gen9randombattle` (each agent as us vs 28 opponents;
 10k games, or 1k vs v18/v19/v20).
-Search: analytic 1-ply maximin, exact damage ranges, opponent damage × 1.5.
+Search: analytic 1-ply maximin, approximate damage range, opponent damage × 1.5.
 
 ## Architecture in one paragraph
 
-All three agents are 1-ply adversarial search on top of HeuristicV14. For each legal
-action they evaluate the worst-case reply among predicted opponent moves (set DB) and
-a hypothetical switch, resolving speed/priority and KOs analytically — no LocalSim.
+All three agents are 1-ply maximin on top of HeuristicV14. For each legal
+action they evaluate the worst-case reply among **revealed** opponent moves
+and a hypothetical switch.
 **v15** uses an HP/matchup leaf. **v16** adds setup/hazard/recovery/status bonuses and
 v14 tactical overrides before the matrix. **v17** is v16 plus +0.15 on v14’s action.
+
 
 ## Headline
 
@@ -28,8 +29,8 @@ v14 tactical overrides before the matrix. **v17** is v16 plus +0.15 on v14’s a
   (~14 KO checks / game). One-ply maximin is a backup, not the default policy.
 - Of the turns that *do* reach the matrix, **v15/v16 override v14 on ~67%** of
   decisions. Losers override more than winners (search_diff/turn 0.13 vs 0.10).
-- **v16’s positional leaf does not help**: overall +0.5 pp vs v15, H2H ~50%, setup
-  uses stay at 0.21 (v14-like, not v12-like). The 1.5× opponent-damage term dominates
+- **v16’s positional leaf is close to v15**: overall +0.5 pp vs v15, H2H ~50%, setup
+  uses stay at 0.21 (v14-like). The 1.5× opponent-damage term dominates
   the 0.25–0.35 setup/hazard bonuses.
 - **v17 overrides on 37%** of search decisions (prior +0.15) and is the strongest
   1-ply agent (overall +4.1 pp vs v15). Still below v12 (40.9% vs v12) and below

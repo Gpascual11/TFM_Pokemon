@@ -1,10 +1,6 @@
-"""MCTS Agent v20 (PUCT Information Set MCTS with Heuristic Prior Biasing).
+"""MCTS Agent v20 (PUCT prior toward v14, then root-UCB LocalSim rollouts).
 
-Extends HeuristicV19MCTS with PUCT (Predictor Upper Confidence Bound for Trees).
-Before MCTS expands root nodes, it queries the domain-expert recommendation of `HeuristicV14` safely
-using `_get_v14_pure_action(battle)` to prevent recursion loops or state tracking corruption.
-The candidate action recommended by `v14` receives a strong initial prior probability (`heuristic_prior_weight = 0.70`),
-guaranteeing that MCTS concentrates its simulation budget on high-value positional lines immediately.
+Not Information-Set MCTS. Leaves stay the v19-style scorer; v14 is a prior, not the leaf.
 """
 
 from __future__ import annotations
@@ -40,7 +36,7 @@ class PUCTNode(MCTSNode):
 
 
 class HeuristicV20MCTSHybrid(HeuristicV19MCTS):
-    """PUCT Information Set MCTS Agent (Hybrid Guided Search)."""
+    """PUCT-guided root-UCB MCTS (not IS-MCTS). v14 is a prior, not the leaf."""
 
     def __init__(self, **kwargs):
         self.heuristic_prior_weight: float = kwargs.pop("heuristic_prior_weight", 0.70)

@@ -80,7 +80,7 @@ class HeuristicV13(BaseHeuristic1v1):
 
         sets_dict = {}
         try:
-            # Go up 5 parents to get to workspace root
+            # parents[5] is outside this repo; gen9 sets.json is never found. Cache stays {}.
             workspace_root = Path(__file__).resolve().parents[5]
             showdown_dir = workspace_root / "pokemon-showdown" / "data" / "random-battles"
 

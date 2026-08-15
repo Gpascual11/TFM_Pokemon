@@ -126,12 +126,12 @@ During development, we use tiered sample sizes depending on the goal:
 - **Detects**: Differences ≥6% reliably.
 - **When to use**: After smoke test passes. Confirms the agent's new features help (or at least don't hurt). Sufficient to compare against Tier 1 (Abyssal, SimpleHeuristic) where expected gaps are 5-15%.
 
-### Phase 3: Full Benchmark (10,000 games per matchup)
+### Phase 3: Full Benchmark (10,000 games per matchup; **1,000 if MCTS**)
 
-- **Purpose**: Definitive statistical measurement for thesis results.
-- **CI width**: ±0.98% at 95% confidence.
-- **Detects**: Differences ≥2% reliably.
-- **When to use**: Final evaluation of all agents across all generations for publication.
+- **Purpose**: Definitive measurement for thesis results on non-MCTS cells.
+- **CI width**: ±0.98% at n=10k; **± ~3.1% at n=1k** (v18–v20).
+- **When to use**: Final evaluation. Non-MCTS cells are 10k; MCTS cells are 1k.
+
 
 ### Why 100 Games Is Not Enough for Conclusions
 
@@ -157,7 +157,8 @@ Now a 53% result is distinguishable from 47% — meaningful for detecting improv
 
 ## Conclusion
 
-- **10,000 games per matchup** provides ±0.98% precision at 95% confidence.
+- **10,000 games per non-MCTS matchup** provides ±0.98% precision at 95% confidence. MCTS cells are 1,000.
+
 - **Same sample size across all generations** ensures uniform methodology and comparable results.
 - **No adjustment needed** for pool size, mechanics complexity, or generation-specific factors.
 - The only scenario where 10k is insufficient is distinguishing agents within ~1% of each other (e.g., V1 vs V2), but those agents being equivalent is itself a valid research finding.

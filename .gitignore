@@ -2,6 +2,7 @@
 # Python & PyCharm
 __pycache__/
 *.pyc
+*.egg-info/
 .idea/
 .venv/
 .env

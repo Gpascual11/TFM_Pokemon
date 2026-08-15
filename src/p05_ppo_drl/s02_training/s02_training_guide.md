@@ -1,37 +1,15 @@
-# training: Curriculum RL Management
+# s02_training: curriculum
 
-This directory contains the scripts for training the MaskablePPO model through its different learning phases.
+See [RESULTS.md](../RESULTS.md) and [RUN.md](../RUN.md). Showdown is started by the train process.
 
-## The Phases
+## Phases (done)
 
-1.  **`train_p1_base.py`**: The entry point. Trains against a `RandomPlayer`. The goal is to learn which moves do damage.
-2.  **`train_p1_5_tune.py`**: Fine-tuning against `MaxBasePowerPlayer`. The goal is to learn that typing and survival matter.
-3.  **`train_p2_transfer.py`**: Transfer learning against `SimpleHeuristics`. The goal is to learn complex switching and prediction.
-4.  **`train_p3_gauntlet.py`**: The final "mastery" phase where the opponent changes every game.
+1. `train_p1_base` — RandomPlayer. Graduated 91.8% at 1k.
+2. `train_p1_5_tune` — MaxBasePowerPlayer. Graduated 70.5% at 1k.
+3. `train_p2_v8` — HeuristicV8. 40.6% at 1k. **BC from V8.**
+4. `train_p3_v12` — HeuristicV12. Claim **34.1%** at 10k. Zip A frozen.
+5. `train_p4_v14` — **BC from V14**, then PPO vs V12, 346-d obs. Snapshot ~33.5% train.
 
----
+Default algorithm is MaskablePPO, `device="cuda"`, masks every step. Train WR is logged every `--wr-every` steps to `data/models/ppo/wr_logs/` and `plots/`. `wr_logs/p3_v12.csv` and `plots/p3_v12/` are **zip B**.
 
-## How to Run
-
-### Step 1: Start the simulator
-Ensure you have the Pokémon Showdown server running (locally or in a container). You can use the helpers in `p00_core/scripts/`.
-
-### Step 2: Run a training phase
-All scripts support `--timesteps` and `--ports`.
-
-```bash
-# Example: Run Phase 1 for 1 Million steps across 4 parallel server ports
-python src/p05_ppo_drl/s02_training/train_p1_base.py --timesteps 1000000 --ports 8000 8001 8002 8003
-```
-
-### Resuming
-Most scripts support a `--resume` flag to continue from the last saved checkpoint instead of starting fresh.
-
----
-
-## Technical Details
-
-We use **Stable-Baselines3 (SB3)** with the `sb3-contrib` extension for Action Masking. 
-- **Algorithm**: MaskablePPO
-- **Architecture**: [256, 256] Multi-Layer Perceptron (MLP).
-- **Parallelism**: `SubprocVecEnv` is used to run multiple battles in parallel, significantly speed up training on multi-core CPUs.
+`train_p2_transfer` and `train_p3_gauntlet` are stubs.

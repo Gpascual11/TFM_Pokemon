@@ -59,10 +59,10 @@ class MCTSNode:
 
 
 class HeuristicV18MCTS(HeuristicV14):
-    """Information Set Monte Carlo Tree Search Agent (Base).
+    """Root-UCB Monte Carlo agent (not Information-Set MCTS).
 
-    Uses pokechamp's LocalSim for fast in-process rollouts with tactical action selection
-    and state-preserving telemetry tracking against V14 recommendations.
+    100 simulations over legal root actions; each sim is a 5-turn LocalSim rollout.
+    Hidden info is revealed moves only (sets JSON is not loaded).
     """
 
     N_SIMULATIONS = 100
@@ -216,7 +216,7 @@ class HeuristicV18MCTS(HeuristicV14):
             return max(moves, key=score_move)
 
     def _sample_opponent_determinization(self, battle, sets_db: dict) -> dict[str, Any]:
-        """Samples plausible moves for the opponent based on Showdown sets database."""
+        """Fill unrevealed move slots from sets_db if loaded (in this repo the DB is empty)."""
         opp_team_data = {}
         for mon in battle.opponent_team.values():
             species_clean = mon.species.lower().replace(" ", "").replace("-", "").replace("_", "")
@@ -386,7 +386,7 @@ class HeuristicV18MCTS(HeuristicV14):
             tera = self._should_terastallize(battle, ko_move)
             return self.create_order(ko_move, terastallize=tera)
 
-        # 3. Information Set MCTS Search Loop
+        # 3. Root UCB + LocalSim rollouts (not IS-MCTS)
         my_actions = list(battle.available_moves) + list(battle.available_switches)
         if not my_actions:
             return self.choose_random_move(battle)

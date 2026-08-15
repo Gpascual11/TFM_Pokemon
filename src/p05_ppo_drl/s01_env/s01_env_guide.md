@@ -1,23 +1,23 @@
-# s01_env: RL Environment and Vectorization
+# s01_env: observation and Discrete(14) actions
 
-This module defines how the Pokémon battle is "seen" and "acted upon" by the Reinforcement Learning agent.
+`PokemonMaskedEnv` is poke-env `SinglesEnv` with `strict=False`, format `gen9randombattle`.
 
-## Components
+## Actions (`actions.py`)
 
-### `pokemon_env.py`
-- Inherits from `poke_env.player.Player`.
-- **`embed_battle`**: Converts the incoming game state into numerical data.
-- **`action_to_order`**: Maps the agent's chosen index (0-9) back into a valid Pokémon Showdown order.
-- **`calc_reward`**: The reward function. It rewards dealing damage and KOing foes, while penalizing being KO'd or stalling needlessly.
+Slots, kept in lockstep for masks, `action_to_order`, and `order_to_action` (so a v12 opponent keeps Tera):
 
-### `vectorizer.py`
-- A utility class that handles the heavy lifting of state encoding.
-- Maps 18+ types, 7 statuses, and stat stages into normalized float ranges [0, 1].
+| Index | Meaning |
+|---|---|
+| 0–3 | Move i |
+| 4–7 | Move i + Terastallize (`battle.can_tera`) |
+| 8–13 | Switch to team slot i (`list(battle.team.values())`) |
 
----
+Switch identity is the **Pokémon object** in `available_switches`. Struggle/recharge occupy slot 0 because they are not in `pokemon.moves`. Forced-switch fallback leaves the fainted active’s slot masked.
 
-## How it works
+Eval players (`PPOPlayer`) call `action_to_order` on every decision, including force-switch.
 
-The environment is wrapped in a **`PokemonMaskedEnvWrapper`**. 
-- It provides **Action Masks**: a bitmask where `1` means the action is currently legal and `0` means it is illegal.
-- This mask is fed directly into the `MaskablePPO` algorithm from `sb3-contrib`, ensuring the agent never "crashes" the simulator by attempting an impossible move.
+## Observation (`vectorizer.py`)
+
+Code **obs_size = 346**. Claim zips are **328**. Loading 328 copies the first-layer weights; the extra 18 dims start at 0 (revealed-team matchup, best-matchup flag, tera move/def, switch-in hazard). Phase 1/1.5 zips are 318.
+
+328-d features in [0, 1]: active HP/types/status/boosts, 4-move type+BP+PP, STAB×type-eff vs the opponent, boost-aware move damage, 6 switch matchups vs the active foe, bench HP, fainted flags, lead one-hots, weather/field/side conditions, can_tera / already-tera / tera-type one-hots, speed comparison, force_switch, trapped.

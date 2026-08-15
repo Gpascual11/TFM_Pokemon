@@ -1,63 +1,38 @@
-# p05_ppo_drl: Reinforcement Learning Pipeline
+# p05_ppo_drl: MaskablePPO vs HeuristicV12
 
-This directory contains the full Reinforcement Learning pipeline. The goal is to train a neural network that learns high-level strategy and tactical adaptations to beat expert heuristics.
+Finished. Separate experiment from the 28-agent / 784-file gauntlet. Claim opponent is HeuristicV12 (`get_agent_class("v12")`) on `gen9randombattle`.
 
-## Directory Structure
+**Claim (n=10k, both seats, zip A):** **BC from V8 + PPO** vs HeuristicV12 **34.1%** (3405/10000) ± 0.93 pp. Same band as V8 vs V12 in the gauntlet (32.9%). Numbers: [RESULTS.md](RESULTS.md). Lab: [p2_v8_notes.md](p2_v8_notes.md).
 
-- **`s01_env/`**: The core Gymnasium environment and state vectorization logic.
-- **`s02_training/`**: The curriculum training scripts (Phase 1 through Gauntlet).
-- **`s03_evaluation/`**: Benchmarking tools, the performance gauntlet, and visual reports.
+## Frozen spaces
 
----
+- Claim observation: **328** floats in [0, 1]. Phase 4 code is **346** (18 dims appended: revealed-team matchup, best-matchup flag, tera move/def, switch-in hazard). Claim 328 zips load by expanding the first Linear layer. Phase 1/1.5 zips were 318.
+- Actions: **Discrete(14)** — 4 moves, 4 moves+Tera (`battle.can_tera` + `SingleBattleOrder(..., terastallize=True)`), 6 switches. `action_masks` and `action_to_order` share `s01_env/actions.py`.
 
-## The Core Pipeline
+## Pipeline
 
-### 1. State Mapping (`s01_env/vectorizer.py`)
-Neural networks read arrays of numbers. Our vectorizer converts a complex `Battle` object into a **flat float tensor** representing HP, typings, status boosts, and field conditions.
+| Phase | Script | Opponent | Outcome |
+|---|---|---|---|
+| 1 | `train_p1_base` | RandomPlayer | Graduated 91.8% at 1k |
+| 1.5 | `train_p1_5_tune` | MaxBasePowerPlayer | Graduated 70.5% at 1k |
+| 2 | `train_p2_v8` | HeuristicV8 | Ramp 40.6% at 1k. **BC from V8.** |
+| 3 | `train_p3_v12` | HeuristicV12 | **Claim 34.1% at 10k.** Zip A frozen |
+| 4 | `train_p4_v14` | V12, **BC from V14** | Snapshot ~33.5% train |
 
-### 2. Action Spaces (`s01_env/pokemon_env.py`)
-The agent maps its outputs to an action index (0-9):
-- **0–3**: Attack with Move 1-4.
-- **4–9**: Switch to an available Pokémon in the team.
-**Action Masking** is used to prevent the agent from attempting illegal actions (like switching to a fainted Pokémon).
+Eval: vs Random (sanity) + vs v12. Dev 1k, final 10k. Default agent is **pure PPO**. `--hybrid` is an ablation labeled hybrid (PPO+v12).
 
-### 3. Progressive Training (`s02_training/`)
-We use a **4-Phase Curriculum**:
-1. **Foundations (p1_base)**: Learn basics against `RandomPlayer`.
-2. **Survival (p1_5_tune)**: Learn defensive fundamentals against `MaxBasePowerPlayer`.
-3. **Tactics (p2_transfer)**: Learn advanced play against `SimpleHeuristicsPlayer`.
-4. **The Gauntlet (p3_gauntlet)**: Generalize by playing against ALL opponents simultaneously.
+Phase 4, if mentioned, is **BC from V14** + 346-d obs, same floor. `train_p2_transfer` and `train_p3_gauntlet` are stubs.
 
-## New Computer: GPU Setup & Optimization
+## Layout
 
-As of March 2026, the project has migrated to a new machine with an **RTX 2080 GPU** and a **16-core CPU**. We have optimized the RL pipeline to maximize this hardware's throughput.
+- `s01_env/` — env, masks, vectorizer
+- `s02_training/` — Showdown helper + curriculum. Servers start inside the train script
+- `s03_evaluation/` — `eval_checkpoint` vs random / v12
+- `tests/` — masks, CUDA forward
+- **[README.md](README.md)** — index
+- **[RESULTS.md](RESULTS.md)** — thesis numbers
+- **[RUN.md](RUN.md)** — reproduce the claim eval
+- **[p2_v8_notes.md](p2_v8_notes.md)** — curriculum notes
 
-### 1. High-Parallelism Strategy (10 Servers)
-Pokémon Showdown (Node.js) is single-threaded. To prevent the simulator from bottlenecking the GPU, we now use **10 independent servers** on 10 ports (8000–8009) rather than 1 server with many workers.
-*   **Why**: 10 independent OS processes provide better I/O throughput than internal Node.js workers.
-*   **Result**: Drastically higher FPS (Frames Per Second) during training.
-
-### 2. Server Configuration (`config.js`)
-To support this many instances, we have "gutted" the standard Showdown configuration:
-*   **Workers**: Set `network: 1` and `simulator: 1` per server instance.
-*   **Services**: Disabled all non-battle features (`verifier`, `friends`, `artemis`, `repl`) to prevent `ECONNRESET` and `EPIPE` crashes.
-*   **Race Conditions**: Modified the launch script (`src/p00_core/scripts/launch_custom_servers.sh`) to initialize the first server fully before starting others, preventing race conditions on shared config files (`chatrooms.json`).
-
-### 3. Environment & Execution
-We now strictly use **`uv`** for dependency management to ensure correct CUDA (cu124) support.
-
-> [!IMPORTANT]
-> **Module-Style Execution**: Always run training as a module from the project root to handle relative imports.
-> ```bash
-> # Recommended Launch Command (10 servers)
-> uv run python -m src.p05_ppo_drl.s02_training.train_p1_base --timesteps 1000000 --ports 8000 8001 8002 8003 8004 8005 8006 8007 8008 8009
-> ```
-
----
-
-## Guide Links
-
-Please see the detailed guide files for step-by-step instructions:
-- [Training Guide](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/p05_ppo_drl/s02_training/s02_training_guide.md) – How to manage phases and checkpoints.
-- [Evaluation Guide](file:///home/sirp/Documents/MUDS/TFM_Pokemon/src/p05_ppo_drl/s03_evaluation/s03_evaluation_guide.md) – Benchmarking and visual reports.
-- [Setup Guide](file:///home/sirp/Documents/MUDS/TFM_Pokemon/SETUP.md) – Full environment recreation.
+Checkpoints: `data/models/ppo/` (see that folder’s README)  
+TensorBoard leftovers: `data/models/ppo/tb/`

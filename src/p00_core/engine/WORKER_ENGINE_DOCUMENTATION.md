@@ -102,8 +102,8 @@ Computational cost varies by up to three orders of magnitude across evaluated ag
 | :--- | :--- | :--- | :---: | :---: |
 | **Simple Heuristics** | `v1`, `v2`, `v3`, `v4`, `random`, `max_power` | Static rule evaluations and single-turn type effectiveness scoring. | **~0.01 – 0.1s** | ~1 – 3 minutes |
 | **Imitation Learning (XGBoost)** | `ml_advanced` | Tree-ensemble evaluation for dynamic switch/stay policy routing + heuristic fallback. | **~0.1 – 0.2s** | ~3 – 5 minutes |
-| **Minimax Tree Search** | `v15`, `v16` | Multi-turn depth lookahead with iterative deepening and alpha-beta pruning. | **~1.0 – 2.0s** | ~20 – 40 minutes |
-| **Monte Carlo Tree Search** | `v17`, `v18` | Rollout simulations ($N$ iterations per decision) through game state branches. | **~2.0 – 4.0s** | ~45 – 90 minutes |
+| **Minimax** | `v15`–`v17` | 1-ply maximin. | **~0.02–2s** | (see gauntlet logs) |
+| **Shallow MCTS** | `v18`–`v20` | Root UCB, 100 × 5-turn LocalSim. | **~2–6s** | n=1,000 cells |
 
 ### Dynamic Timeout Formula
 To prevent complex tree searches (`v16–v18`) from prematurely timing out while still catching frozen subprocesses during high CPU contention, `benchmark.py` dynamically calculates timeouts based on batch size:

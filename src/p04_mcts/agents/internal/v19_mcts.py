@@ -21,13 +21,7 @@ from .v18_mcts import HeuristicV18MCTS, MCTSNode
 
 
 class HeuristicV19MCTS(HeuristicV18MCTS):
-    """Information Set Monte Carlo Tree Search Agent (Upgraded).
-
-    Extends HeuristicV18MCTS by introducing:
-    1. Advanced V14-Guided Positional Scorer at leaf nodes (dynamic team roles, speed tier OHKO threat detection,
-       status severity penalties, setup stages, and hazard control).
-    2. V14 Emergency Tactical Overrides pre-search (setup stopping, status absorption, and early pivots).
-    """
+    """v18 plus a positional leaf and extra v14 overrides. Still root-UCB, not IS-MCTS."""
 
     def _evaluate_mcts_terminal_state(self, sim) -> float:
         """Evaluates the terminal state of an MCTS rollout (Advanced V19 Positional Scorer)."""
@@ -188,7 +182,7 @@ class HeuristicV19MCTS(HeuristicV18MCTS):
                             opp_max_dmg = self._estimate_max_damage(opp, me, gen, sets_db)
                         if opp_max_dmg < me.current_hp * 0.55:
                             self._record_used_move(btag, m.id)
-        # 3. Information Set MCTS Search Loop
+        # 3. Root UCB + LocalSim rollouts (not IS-MCTS)
         my_actions = list(battle.available_moves) + list(battle.available_switches)
         if not my_actions:
             return self.choose_random_move(battle)

@@ -7,7 +7,8 @@ Source: `data/benchmarks/all_10k/gen9randombattle` (each agent as us vs 28 oppon
 
 ## Taxonomy
 
-v1–v14 heuristic · v15–v17 1-ply minimax · v18–v20 IS-MCTS · v21 IL hybrid · v22 IL pure.
+v1–v14 heuristic · v15–v17 1-ply minimax · v18–v20 shallow MCTS (n=1k) · v21 IL hybrid · v22 IL (attribute-based moves).
+
 
 ## Headline
 
@@ -24,16 +25,16 @@ v1–v14 heuristic · v15–v17 1-ply minimax · v18–v20 IS-MCTS · v21 IL hyb
 | v9      | Tempo-safe      |      58.8613 |  0.191749 |    1.43923  |        1.46294 |    0.00139921 |       1.64083  |        0.166577  |          0         |          2.16236   |
 | v10     | Positional      |      55.6565 |  0.193582 |    1.19457  |        1.42646 |    0.00162055 |       0        |        0         |          0.0643794 |          2.16463   |
 | v11     | Tempo-safe      |      59.2625 |  0.191461 |    1.44064  |        1.40162 |    0.00145059 |       1.64606  |        0.166735  |          0.0687352 |          2.1257    |
-| v12     | Tera / preview  |      69.0146 |  0.180195 |    1.84197  |        1.36942 |    0.95519    |       1.74626  |        0.175024  |          0.072087  |          0.0143202 |
-| v13     | Set prediction  |      67.6261 |  0.182326 |    2.01482  |        3.57879 |    0.196265   |       1.58311  |        0.310249  |          0.0712569 |          0.0119368 |
+| v12     | Tera / switch-in |      69.0146 |  0.180195 |    1.84197  |        1.36942 |    0.95519    |       1.74626  |        0.175024  |          0.072087  |          0.0143202 |
+| v13     | Revealed moves  |      67.6261 |  0.182326 |    2.01482  |        3.57879 |    0.196265   |       1.58311  |        0.310249  |          0.0712569 |          0.0119368 |
 | v14     | Yomi / scouting |      62.03   |  0.18911  |    1.48531  |        2.09033 |    0.335166   |       0.206625 |        0.0335652 |         14.6287    |          0.0192688 |
 
 ## Three jumps, then an inversion
 
 - Plateau v1–v6: 44.25–45.86%. Damage math does not win Random Battles.
-- Jump 1 v7: 54.25% (+~9 pp). Position (hazards, KO, matchup switch).
+- Jump 1 v7: 54.25% (+~9 pp). Position (matchup switch).
 - Jump 2 v9/v11: 58.86 / 59.26%. Free-turn setup.
-- Jump 3 v12: **69.01%**. Tera + preview + fainted switch-in. First to beat Abyssal.
+- Jump 3 v12: **69.01%**. Tera + fainted switch-in. First to beat Abyssal.
 - Inversion: v12 69.01 ≥ v13 67.63 > v14 62.03.
 
 ## Head-to-head (n = 10,000)

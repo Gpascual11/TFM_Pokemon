@@ -1,8 +1,10 @@
 # LLM Agents Directory
 
-The LLM agents for the heuristics engine (`pokechamp`, `pokellmon`) are **not** implemented directly within this `agents/llm/` folder.
+`pokechamp` and `pokellmon` load from the `pokechamp` repository hook at the project root. `AgentFactory` (`src/p00_core/core/factory.py`) maps those identifiers to `get_llm_player` in pokechamp’s `poke_env` fork.
 
-Instead, they are dynamically loaded from the external `pokechamp` repository hook.
+That keeps the paper’s original LLM agents evaluable next to the custom heuristics without duplicating their PyTorch stack.
+
+To configure how these LLM agents operate, please read the [LLM Setup Guide](../../../p00_core/docs/llm_setup_guide.md).
 
 ## How it works
 

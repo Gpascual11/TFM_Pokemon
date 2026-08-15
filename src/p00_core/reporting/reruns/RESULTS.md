@@ -15,7 +15,8 @@ Taxonomy used everywhere below:
 |---|---|
 | v1–v14 | Heuristic ladder |
 | v15–v17 | 1-ply minimax (analytic, no LocalSim) |
-| v18–v20 | IS-MCTS (n = 1,000) |
+| v18–v20 | Shallow MCTS, root UCB + LocalSim (n = 1,000) |
+
 | v21 | IL hybrid (XGB + v14) |
 | v22 | IL pure (two XGBs, no v14) |
 
@@ -51,8 +52,7 @@ Family EDAs (`eda_heuristics_v1_v14.ipynb`, `eda_minimax_v15_v17.ipynb`,
 The June 2026 thesis-plan figure (98 games, 40.8%, Elo ~1151) is a **prefix** of this
 log, not a different experiment. Elo **peaked at 1263** and the 98-game snapshot sat
 near that local high. The full 431-game log **ends at 1038**. Cite **39.4% (n = 431,
-CI ±4.6 pp)** and Elo 1085 → 1038. Do not keep quoting 40.8% / 1151 as if it were the
-final sample.
+CI ±4.6 pp)** and Elo 1085 → 1038. The 98-game prefix (40.8% / 1151) sits near a local Elo peak.
 
 On completed games (turns ≥ 10) v14 Terastallizes in 45/398 battles and wins **20%** of
 those — Tera is firing from behind, not as v12’s every-game opener. KO checks stay
@@ -60,9 +60,7 @@ high (~16 / game), setup is almost unused (0.03 / game). That is the same v14 fi
 as in the bot-vs-bot gauntlet.
 
 **How to use this number.** Bot-vs-bot said v14 is third among heuristics (62% gauntlet,
-51% vs Abyssal) and v12 is first (69% / 60%). The ladder does **not** let you invert
-that ranking. v14 was built to scout and profile humans; this sample only says that
-design is not yet 50% vs the public ladder. It does not say v12 would do better online.
+51% vs Abyssal) and v12 is first (69% / 60%). This sample measures v14 vs the public ladder.
 
 Figures: `online_bot/ladder_wr_elo.png`, `online_bot/ladder_win_vs_loss.png`.
 Tables: `online_bot/ladder_headline.csv` and `*_by_outcome.csv`.
@@ -81,25 +79,25 @@ Gauntlet-weighted overall WR, 253,000 games each:
 | v4      | Plateau         | field / weather                             |  253000 |      45.504  |  0.194044 |     17.9637 |    0.905162 |        1.02562 |           0        |    0          |       0        |        0         |          0         |          4.57273   |
 | v5      | Plateau         | boost stages                                |  253000 |      45.8636 |  0.194165 |     17.9562 |    0.916091 |        1.02474 |           0        |    0          |       0        |        0         |          0         |          4.54654   |
 | v6      | Plateau         | Toxic / outspeed pivot                      |  253000 |      45.2814 |  0.193963 |     17.9855 |    0.899036 |        1.02533 |           0        |    0          |       0        |        0         |          0         |          4.59123   |
-| v7      | Positional      | hazards, setup, KO, matchup switch          |  253000 |      54.2462 |  0.194129 |     17.991  |    1.17192  |        1.46796 |           0.410652 |    0          |       0        |        0         |          0         |          2.17503   |
-| v8      | Positional      | items, abilities, screens, TR               |  253000 |      55.4285 |  0.193681 |     17.9304 |    1.19809  |        1.48377 |           0.41219  |    0.00159684 |       0        |        0         |          0.0643715 |          2.18072   |
+| v7      | Matchup switch  | boost-aware damage + matchup switching      |  253000 |      54.2462 |  0.194129 |     17.991  |    1.17192  |        1.46796 |           0.410652 |    0          |       0        |        0         |          0         |          2.17503   |
+| v8      | Priority KO     | known-ability immunity                      |  253000 |      55.4285 |  0.193681 |     17.9304 |    1.19809  |        1.48377 |           0.41219  |    0.00159684 |       0        |        0         |          0.0643715 |          2.18072   |
 | v9      | Tempo-safe      | hazards/setup only on free turns            |  253000 |      58.8613 |  0.191749 |     17.9043 |    1.43923  |        1.46294 |           0.396123 |    0.00139921 |       1.64083  |        0.166577  |          0         |          2.16236   |
 | v10     | Positional      | status, sack ≤20% HP, U-turn                |  253000 |      55.6565 |  0.193582 |     17.9071 |    1.19457  |        1.42646 |           0.387083 |    0.00162055 |       0        |        0         |          0.0643794 |          2.16463   |
 | v11     | Tempo-safe      | v9 tempo + v10 status/pivot                 |  253000 |      59.2625 |  0.191461 |     17.8757 |    1.44064  |        1.40162 |           0.359652 |    0.00145059 |       1.64606  |        0.166735  |          0.0687352 |          2.1257    |
-| v12     | Tera / preview  | Tera + preview lead + fainted switch-in     |  253000 |      69.0146 |  0.180195 |     17.8646 |    1.84197  |        1.36942 |           0.246964 |    0.95519    |       1.74626  |        0.175024  |          0.072087  |          0.0143202 |
-| v13     | Set prediction  | set prediction, conservative Tera, recovery |  253000 |      67.6261 |  0.182326 |     19.0941 |    2.01482  |        3.57879 |           2.56958  |    0.196265   |       1.58311  |        0.310249  |          0.0712569 |          0.0119368 |
-| v14     | Yomi / scouting | Yomi, T1–3 scouting, 16-step, 1-ply endgame |  253000 |      62.03   |  0.18911  |     18.5269 |    1.48531  |        2.09033 |           1.04366  |    0.335166   |       0.206625 |        0.0335652 |         14.6287    |          0.0192688 |
+| v12     | Tera            | Tera + fainted switch-in                    |  253000 |      69.0146 |  0.180195 |     17.8646 |    1.84197  |        1.36942 |           0.246964 |    0.95519    |       1.74626  |        0.175024  |          0.072087  |          0.0143202 |
+| v13     | Revealed moves  | recovery / choice-lock; revealed-move matchups |  253000 |      67.6261 |  0.182326 |     19.0941 |    2.01482  |        3.57879 |           2.56958  |    0.196265   |       1.58311  |        0.310249  |          0.0712569 |          0.0119368 |
+| v14     | Yomi / scouting | approx. damage range, 1-ply endgame         |  253000 |      62.03   |  0.18911  |     18.5269 |    1.48531  |        2.09033 |           1.04366  |    0.335166   |       0.206625 |        0.0335652 |         14.6287    |          0.0192688 |
 
 Three jumps, then an inversion:
 
 - Plateau v1–v6 ≈ 44–46%. Extra damage math does not win Random Battles.
-- v7 ≈ 54% (+9 pp): hazards, KO, matchup switching.
+- v7 ≈ 54% (+9 pp): boost-aware matchup switching.
 - v9 / v11 ≈ 59%: setup only on free turns.
-- **v12 = 69.0%**: Tera + preview + fainted switch-in. First internal agent to beat Abyssal (59.9%).
-- **v12 ≥ v13 > v14** (69.0 / 67.6 / 62.0). Genealogy said the opposite. H2H at 10k:
+- **v12 = 69.0%**: Tera + fainted switch-in. First internal agent to beat Abyssal (59.9%).
+- **v12 ≥ v13 > v14** (69.0 / 67.6 / 62.0). H2H at 10k:
   v12 vs v13 is a coin flip (50.7 / 48.9); v14 loses to both.
 
-`setup_uses_us` / `hazard_sets_us` are 0 for v7/v8/v10 — schema gap, not “they never set rocks”.
+`setup_uses_us` / `hazard_sets_us` are 0 for v7/v8/v10 in this schema; they fire from v9.
 
 ---
 
@@ -118,9 +116,10 @@ upgrade that moves WR. v17 still loses to v14 (43.6%) and to v12 (40.9%) at n = 
 
 ---
 
-## 5. IS-MCTS (v18–v20)
+## 5. Shallow MCTS (v18–v20)
 
-All cells n = 1,000. Do not mix this 28k overall WR with the 253k heuristic/minimax/IL overall.
+
+All cells n = 1,000. MCTS overall WR is 28k games; heuristic / minimax / IL overall is 253k. Compare matchup cells when ranking v20 against v17.
 
 | agent                      |   games |   win_rate_% |   ci95_pp |   avg_turns |   avg_hp_us |   search_fire_%_turns |   search_moves / game |   search_switches / game |   search_diff / game |   override_%_of_search |   ko_checks / game |   endgame / game |   loop_guards / game |   setup / game |   hazards / game |   tera / game |
 |:---------------------------|--------:|-------------:|----------:|------------:|------------:|----------------------:|----------------------:|-------------------------:|---------------------:|-----------------------:|-------------------:|-----------------:|---------------------:|---------------:|-----------------:|--------------:|

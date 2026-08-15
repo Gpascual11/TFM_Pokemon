@@ -1,110 +1,80 @@
-# Project Context (v10): Pokémon Showdown AI Research Platform
+# Project Context: Pokémon Showdown AI Research Platform
 
-This file contains the technical state and inventory of the Pokémon Showdown AI repository. It documents what has been implemented, the file structures, the heuristics mechanics, and the data stored on disk.
+Inventory of modules. For the scientific description of the study, use [`README.md`](README.md).
 
 ---
 
-## 1. Project Directory Structure
+## 1. Directory structure
 
 ```
 ├── CONTEXT.md
 ├── README.md
 ├── SETUP.md
+├── THESIS_PLAN.md            ← June 2026 plan
 ├── pyproject.toml
 ├── uv.lock
 ├── data/
-│   ├── benchmarks/             ← Evaluation results grouped by paradigm (all_10k, imitation_learning, minmax)
-│   ├── huggingface_cache/      ← Download cache for raw datasets
-│   ├── imitation_learning_expert_replays/ ← Processed expert replay Parquet datasets
-│   └── testing/                ← Diagnostics, logs, and legacy backups
+│   ├── benchmarks/           ← all_10k (gen9 28-agent matrix); other gens use smaller agent sets
+│   ├── huggingface_cache/
+│   ├── imitation_learning_expert_replays/
+│   └── testing/
 ├── docs/
-│   ├── development_tools.md
-│   └── pytorch-cpu-gpu-setup.md
-├── pokechamp/
+├── pokechamp/                ← LocalSim + Abyssal / LLM helpers
 ├── pokemon-showdown/
-├── scratch/
 └── src/
-    ├── p00_core/               ← Unified core: engine, common utilities, reporting, online bot, and launcher scripts
-    │   ├── core/               ← Shared heuristic engine types and factory
-    │   ├── engine/             ← Benchmark runners (benchmark.py, worker.py, run_single.py)
-    │   ├── scripts/            ← Showdown server setup & launch utilities
-    │   ├── online_bot/         ← Public Showdown server deployment hook
-    │   └── reporting/          ← Automated plot builders and WHR Elo calculations
-    ├── p01_heuristics/         ← Rule-based agents (v1–v14)
-    │   ├── agents/
-    │   │   ├── baselines/
-    │   │   └── internal/
-    │   └── docs/
-    ├── p02_imitation_learning/ ← Imitation learning: download → extract → train → agent
-    │   ├── s01_download/
-    │   ├── s02_eda/
-    │   ├── s03_training/
-    │   └── s04_agent/
-    ├── p03_minmax/             ← Minimax search agents (v7, v15)
-    │   └── agents/
-    │       └── internal/
-    ├── p04_mcts/               ← MCTS agent planning
-    └── p05_ppo_drl/            ← Deep Reinforcement Learning pipeline
-        ├── s01_env/
-        ├── s02_training/
-        └── s03_evaluation/
+    ├── p00_core/
+    ├── p01_heuristics/       v1–v14
+    ├── p02_imitation_learning/  v21, v22
+    ├── p03_minmax/           v15–v17 (1-ply maximin)
+    ├── p04_mcts/             v18–v20 (root UCB + LocalSim)
+    └── p05_ppo_drl/          BC + PPO (separate experiment)
 ```
 
 ---
 
-## 2. Inventory of Current Modules & Components
+## 2. Modules
 
-### A. Heuristics Framework (`src/p01_heuristics/`)
-* **Agents (`agents/internal/`):** Implements rule-based agents `v1` to `v14`.
-  * **Reference Doc (`agents/internal/agents_reference.md`):** Comprehensive guide on strategy genealogy, implementation key logic, and comparison of bot-vs-bot vs. human-vs-bot dynamics.
-  * **`v1` to `v6`:** Greedy, damage-focused heuristics.
-  * **`v7` to `v11`:** Strategic rule layers incorporating entry hazard setup/removal, stat-boosting moves, item/ability/screen modifiers, status moves, Volt Switch/U-turn pivots, and low-HP sack behavior.
-  * **`v12`:** Hybrid agent adding matchup-based Team Preview sorting, matchup-based fainted switch-in selection, and Generation 9 Terastallization evaluations.
-  * **`v13`:** Predictive agent adding lazy-loaded Showdown random battle sets database lookups (Gens 1–9), move- and stat-aware matchup damage simulation, choice-lock detection, setup sweeper phazing, smart HP recovery below 60%, and conservative Tera usage.
-  * **`v14`:** Championship agent adding team preview role classification, double-switch prediction/pivots, defensive bait-and-switch Tera, boots detection, status absorption switches, PP tracking, win-condition preservation, Yomi Layer 2 opponent tendency tracking, turns 1-3 scouting priorities, 16-step exact damage calculation, and a 1-ply endgame solver.
-* **Baselines (`agents/baselines/`):** Wrappers for `random`, `max_power`, `safe_one_step_player.py`, and `true_simple_heuristic.py`.
+### A. Heuristics (`src/p01_heuristics/`)
 
-### B. Shared Core Utilities (`src/p00_core/`)
-* **Core Utilities (`core/`):**
-  * `base.py`: Declares `BaseHeuristic1v1` class and tracks in-battle strategic counters.
-  * `common.py`: Math helpers for type effectiveness, raw damage calculations, and speed brackets.
-  * `factory.py`: Instantiates agents from string labels.
-* **Evaluation Engine (`engine/`):**
-  * `benchmark.py` & `worker.py`: Parallelized, multi-port master-worker framework with resume-by-rerun logic.
-  * `run_single.py` & `serial_benchmark.py`: Local diagnostics and sequential test suites.
-* **Reporting (`reporting/`):** Scripts converting raw CSV logs to heatmap plots and Bradley-Terry Elo lists.
-* **Online Bot Hook (`online_bot/`):** Deployment wrapper to run heuristics on the public Showdown Smogon server.
-* **Shell Utilities (`scripts/`):**
-  * `launch_custom_servers.sh`: Spawns a user-defined number of local Showdown Node.js instances sequentially on ports `8000+` and handles cleanups.
-  * `start_fixed_servers.sh`: Legacy launcher for 6 fixed server ports.
+`v1`–`v14` under `agents/internal/`. Labels vs code: see README (v1 is greedy STAB damage; hazards and setup from v9; v12 is Tera and fainted switch-in; v13/v14 score matchups from revealed moves).
 
-### C. Adversarial Search Framework (`src/p03_minmax/`)
-* **Agent (`agents/internal/v15_minimax.py`):** Implements 1-ply Minimax search. Evaluates the immediate game tree (1 turn ahead) by simulating candidate actions against predicted opponent actions and selecting the maximin option.
-* **Agent (`agents/internal/v7_minimax.py`):** Legacy 1-ply Minimax agent.
+Baselines: `random`, `max_power`, `abyssal`, `simple_heuristic`, `SafeOneStepPlayer` for both `one_step` and `safe_one_step`.
 
-### D. Machine Learning Imitation Pipeline (`src/p02_imitation_learning/`)
-* **`s01_download/`:** Hugging Face expert replay downloader.
-* **`s02_eda/`:** Behavioral analysis and graphing scripts.
-* **`s03_training/`:** Tabular features extractor and training scripts for XGBoost models.
-* **`s04_agent/`:** Deploys trained XGBoost models as live players (`MLBaselineAgent`, `MLAdvancedAgent`).
+### B. Core (`src/p00_core/`)
 
-### E. Reinforcement Learning Pipeline (`src/p05_ppo_drl/`)
-* **Environment (`s01_env/`):**
-  * `vectorizer.py`: Flattens a Showdown `Battle` state into a numeric tensor.
-  * `pokemon_env.py`: Gymnasium interface with action masking (indexes 0-3 for moves, 4-9 for switches).
-* **Training Scripts (`s02_training/`):** Curriculum scripts (`train_p1_base`, `train_p1_5_tune`, `train_p2_transfer`, `train_p3_gauntlet`).
-* **Evaluation (`s03_evaluation/`):** Verification and comparative graphing suite for trained RL checkpoints.
+- `core/`: `BaseHeuristic1v1`, `common.py`, `factory.py`
+- `engine/`: `benchmark.py`, `worker.py` (resume-by-row-count)
+- `reporting/`: plots + **Bradley-Terry** Elo (`elo_ranking.py`)
+- `online_bot/`: public Showdown hook
+- `scripts/`: Showdown launchers, `run_paradigm_comparison_10k.sh` (MCTS n=1000)
+
+The worker injects `TFM_Pokemon/pokechamp` onto `sys.path`. Gauntlet runs go through the worker.
+
+### C. Minimax (`src/p03_minmax/`)
+
+`v15`, `v16`, `v17` inherit `HeuristicV14`. **1-ply** exhaustive maximin.
+
+### D. MCTS (`src/p04_mcts/`)
+
+`v18`–`v20`: UCB over **root** children, 100 simulations, 5-turn LocalSim rollout. Determinization copies revealed moves.
+
+### E. Imitation (`src/p02_imitation_learning/`)
+
+Download 1800+ Elo `gen9randombattle` replays → features → XGBoost stay/switch. Live agents: `v21_xgboost.py` (hybrid on v14), `v22_pure_il.py` (macro XGB + attribute-based move model).
+
+### F. PPO (`src/p05_ppo_drl/`)
+
+**BC from V8 + PPO** vs HeuristicV12, n=10k, **34.1%**. Observation is 328-d on the claim zip; the live vectorizer is 346-d. Stubs: `train_p2_transfer`, `train_p3_gauntlet`.
 
 ---
 
-## 3. Data & Benchmark Assets (`data/`)
+## 3. Benchmark data
 
-### A. 1v1 Singles Benchmark Matrix
-* **Location:** `data/benchmarks/all_10k/`
-* **Details:** Matchup CSVs (e.g. `v15_vs_abyssal.csv`, `v12_vs_abyssal.csv`) containing completed games for each matchup.
+- **Gen9 matrix:** `data/benchmarks/all_10k/gen9randombattle/` — 28×28 directed CSVs. Non-MCTS cells 10,000 rows; any matchup involving v18/v19/v20 is 1,000.
+- Other generations under `all_10k/` use **smaller agent sets**.
 
 ---
 
-## 4. Platform Setup and Configuration
-* **Centralized Python Tooling:** Virtual environment managed by `uv` utilizing Python 3.12. Code formatting, checking, and type-checks are driven by Ruff (`ruff format .`, `ruff check .`) and Ty (`ty check`).
-* **Offline Local Server Architecture:** Local Smogon `pokemon-showdown` instance configured to disable login servers (`loginserver = null`) and bound to offline multi-port runs (ports 8000+).
+## 4. Tooling
+
+Python 3.12 via `uv`. `ruff` + `ty`. Local Showdown with `loginserver = null`, ports 8000+.

@@ -6,9 +6,12 @@ This document summarizes the evaluation of the Imitation Learning agents trained
 
 * **Dataset:** 1,116,343 expert turns extracted from Gen 9 Random Battle matches.
 * **Models:**
-  * **`ml_baseline`:** XGBoost model predicting action type (Move vs. Switch) based on basic features. Picks specific actions randomly.
-  * **`ml_advanced`:** XGBoost model predicting action type using 1,150 features. Executes specific actions using the championship-level heuristic (`v14`).
-* **Evaluation Metric:** Head-to-head win rate (WR%) over 1,000 games per matchup.
+  * **`ml_baseline`:** stay/switch XGB; picks concrete moves/switches randomly.
+  * **`ml_advanced` / gauntlet `v21`:** same stay/switch head, then **v14** executes the action.
+  * **`v22`:** stay/switch XGB plus a move scorer on candidate attributes (BP, STAB, type effectiveness).
+
+Gauntlet numbers are 10k (1k vs MCTS). Tables below are older **n=1,000** lab slices. **v1** is greedy STAB damage.
+
 
 ---
 
@@ -16,12 +19,12 @@ This document summarizes the evaluation of the Imitation Learning agents trained
 
 | Agent (Imitation) | Opponent (Heuristic/Baseline) | Win Rate (WR%) | Games Played | Speed (Sec/Game) |
 |---|---|---|---|---|
-| **`ml_baseline`** | `v1` (Random Moves) | 16.6% | 1,000 / 1,000 | 0.03 |
+| **`ml_baseline`** | `v1` (greedy STAB) | 16.6% | 1,000 / 1,000 | 0.03 |
 | **`ml_baseline`** | `abyssal` | 9.7% | 1,000 / 1,000 | 0.02 |
 | **`ml_baseline`** | `v8` | 10.4% | 1,000 / 1,000 | 0.02 |
 | **`ml_baseline`** | `v12` | 8.3% | 1,000 / 1,000 | 0.02 |
 | **`ml_baseline`** | `v14` (Championship Heuristic) | 7.6% | 1,000 / 1,000 | 0.02 |
-| **`ml_advanced`** | `v1` (Random Moves) | **66.6%** | 1,000 / 1,000 | 0.04 |
+| **`ml_advanced`** | `v1` (greedy STAB) | **66.6%** | 1,000 / 1,000 | 0.04 |
 | **`ml_advanced`** | `abyssal` | **44.5%** | 1,000 / 1,000 | 0.04 |
 | **`ml_advanced`** | `v8` | **53.6%** | 1,000 / 1,000 | 0.04 |
 | **`ml_advanced`** | `v12` | **38.9%** | 1,000 / 1,000 | 0.04 |
@@ -62,16 +65,14 @@ A potential critique during a thesis defense is that a "pure" imitation learning
 
 ### C. XGBoost Hyperparameters
 The model was trained with the following configuration:
-* `n_estimators = 200`
-* `max_depth = 6`
-* `learning_rate = 0.1`
-* `scale_pos_weight = 2.882`
-* `eval_metric = "logloss"`
-* `n_jobs = -1` (utilizes all CPU cores)
+* `n_estimators = 300` (code); some older notes said 200.
+* Switch threshold in `xgboost_advanced_threshold.json` is **0.5525**, tuned on the **test** fold.
+
 
 ### D. MLAdvancedAgent Decision Flow
 To prevent common imitation learning pitfalls, `MLAdvancedAgent` wraps the classifier with heuristic guards:
 1. **Guaranteed KO Guard:** Before querying the XGBoost model, the agent computes exact damage ranges. If there is a guaranteed move to knock out the opponent's active Pokémon (considering speed ordering), it executes the KO immediately.
-2. **Action Classification:** If no KO is present, it queries XGBoost. If the probability of switching exceeds **0.65** (tuned to prevent reckless staying), the agent decides to Switch; otherwise, it Attacks.
+2. **Action Classification:** If no KO is present, it queries XGBoost. If switch probability exceeds the saved threshold (**0.5525**), Switch; else Attack.
+
 3. **Infinite Switch Loop Guard:** If the model selects a Switch action, but the agent switched on the *previous* turn, the choice is overridden to Attack to prevent infinite back-and-forth switching.
 4. **Execution Delegation:** If a Switch is selected, it uses `v14`'s switch scoring to pick the best teammate. If an Attack is selected, it uses `v14`'s move scoring to choose the best move.

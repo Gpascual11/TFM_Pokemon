@@ -1,7 +1,8 @@
 # Phase 4: Machine Learning (Imitation Learning)
 
 ## Overview
-This module (`p02_imitation_learning`) contains the implementation of the "Learning" phase of the Master's Thesis. While `p01_heuristics` relied on human-engineered expert rules, this module aims to create agents that play Pokémon purely by observing and imitating professional human players, requiring zero hardcoded domain knowledge for move evaluation.
+
+This module trains a **stay vs switch** classifier from 1800+ Elo human `gen9randombattle` replays. Gauntlet **v21** uses that classifier on top of v14 tactics. Gauntlet **v22** uses the same stay/switch head and ranks moves from candidate attributes (base power, STAB, type effectiveness).
 
 ---
 
@@ -47,9 +48,9 @@ Deploy the trained model as a live competitive agent.
 
 ---
 
-## Benchmark Results (10,000 Games)
+## Benchmark Results
 
-We executed parallel benchmark tournaments consisting of **10,000 games per matchup** to compare the Machine Learning agents against baseline and expert agents in `gen9randombattle`.
+Gauntlet IDs are **`v21` / `v22`** (10k games, 1k vs MCTS). `ml_advanced` in the table below is the old name for the v14 hybrid (now v21). Rows marked *Pending* are stale — use the 28-agent CSVs.
 
 | Agent | Opponent | Win Rate (%) | Total Games | Notes |
 | :--- | :--- | :---: | :---: | :--- |

@@ -33,10 +33,7 @@ class HeuristicV15Minimax(HeuristicV14):
         self._loop_guards_by_battle: dict[str, int] = {}
 
     def _predict_opponent_moves(self, battle, opp, gen: int, sets_db: dict) -> list[Move]:
-        """Predicts the opponent's moveset using revealed moves and risk-weighted database lookups.
-
-        Returns a list of Move objects.
-        """
+        """Revealed moves, plus sets_db fills if the JSON loaded (it does not in this repo)."""
         opp_moves = list(opp.moves.values()) if opp.moves else []
         move_objs = {m.id: m for m in opp_moves}
 

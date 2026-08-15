@@ -1,7 +1,8 @@
 # gen9 tournament snapshot (re-run)
 
 Directed 28×28 gauntlet. Taxonomy: v1–v14 heuristic, v15–v17 1-ply minimax,
-v18–v20 IS-MCTS (n=1k), v21 hybrid IL, v22 pure IL.
+v18–v20 shallow MCTS (n=1k), v21 hybrid IL, v22 IL (attribute-based move head).
+
 
 ## Bradley-Terry Elo (anchor random = 1000)
 

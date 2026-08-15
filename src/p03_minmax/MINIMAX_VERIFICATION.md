@@ -53,9 +53,8 @@ Pokémon is a simultaneous-move game with a very high branching factor:
 * **3-Ply (3 Turns)**: $81^3 = 531,441$ joint action combinations.
 
 ### Runtime Performance Constraint:
-The `v14` damage calculator runs 16-step exact damage calculations for each candidate move. Running these calculations across $6,561$ leaf nodes at 2-ply would take **5–10 seconds per turn** in Python. 
+Agents run **1-ply**. The v14 damage helper returns an approximate range (min ≈ 85% of max). Branching at 2-ply is \(81^2 = 6{,}561\) joint actions; 1-ply keeps the 10k gauntlet tractable.
 
-This violates Showdown's turn timer limits (15–20 seconds total) and makes running large-scale benchmarks (10,000 games) computationally prohibitive.
+### Follow-on:
+MCTS agents (**v18–v20**) run root UCB with LocalSim rollouts.
 
-### Future Work:
-To bypass the exponential branching factor of minimax, Phase 4 introduces **Monte Carlo Tree Search (MCTS)**. MCTS selectively samples promising branches using rollouts rather than exhaustively search all joint action combinations, enabling deeper lookahead within the same turn-time budget.

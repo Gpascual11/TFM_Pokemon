@@ -11,9 +11,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from poke_env.environment.move_category import MoveCategory
-from poke_env.environment.pokemon_type import PokemonType
-from poke_env.environment.side_condition import SideCondition
+try:
+    from poke_env.environment.move_category import MoveCategory
+    from poke_env.environment.pokemon_type import PokemonType
+    from poke_env.environment.side_condition import SideCondition
+except ImportError:
+    from poke_env.battle import MoveCategory, PokemonType, SideCondition
 
 from p00_core.core.base import BaseHeuristic1v1
 from p00_core.core.common import get_status_name

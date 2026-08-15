@@ -1,8 +1,10 @@
 # TFM Pokémon — Thesis Plan & Master Reference
 
-> **Last updated:** June 10, 2026  
+> June 2026 planning document. The finished study is described in [`README.md`](README.md).
+
+> **Last updated (plan):** June 10, 2026  
 > **Format focus:** `gen9randombattle` exclusively  
-> **Research question:** *Which AI paradigm gets closest to human-level play in a complex partially-observable stochastic game, using gen9randombattle as the benchmark domain?*
+> **Research question (finished study):** *Which family wins a bot-vs-bot gen9randombattle round-robin?*
 
 ---
 
@@ -26,7 +28,8 @@ XGBoost (Imitation IL)   ← Phase 1 (fix data, rerun)
 v15 Minimax (Search)     ← Phase 2 (to build)
 v14 (best heuristic)     ← DONE ✅ (40.8% vs humans)
 ...
-v1 (Random)              ← DONE ✅
+v1 (greedy STAB damage)  ← DONE
+
 ─────────────────────────────────────────────────
 ```
 
@@ -119,7 +122,7 @@ uv run python <script>
 | **pokechamp fork (~0.9)** | `pokechamp/poke_env/` | Adds `local_simulation.py` + `team_util.py` |
 | **0.15 (latest)** | NOT installed | Breaking API changes, don't upgrade mid-thesis |
 
-**Do not upgrade to 0.15.** Your 2.5M games ran on 0.11.0. The core API (`Battle`, `Move`, `Pokemon`, `GenData`) is identical in both active versions for the objects your agents use.
+poke-env is pinned to **0.11.0** (the version the 2.5M games ran on). The core API (`Battle`, `Move`, `Pokemon`, `GenData`) is the same in later 0.11.x for the objects these agents use.
 
 ---
 
@@ -336,10 +339,10 @@ Monte Carlo Tree Search with Information Set sampling. Instead of exhaustive sea
 
 #### Why it's better suited to Pokémon than minimax
 
-Pokémon is **partially observable** — you don't know the opponent's full team or their unrevealed moves. Minimax pretends you know everything (it evaluates against "all opponent moves" but only the revealed ones). MCTS naturally handles this:
+Pokémon is **partially observable**. Finished agents **v18–v20** run root UCB with LocalSim rollouts; see README.
 
 ```
-Information Set MCTS:
+Information Set MCTS (plan sketch):
   For each simulation:
     1. Sample a plausible opponent team from Showdown DB
        (based on revealed Pokémon, probable sets for unrevealed ones)
@@ -389,8 +392,7 @@ class MCTSNode:
 
 class MCTSV16(HeuristicV14):
     """
-    Information Set MCTS using LocalSim for rollouts.
-    Inherits v14's Showdown DB loading and evaluator for rollout policy.
+    Plan sketch: MCTS using LocalSim. Finished agents are v18–v20 (root UCB + LocalSim; see README).
     """
     N_SIMULATIONS = 200  # per turn
     ROLLOUT_DEPTH = 5    # turns ahead per rollout
@@ -456,8 +458,9 @@ class MCTSV16(HeuristicV14):
 - **200 simulations per turn at 10 seconds** = very achievable with CPU parallelism
 - **Your parallel benchmark infrastructure** remains intact for evaluation (LocalSim is only used DURING a turn's decision, not between games)
 
-#### The MCTS thesis contribution  
-*"Standard minimax assumes full knowledge of opponent state; we implement Information Set MCTS that samples probable opponent configurations from the Pokémon Showdown sets database, making the search probabilistically correct under hidden information — a natural fit for Pokémon's imperfect-information structure."*
+#### The MCTS thesis contribution (plan sketch)
+
+Finished agents: root UCB, 100 × 5-turn LocalSim rollouts. See README.
 
 #### Benchmark target
 Run v16 MCTS vs v15 minimax, v14, and pokechamp's minimax.  
@@ -604,7 +607,7 @@ En aquesta tesi comparem sis paradigmes diferents de presa de decisions en Intel
 
 ### 2. Cerca Adversarial (Minimax v15) — *Cerca basada en Heurística*
 * **Què és:** Un algorisme de cerca en arbre de joc que assumeix que l'oponent jugarà de manera racional per minimitzar els nostres guanys (principi maximin).
-* **Com funciona (Dependència d'Heurístiques):** Com que l'arbre del Pokémon és gegant i probabilístic, no es pot cercar fins al final de la partida. Per tant, Minimax fa una cerca de profunditat limitada (1-ply o 2-ply) i **utilitza la nostra millor heurística (v14) com a funció d'avaluació en els nodes fulla** per estimar qui està guanyant la partida en aquell punt intermedi.
+* **Com funciona (Dependència d'Heurístiques):** Com que l'arbre del Pokémon és gegant i probabilístic, no es pot cercar fins al final de la partida. Per tant, Minimax fa una cerca de profunditat limitada (**1-ply only in the shipped agents**) i **utilitza la nostra millor heurística (v14) com a funció d'avaluació** per estimar qui està guanyant. No hi ha α-β ni 2-ply.
 * **Paper a la tesi:** Comprova si afegir previsió de les respostes de l'oponent millora les decisions en comparació amb només reaccionar heurísticament a l'estat actual.
 
 ### 3. Cerca en Arbre Monte Carlo (MCTS v16) — *Cerca basada en Heurística i Mostreig*
@@ -677,7 +680,7 @@ src/p03_minmax/
     v15_minimax.py            ← Phase 2: 1-ply minimax with v14 evaluator
 src/p04_mcts/
   agents/internal/
-    v16_mcts.py             ← Phase 4: Information Set MCTS with LocalSim
+    v18_mcts.py             ← finished: root UCB + LocalSim (see README)
   evaluation/
     benchmark_mcts.py       ← MCTS-specific benchmark runner
 ```
@@ -725,6 +728,7 @@ uv run python src/p00_core/online_bot/run_online_bot.py \
 
 ## 10. The Thesis Contribution Statement
 
-> *"We conduct the first systematic paradigm comparison of AI decision-making approaches in a complex partially-observable stochastic game (gen9randombattle), evaluating five paradigms — rule-based heuristics, adversarial search, Information Set MCTS, imitation learning, and reinforcement learning — under a unified evaluation framework of 10,000 games per matchup. We find that [X], demonstrating that [Y], with implications for AI in imperfect-information multi-agent environments."*
+> *"We compare hand-written heuristics, 1-ply minimax, shallow Monte Carlo search (root UCB + LocalSim), imitation of human stay/switch, and a separate BC+PPO run, on gen9randombattle. Most directed matchups use 10,000 games; MCTS cells use 1,000. Primary evidence is bot-vs-bot. We find that [X], demonstrating that [Y]."*
+
 
 Fill in X and Y from your actual results. All outcomes are valid findings.

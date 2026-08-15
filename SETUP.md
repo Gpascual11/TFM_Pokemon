@@ -2,7 +2,8 @@
 
 Complete installation guide to get all thesis components ready: heuristics, imitation learning, adversarial search (minimax + MCTS), and reinforcement learning (PPO).
 
-> For what to actually run and in what order, see [`THESIS_PLAN.md`](THESIS_PLAN.md).
+> For the study protocol, see [`README.md`](README.md). This file is install only.
+
 
 ---
 

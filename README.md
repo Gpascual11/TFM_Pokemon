@@ -1,184 +1,142 @@
-# TFM Pokémon — AI Paradigm Comparison for Competitive Battles
+# TFM Pokémon — Bot-vs-bot paradigm comparison on gen9randombattle
 
-Research platform for comparing AI decision-making paradigms in **gen9randombattle** (Pokémon Showdown), built as a Master's thesis (TFM) in Data Science.
+Master's thesis (TFM) in Data Science. Local Pokémon Showdown agents are compared in **`gen9randombattle`**: same simulator, same format, bot vs bot.
 
----
-
-## Research Question
-
-> *Which AI paradigm gets closest to human-level play in a complex partially-observable stochastic game, using gen9randombattle as the benchmark domain?*
-
-The thesis is a **paradigm comparison study** — measuring how 4 distinct AI decision-making paradigms scale under identical hidden-information, stochastic environment conditions.
+This README describes the study that ran. `THESIS_PLAN.md` is the June 2026 planning document.
 
 ---
 
-## Master AI Paradigms Summary
+## Research question
 
-| Paradigm | Agents | Architecture & Decision Engine | Status |
+> In gen9randombattle, which of these families wins a bot-vs-bot round-robin: hand-written heuristics, 1-ply minimax, shallow Monte Carlo search, or imitation of human stay/switch decisions?
+
+Rankings are bot strength under these budgets. Humans appear in a separate v14 ladder sample.
+
+---
+
+## Protocol
+
+| Family | IDs | Method | Gauntlet |
 |---|---|---|---|
-| **Rule-based Heuristics** | `v1`–`v14` | 14 progressive agents: STAB, type effectiveness, entry hazards, status moves, Showdown DB set prediction, 16-step exact damage calculation, Yomi tracking, and endgame solver. | ✅ Complete |
-| **Adversarial Search** | `v15`–`v17` | Multi-ply Minimax search with alpha-beta pruning, speed-aware sequential turn resolution, and hybrid heuristic state evaluations. | ✅ Complete |
-| **Information Set MCTS** | `v18`–`v20` | Information Set MCTS (IS-MCTS) with opponent state sampling via `LocalSim` rollout engine. | ✅ Complete |
-| **Imitation Learning** | `v21`–`v22` | XGBoost classifier trained on 1,800+ Elo human replays, predicting high-level battle decisions with hybrid heuristic fallbacks. | ✅ Complete |
-| **Reinforcement Learning** | `v23+` | Deep Reinforcement Learning (PPO / MaskablePPO) framework built on custom Gymnasium battle wrappers. | ⚠️ Framework ready |
+| Heuristics | `v1`–`v14` | Hand-written move and switch rules | 10,000 games / directed matchup |
+| 1-ply minimax | `v15`–`v17` | One-turn maximin after KO / endgame shortcuts | 10,000 |
+| Shallow MCTS | `v18`–`v20` | Root UCB over legal actions; 100 × 5-turn **LocalSim** rollouts | **1,000** (compute budget) |
+| Imitation | `v21`, `v22` | XGBoost stay/switch from 1800+ Elo human replays. v21 executes with v14. v22 ranks moves from candidate attributes (BP, STAB, type effectiveness) | 10,000 |
+| PPO | separate experiment | Behavioural cloning from **v8**, then MaskablePPO vs **v12** → **34.1%** (n=10k). See [`src/p05_ppo_drl/RESULTS.md`](src/p05_ppo_drl/RESULTS.md) | — |
+| Baselines | `random`, `max_power`, `abyssal`, `simple_heuristic`, `one_step`, `safe_one_step` | External / poke-env references. `one_step` and `safe_one_step` both use `SafeOneStepPlayer` | 10,000 |
 
-All 22 agents are evaluated head-to-head in a unified round-robin benchmark matrix (10,000 games per matchup).
+**28 labels** in the gen9 matrix (22 internal + 6 baselines), both seats (`A_vs_B` and `B_vs_A`). CSVs: `data/benchmarks/all_10k/gen9randombattle/`.
 
----
-
-## Detailed Paradigm Architectures
-
-### 1. Heuristic Progression (`v1`–`v14`)
-- **`v1` (Random):** Uniform random move selection baseline.
-- **`v2–v4` (Greedy & Type Awareness):** STAB calculation, type effectiveness matrices, and basic KO checks.
-- **`v5–v8` (Field & Status Control):** Entry hazards (Stealth Rock, Spikes), stat boosts/stat drop tracking, pivot moves (U-turn, Volt Switch), and status infliction.
-- **`v9–v11` (Opponent Modeling):** Choice item lock tracking, setup counter-play, and move prediction.
-- **`v12` (Tactical Enhancements):** Team preview ordering, Terastallization timing, and matchup-based switching rules.
-- **`v13` (Showdown Database Integration):** Full Showdown sets DB lookups to predict unrevealed opponent movesets, EV spreads, and items.
-- **`v14` (Championship Heuristic):** 16-step exact damage roll calculations, Yomi opponent switch tracking, role assignment (sweeper, wall, pivot), and exact 2v2/1v1 endgame solvers.
-
-### 2. Adversarial Minimax Search (`v15`–`v17`)
-- **`v15` (1-Ply Minimax):** Evaluates depth-1 decision trees incorporating Showdown sets DB predictions.
-- **`v16` (2-Ply Minimax):** Deeper game tree exploration considering opponent counter-responses.
-- **`v17` (Hybrid Minimax):** Combines `v14`'s comprehensive evaluation function with Minimax tree search and dynamic pruning.
-
-### 3. Information Set MCTS (`v18`–`v20`)
-- **`v18` (Pure MCTS):** Monte Carlo Tree Search using standard rollout policies.
-- **`v19` (IS-MCTS):** Information Set MCTS designed specifically for imperfect-information games; samples probable hidden opponent teams per simulation.
-- **`v20` (Hybrid IS-MCTS):** Combines IS-MCTS state rollouts with `v14` heuristic evaluation at leaf nodes.
-
-### 4. Imitation Learning (`v21`–`v22`)
-- **`v21` (Pure XGBoost IL):** Machine learning classifier trained on 1,800+ Elo high-level human replays.
-- **`v22` (Hybrid XGBoost IL):** Combines XGBoost probabilities with heuristic safety fallbacks to prevent invalid or suicidal moves.
+Ratings on that matrix are **Bradley-Terry**, reported on an Elo-like scale.
 
 ---
 
-## Telemetry & Advanced Data Tracking
+## Agents
 
-Every benchmark game records up to 70 telemetry metrics per battle row, including:
+### Heuristics `v1`–`v14`
 
-- **Battle Identifiers:** `battle_id`, `format`, `heuristic`, `opponent`, `winner`, `won`, `turns`, `timestamp`.
-- **Search Telemetry:** `search_diff_us`, `search_diff_opp`, `search_switches_us`, `search_moves_us`.
-- **Machine Learning Telemetry:** `xgb_switches_us`, `xgb_stays_us`, `xgb_prob_sum_us`.
-- **Safety & Guard Telemetry:** `ko_guards_us`, `loop_guards_us`, `fallback_moves_us`, `error_moves_us`.
-- **Battle Stats:** `hazard_sets_us`, `hazard_removals_us`, `setup_uses_us`, `ko_checks_us`, `terastallized_us`.
+| ID | Method |
+|---|---|
+| **v1** | Greedy max `base power × type effectiveness × STAB` |
+| **v2–v6** | Damage math (stats, weather/terrain, boosts) and light switching. Cluster is almost flat |
+| **v7** | Boost-aware damage and Abyssal-style matchup switching |
+| **v8** | v7 plus conservative priority KO and known-ability immunities |
+| **v9** | Hazards and setup on free turns |
+| **v10** | Status, low-HP sack, U-turn / Volt Switch |
+| **v11** | v9 + v10, with generation-aware tweaks |
+| **v12** | Terastallization and matchup-based fainted switch-in |
+| **v13** | Recovery, choice-lock, phazing, conservative Tera; matchup damage from **revealed** moves |
+| **v14** | Yomi / scouting / 1-ply endgame; approximate damage range (85–100% of max). Opponent HP from poke-env is often a percentage |
+
+Most of v7–v14 subclass `BaseHeuristic1v1` directly. Treat the ladder as related bots with stacked capabilities.
+
+### Search `v15`–`v20`
+
+- **v15–v17:** 1-ply maximin with a heuristic leaf. Opponent replies are revealed moves (plus a generic switch). v16/v17 add more v14-style bonuses; v17 also biases toward the v14 action.
+- **v18–v20:** For each legal action, UCB at the **root**; each iteration runs a 5-turn pokechamp `LocalSim` rollout and backs up that child. v20 uses a PUCT prior toward the v14 action.
+- KO and endgame rules fire first; search scores the remaining turns.
+
+### Imitation `v21`–`v22`
+
+- Train: human `gen9randombattle` replays, Elo **1800+**, stay vs switch, `GroupShuffleSplit` by `battle_id`.
+- **v21** = `HeuristicV14` plus that classifier (XGB on a minority of turns).
+- **v22** = the same stay/switch head; move ranking from a second model on candidate attributes (base power, STAB, type effectiveness).
+- Evaluate vs **bots**.
+
+### PPO
+
+**BC from V8 + PPO vs HeuristicV12, 34.1% (3405/10000).** Separate from the 28-agent table.
 
 ---
 
-## Infrastructure & Hardware Telemetry Monitor
+## Headline result
 
-- **Battle Engine:** Local Node.js Pokémon Showdown instances running on dedicated ports (8000–8040).
-- **Hardware Target:** AMD Ryzen 7 5700X3D (8 Cores / 16 Threads, 96MB L3 Cache), 30 GB DDR4 RAM, NVMe SSD.
-- **Parallel Concurrency:** 8 parallel Showdown servers × 15–25 concurrency (~200 simultaneous battles).
-- **Master Telemetry & Security Monitor (`seguretat_tfm.sh`):**
-  - **Hardware Safety:** Continuous CPU thermal tracking (Panic shutdown at 92°C), RAM PageCache flush at 27.5GB.
-  - **Interactive Telegram Bot:** Native 25s Long Polling listener supporting `/now`, `/session`, `/summary`, `/log`, `/pause`, `/resume`, `/pokemon`, `/meme`.
-  - **Automated Morning Reports:** Daily 09:00 AM recap of overnight games completed, system health, and storage status.
+**Hand-written heuristics lead the gauntlet.** v12 is the bot-vs-bot ceiling. 1-ply minimax, shallow MCTS, and IL sit below it. PPO lands near the **v8 vs v12** floor (~33%).
+
+MCTS cells use 1,000 games (± ~3 pp); other cells use 10,000 (± ~1 pp).
 
 ---
 
-## Repository Structure
+## Repository
 
 ```
 TFM_Pokemon/
-├── THESIS_PLAN.md              ← Full thesis roadmap and phase-by-phase guide
-├── SETUP.md                    ← Installation instructions
-├── pyproject.toml              ← Dependencies (poke-env pinned to 0.11.x)
-├── paradigm_eval.log           ← Active master benchmark execution log
-│
-├── pokechamp/                  ← pokechamp repo (LLM agents + LocalSim for MCTS)
-│   └── poke_env/player/local_simulation.py   ← MCTS rollout engine
-├── pokemon-showdown/           ← Local battle simulator server
-│
+├── README.md                 ← this file
+├── SETUP.md                  ← install Showdown, uv, poke-env
+├── CONTEXT.md                ← module inventory
+├── THESIS_PLAN.md            ← June 2026 plan
 ├── src/
-│   ├── p00_core/               ← Unified core: engine, common utilities, reporting, online bot, and launcher scripts
-│   │   ├── core/               ← Shared heuristic engine types and factory
-│   │   ├── engine/             ← Benchmark runners (benchmark.py, worker.py, run_single.py)
-│   │   ├── scripts/            ← Showdown server setup & launch utilities (seguretat_tfm.sh)
-│   │   └── online_bot/         ← Public Showdown server deployment hook
-│   ├── p01_heuristics/         ← Rule-based agents (v1–v14) & validate_heuristics.ipynb
-│   ├── p02_imitation_learning/ ← Imitation learning (v21, v22) & validate_imitation.ipynb
-│   ├── p03_minmax/             ← Minimax search agents (v15–v17) & validate_minmax.ipynb
-│   ├── p04_mcts/               ← MCTS agent planning (v18–v20) & validate_mcts.ipynb
-│   └── p05_ppo_drl/            ← Deep Reinforcement Learning pipeline
-│
-└── data/
-    └── benchmarks/
-        └── all_10k/            ← Master 10k round-robin benchmark CSVs (320+ files)
+│   ├── p00_core/             engine, factory, reporting, launch scripts
+│   ├── p01_heuristics/       v1–v14
+│   ├── p02_imitation_learning/  v21, v22
+│   ├── p03_minmax/           v15–v17
+│   ├── p04_mcts/             v18–v20
+│   └── p05_ppo_drl/          BC + PPO (separate experiment)
+├── data/benchmarks/all_10k/gen9randombattle/   28×28 CSVs
+├── pokechamp/                LocalSim fork (MCTS rollouts)
+└── pokemon-showdown/         local battle server
 ```
+
+`report/` is the LaTeX thesis (edit separately).
 
 ---
 
-## Setup & Quick Start
+## Setup
 
-See [`SETUP.md`](SETUP.md) for full installation instructions.
+See [`SETUP.md`](SETUP.md).
 
 ```bash
-# 1. Install Python 3.12 & sync dependencies
 uv python install 3.12
 uv sync
-
-# 2. Build local Pokemon Showdown server
 cd pokemon-showdown && npm install && node build && cd ..
 
-# 3. Launch Master Benchmark Evaluation
+# Optional: full gen9 round-robin (resumes if CSVs already have enough rows)
 bash src/p00_core/scripts/runs_benchmark/run_paradigm_comparison_10k.sh
-
-# 4. Launch Master Telemetry & Security Monitor (optional)
-bash src/p00_core/scripts/seguretat_tfm.sh
 ```
-
----
-
-## Key Technical Decisions
-
-| Decision | Rationale |
-|---|---|
-| **gen9randombattle exclusively** | Controlled format — heuristics, IL pipeline, and Showdown DB all calibrated for this format. |
-| **poke-env pinned to 0.11.0** | Tested across 2.5M+ games; 0.15 introduced breaking API changes. |
-| **LocalSim from pokechamp fork** | Standard poke-env has no local simulator; pokechamp adds it for fast MCTS rollouts. |
-| **Information Set MCTS over Minimax** | Correctly handles Pokémon's hidden information; Minimax assumes full knowledge. |
-| **Bot-vs-bot as primary benchmark** | Reproducible, 10k games in ~12 min; online games are validation only. |
-
----
-
-## Benchmark Results (gen9randombattle, 10k games each)
-
-All results in `data/benchmarks/all_10k/gen9randombattle/` (326 CSV files).
-
-The complete paradigm comparison matrix (v15, v16 MCTS, XGBoost IL, PPO) is pending — see [`THESIS_PLAN.md`](THESIS_PLAN.md) for the full roadmap.
-
----
-
-## Developer Tools
 
 ```bash
-uv run ruff format .    # auto-format
-uv run ruff check .     # lint
-uv run ty check src/    # type check
-
-# Always run from project root with uv:
-uv run python src/...
+uv run ruff format .
+uv run ruff check .
+uv run ty check src/
+uv run python src/...   # always from repo root
 ```
+
+poke-env is pinned to **0.11.x**.
 
 ---
 
 ## Docs
 
-| File | Contents |
+| File | Role |
 |---|---|
-| [`THESIS_PLAN.md`](THESIS_PLAN.md) | Research question, paradigm comparison, phase-by-phase implementation plan |
-| [`SETUP.md`](SETUP.md) | Full installation guide (Python, Showdown, extras, poke-env version notes) |
-| [`CONTEXT.md`](CONTEXT.md) | Detailed module inventory and benchmark data catalog |
-| `src/p01_heuristics/validate_heuristics.ipynb` | Heuristic progression analysis (v1–v14 win-rates, HP differentials, switch rates) |
-| `src/p02_imitation_learning/validate_imitation.ipynb` | XGBoost IL model evaluation, feature importance, decision rates |
-| `src/p03_minmax/validate_minmax.ipynb` | Minimax search depth, alpha-beta pruning efficiency, evaluation correlation |
-| `src/p04_mcts/validate_mcts.ipynb` | IS-MCTS convergence, endgame solves, and simulation rollout efficiency |
+| [`SETUP.md`](SETUP.md) | Install |
+| [`CONTEXT.md`](CONTEXT.md) | Paths and modules |
+| [`src/p00_core/reporting/heuristics_and_imitation_thesis_analysis.md`](src/p00_core/reporting/heuristics_and_imitation_thesis_analysis.md) | Results argument (gauntlet) |
+| [`src/p05_ppo_drl/RESULTS.md`](src/p05_ppo_drl/RESULTS.md) | PPO claim and curriculum |
+| [`src/p00_core/reporting/elo/elo_reporting.md`](src/p00_core/reporting/elo/elo_reporting.md) | Bradley-Terry Elo |
 
 ---
 
-## Author & Developer Info
+## Author
 
-- **Author & Lead Developer:** Gerard Pascual Fontanilles (`@Gpascual11` / `@sirp`)
-- **Repository:** [TFM_Pokemon (GitHub)](https://github.com/Gpascual11/TFM_Pokemon)
-- **Degree:** Master's Thesis (TFM) in Data Science
+Gerard Pascual Fontanilles (`@Gpascual11` / `@sirp`) — Master's Thesis (TFM) in Data Science. [GitHub](https://github.com/Gpascual11/TFM_Pokemon).

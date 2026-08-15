@@ -1,14 +1,14 @@
-# Imitation Learning EDA — v21 Hybrid vs v22 Pure
+# Imitation Learning EDA — v21 hybrid vs v22
 
 Source: `data/benchmarks/all_10k/gen9randombattle` (each agent as us vs 28 opponents).
 
 ## Architecture in one paragraph
 
-Both agents share the 1,150-feature XGBoost **macro** model (move vs switch, τ = 0.5525).
-**v21** is a hybrid: v14 guaranteed-KO, endgame minimax, setup/status logic run *before*
-XGBoost; remaining move/switch execution is still v14. **v22** is end-to-end IL: the same
-macro head, then a second XGBoost for move choice and counterfactual bench scoring for
-switches — zero HeuristicV14.
+Both share the 1,150-feature XGBoost **macro** model (move vs switch, τ = 0.5525).
+**v21** is a hybrid: v14 KO/endgame/setup run *before* XGBoost; remaining execution is
+still v14. **v22** uses the same macro head, then a second XGBoost that scores candidate
+moves from attributes (power, STAB, effectiveness), plus loop-guard / Tera heuristics.
+
 
 ## Headline
 

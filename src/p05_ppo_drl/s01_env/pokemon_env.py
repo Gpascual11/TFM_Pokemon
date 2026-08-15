@@ -1,8 +1,10 @@
-"""Reinforcement Learning Environment for Pokemon Showdown.
+"""Gymnasium SinglesEnv for MaskablePPO on gen9randombattle.
 
-Provides the custom Gymnasium environment, wrappers, and action masking
-logic for training MaskablePPO agents.
+Action space is Discrete(14): 4 moves, 4 moves+Tera, 6 switches.
+Masks and orders live in ``actions.py`` so eval players use the same mapping.
 """
+
+from __future__ import annotations
 
 import logging
 import weakref
@@ -12,46 +14,33 @@ from gymnasium import spaces
 from poke_env.battle.status import Status
 from poke_env.environment.single_agent_wrapper import SingleAgentWrapper
 from poke_env.environment.singles_env import SinglesEnv
-from poke_env.player.battle_order import DefaultBattleOrder, SingleBattleOrder
 from poke_env.player.player import Player
 
-from .vectorizer import StateVectorizer
+from ..constants import ACTION_N, BATTLE_FORMAT
+from .actions import action_masks as compute_action_masks
+from .actions import action_to_order as map_action_to_order
+from .actions import order_to_action as map_order_to_action
+from .vectorizer import OBS_SIZE, StateVectorizer
 
 original_handle_battle_message = Player._handle_battle_message
 
 
 async def patched_handle_battle_message(self, split_messages):
-    """Filters bulky error messages to prevent log spam and desync."""
-    filtered_messages = [
-        m for m in split_messages if not (len(m) > 1 and m[1] == "bigerror")
-    ]
+    """Drop bulky ``bigerror`` frames that spam logs and can desync training."""
+    filtered_messages = [m for m in split_messages if not (len(m) > 1 and m[1] == "bigerror")]
     await original_handle_battle_message(self, filtered_messages)
 
 
 Player._handle_battle_message = patched_handle_battle_message
-# -------------------------------------------------------------------------------------
 
-# Statuses that represent a meaningful debuff inflicted on the opponent
 _DEBUFF_STATUSES = {Status.BRN, Status.PAR, Status.TOX}
-
-# Maximum own-side hazard "weight" for penalty normalization:
-# Stealth Rock (1/1) + Spikes (3/3) + Toxic Spikes (2/2) + Sticky Web (1/1) = 4 max
 _MAX_HAZARD_WEIGHT = 4.0
 
 
 def _own_hazard_weight(side_conditions: dict) -> float:
-    """
-    Computes a normalized [0, 1] danger score for hazards on the agent's own side.
-
-    Args:
-        side_conditions: Mapping of SideCondition -> stack count from battle.side_conditions.
-
-    Returns:
-        Float in [0, 1] representing hazard pressure on own side.
-    """
     from poke_env.battle.side_condition import SideCondition
 
-    _TRACKABLE = {
+    trackable = {
         SideCondition.STEALTH_ROCK: 1,
         SideCondition.SPIKES: 3,
         SideCondition.TOXIC_SPIKES: 2,
@@ -59,283 +48,107 @@ def _own_hazard_weight(side_conditions: dict) -> float:
     }
     weight = 0.0
     for sc, count in side_conditions.items():
-        if sc in _TRACKABLE:
-            weight += count / _TRACKABLE[sc]
+        if sc in trackable:
+            weight += count / trackable[sc]
     return min(weight / _MAX_HAZARD_WEIGHT, 1.0)
 
 
 class PokemonMaskedEnv(SinglesEnv):
-    """
-    Custom Singles environment with built-in state vectorization.
-
-    Inherits from SinglesEnv to provide a seamless interface with poke-env
-    while overriding the state and action mapping for RL compatibility.
-    """
+    """poke-env ``SinglesEnv`` with frozen obs/action spaces and ``strict=False``."""
 
     def __init__(self, **kwargs):
-        """
-        Initializes the environment with a custom state vectorizer and action space.
-
-        Args:
-            **kwargs: Arguments passed to the parent SinglesEnv constructor.
-        """
-        if "battle_format" not in kwargs:
-            kwargs["battle_format"] = "gen9randombattle"
-
-        # Disable strict mode to prevent ValueError crashes on minor server/client desyncs
+        kwargs.setdefault("battle_format", BATTLE_FORMAT)
         kwargs["strict"] = False
         super().__init__(**kwargs)
-
         self.vectorizer = StateVectorizer()
-
-        # Use the pre-computed size from the vectorizer (single source of truth)
         self.observation_space_size = self.vectorizer.obs_size
-
-        # Define the observation space as a flat 1D Box [0.0, 1.0]
+        assert self.observation_space_size == OBS_SIZE
         self.observation_spaces = {
-            agent: spaces.Box(
-                low=0.0,
-                high=1.0,
-                shape=(self.observation_space_size,),
-                dtype=np.float32,
-            )
+            agent: spaces.Box(low=0.0, high=1.0, shape=(OBS_SIZE,), dtype=np.float32)
             for agent in self.possible_agents
         }
-
-        # 10 actions: 4 attack slots + 6 switch slots
-        self.action_spaces = {
-            agent: spaces.Discrete(10) for agent in self.possible_agents
-        }
-
-        # Suppress noisy poke-env warnings during training
+        self.action_spaces = {agent: spaces.Discrete(ACTION_N) for agent in self.possible_agents}
         logging.getLogger("poke_env").setLevel(logging.ERROR)
 
     @staticmethod
-    def action_to_order(action: int, battle, fake: bool = False, strict: bool = True, **kwargs):
-        """
-        Maps the neural network's integer action back into a valid BattleOrder.
+    def action_to_order(action, battle, fake: bool = False, strict: bool = True, **kwargs):
+        return map_action_to_order(action, battle, fake=fake, strict=strict)
 
-        This mapping is stable and fixed to ensure it matches the action_masks exactly.
-        Logic priority: Wait state > Forced Switch > Normal Move > Normal Switch.
-
-        Args:
-            action: Integer from 0 to 9.
-            battle: The current Battle object.
-
-        Returns:
-            A SingleBattleOrder or DefaultBattleOrder.
-        """
-        # Case 1: Wait state (opponent is choosing)
-        if battle._wait:
-            return DefaultBattleOrder()
-
-        # Case 2: Force switch (current active Pokemon just fainted)
-        if battle.force_switch:
-            team = list(battle.team.values())
-            switch_idx = action - 4
-            if 0 <= switch_idx < len(team):
-                pokemon = team[switch_idx]
-                if pokemon in battle.available_switches:
-                    return SingleBattleOrder(pokemon)
-            # Fallback: pick first legal switch
-            if battle.available_switches:
-                return SingleBattleOrder(battle.available_switches[0])
-            return DefaultBattleOrder()
-
-        # Case 3: Normal turn - Attack (actions 0-3)
-        if action < 4:
-            try:
-                moves = list(battle.active_pokemon.moves.values())
-                if action < len(moves):
-                    move = moves[action]
-                    if move in battle.available_moves:
-                        return SingleBattleOrder(move)
-            except Exception:
-                pass
-
-        # Case 4: Normal turn - Switch (actions 4-9)
-        if action >= 4:
-            try:
-                team = list(battle.team.values())
-                team_idx = action - 4
-                if team_idx < len(team):
-                    pokemon = team[team_idx]
-                    if pokemon in battle.available_switches:
-                        return SingleBattleOrder(pokemon)
-            except Exception:
-                pass
-
-        # Final Fallback: Return any legal order to prevent a server hang
-        if battle.valid_orders:
-            return battle.valid_orders[0]
-        return DefaultBattleOrder()
+    @staticmethod
+    def order_to_action(order, battle, fake: bool = False, strict: bool = True):
+        return map_order_to_action(order, battle, fake=fake, strict=strict)
 
     def embed_battle(self, battle):
-        """Overrides parent method to use the custom StateVectorizer."""
         return self.vectorizer.embed_battle(battle)
 
-    def calc_reward(self, battle) -> float:
-        """
-        Calculates a dense reward signal for the current battle state.
+    def get_additional_info(self):
+        info = super().get_additional_info()
+        battle = self.battle1
+        payload = {
+            "battle_finished": 0,
+            "battle_won": 0,
+            "turn": 0,
+        }
+        if battle is not None:
+            payload["turn"] = int(getattr(battle, "turn", 0) or 0)
+            if getattr(battle, "finished", False):
+                payload["battle_finished"] = 1
+                payload["battle_won"] = 1 if getattr(battle, "won", False) else 0
+        if self.possible_agents:
+            info[self.possible_agents[0]] = payload
+        return info
 
-        Includes victory/defeat (+30/-30), HP delta, stat boosts, status, and hazards.
-        """
-        # 1. Base Sparse Reward (HP changes and Victory/Defeat)
+    def calc_reward(self, battle) -> float:
         base_reward = self.reward_computing_helper(
             battle,
             fainted_value=2.0,
             hp_value=1.0,
             victory_value=30.0,
         )
-
         custom_current_value = 0.0
-
-        if (
-            battle.active_pokemon is not None
-            and battle.opponent_active_pokemon is not None
-        ):
-            # Offensive boosts
-            boost_sum = sum(
-                battle.active_pokemon.boosts.get(stat, 0)
-                for stat in ["atk", "spa", "spe"]
-            )
+        if battle.active_pokemon is not None and battle.opponent_active_pokemon is not None:
+            boost_sum = sum(battle.active_pokemon.boosts.get(stat, 0) for stat in ["atk", "spa", "spe"])
             if boost_sum > 0:
                 custom_current_value += boost_sum * 0.3
-
-            # Defensive/Stat penalties
             neg_boost_sum = sum(
-                min(0, battle.active_pokemon.boosts.get(stat, 0))
-                for stat in ["atk", "def", "spa", "spd", "spe"]
+                min(0, battle.active_pokemon.boosts.get(stat, 0)) for stat in ["atk", "def", "spa", "spd", "spe"]
             )
             custom_current_value += neg_boost_sum * 0.1
-
-            # Status conditions on opponent
             opp = battle.opponent_active_pokemon
             if opp is not None and opp.status in _DEBUFF_STATUSES:
                 custom_current_value += 0.3
-
-        # Hazards
         if battle.opponent_side_conditions:
             custom_current_value += len(battle.opponent_side_conditions) * 0.5
-
         if battle.side_conditions:
-            hazard_score = _own_hazard_weight(battle.side_conditions)
-            custom_current_value -= hazard_score * 1.0
-
+            custom_current_value -= _own_hazard_weight(battle.side_conditions) * 1.0
         if not hasattr(self, "_custom_reward_buffer"):
             self._custom_reward_buffer = weakref.WeakKeyDictionary()
-
         if battle not in self._custom_reward_buffer:
             self._custom_reward_buffer[battle] = 0.0
-
         custom_reward_delta = custom_current_value - self._custom_reward_buffer[battle]
         self._custom_reward_buffer[battle] = custom_current_value
-
         return base_reward + custom_reward_delta - 0.02
 
 
 class PokemonMaskedEnvWrapper(SingleAgentWrapper):
-    """
-    Gym wrapper that generates action masks for MaskablePPO.
-
-    Ensures that the agent only attempts actions which are legal in the
-    current Showdown battle state.
-    """
+    """Single-agent Gym wrapper exposing ``action_masks()`` for MaskablePPO."""
 
     def __init__(self, env: PokemonMaskedEnv, opponent: Player):
         super().__init__(env, opponent)
 
     def action_masks(self) -> np.ndarray:
-        """
-        Generates binary action mask corresponding to 0-9 action space.
-
-        The mask is kept in strict alignment with action_to_order:
-          - Slots 0-3: move slots ordered by battle.active_pokemon.moves (dict iteration order)
-          - Slots 4-9: team slots ordered by battle.team (dict iteration order)
-
-        Returns:
-            A binary numpy array (1 = valid, 0 = invalid).
-        """
         battle = self.env.agent1.battle
-        mask = np.zeros(self.action_space.n, dtype=np.int8)
-
-        # No active battle or waiting for opponent
-        if battle is None or battle._wait:
-            mask[0] = 1  # Safety pass
-            return mask
-
-        # Forced Switch Logic
-        if battle.force_switch:
-            available_switch_names = [p.name for p in battle.available_switches]
-            team_names = list(battle.team.keys())
-            for i, p_name in enumerate(team_names):
-                if i < 6 and p_name in available_switch_names:
-                    mask[4 + i] = 1  # Slots 4-9 are switches
-
-            if not mask.any():
-                mask[4] = 1  # Absolute safety fallback
-            return mask
-
-        # Normal Turn: Move masking (0-3)
-        available_move_ids = [m.id for m in battle.available_moves]
-        move_ids = (
-            list(battle.active_pokemon.moves.keys()) if battle.active_pokemon else []
-        )
-        for i, m_id in enumerate(move_ids):
-            if i < 4 and m_id in available_move_ids:
-                mask[i] = 1
-
-        # Normal Turn: Switch masking (4-9)
-        available_switch_names = [p.name for p in battle.available_switches]
-        team_names = list(battle.team.keys())
-        for i, p_name in enumerate(team_names):
-            if i < 6 and p_name in available_switch_names:
-                mask[4 + i] = 1
-
-        # Safety catch for zero-valid-action turns
-        if not mask.any() and battle.valid_orders:
-            mask[0] = 1
-
-        return mask
-
-
-class GauntletEnvWrapper(PokemonMaskedEnvWrapper):
-    """
-    Phase 3 "Gauntlet" Environment Wrapper.
-
-    This wrapper inherits action masking and the 238-dimensional observation space
-    from `PokemonMaskedEnvWrapper`, but it introduces aggressive reward shaping
-    specifically designed to combat Cathedral Forgetting and Heuristic Deadlocking.
-
-    Design Goals:
-    1. Eradicate Stalling: The base wrapper penalized -0.02 per turn. This wrapper
-       increases that to -0.1 per turn, heavily punishing infinite switching loops.
-    2. Over-value Knockouts: Instead of the default +30 for a win, this wrapper
-       boosts the victory reward to +100, ensuring the RL agent prioritizes actual
-       match conclusions over farming in-game status conditions.
-    """
+        return compute_action_masks(battle)
 
     def step(self, action: int):
-        """
-        Executes a single environment step, intercepting the reward vector.
-        """
         obs, reward, terminated, truncated, info = super().step(action)
-
-        # 1. Aggressive Stall Penalty: -0.1 per action taken
-        reward -= 0.1
-
-        # 2. Victory/Defeat Multiplier Calculation
-        # The base poke-env architecture assigns +30 for a win and -30 for a loss.
-        # We intercept this base calculation at the end of the battle.
         battle = self.env.agent1.battle
-        if battle.finished:
-            if battle.won:
-                # Base is +30. We add +70 to reach the +100 target reward for Phase 3.
-                reward += 70.0
-            elif battle.lost:
-                # Base is -30. We subtract 70 to reach a steep -100 penalty for losing.
-                reward -= 70.0
-            elif battle.lost:
-                reward -= 70.0  # -30 (base) - 70 = -100 Total
-
+        info.setdefault("battle_finished", 0)
+        info.setdefault("battle_won", 0)
+        info.setdefault("turn", 0)
+        if battle is not None:
+            info["turn"] = int(getattr(battle, "turn", 0) or 0)
+            if getattr(battle, "finished", False):
+                info["battle_finished"] = 1
+                info["battle_won"] = 1 if getattr(battle, "won", False) else 0
         return obs, reward, terminated, truncated, info

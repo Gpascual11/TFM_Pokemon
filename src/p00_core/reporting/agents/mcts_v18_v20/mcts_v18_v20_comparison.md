@@ -1,16 +1,15 @@
-# Information-Set MCTS EDA — v18 / v19 / v20
+# Shallow MCTS EDA — v18 / v19 / v20
 
 Source: `data/benchmarks/all_10k/gen9randombattle` (each agent as us vs 28 opponents, **1k games**).
 Budget: 100 simulations / turn, 5-turn LocalSim rollouts, C = 1.4.
 
 ## Architecture in one paragraph
 
-All three agents are Information-Set MCTS on top of HeuristicV14. Each simulation
-determinizes the hidden opponent, rolls out 5 turns with a greedy type-aware policy,
-and backs up a leaf score. **v18** uses UCB1 and a simple HP/boosts/status/hazards leaf.
-**v19** keeps UCB1 but scores leaves with roles and OHKO threats, and runs v14 tactical
-overrides (endgame, setup-stop, absorb) *before* the tree. **v20** is v19 with PUCT:
-the v14 action gets prior 0.70 so the 100 simulations concentrate on that line.
+All three inherit HeuristicV14. Each iteration picks a **root** child by UCB, runs a
+5-turn LocalSim rollout, and backs up that child. Hidden info is revealed moves.
+**v18** UCB1 + HP-style leaf. **v19** positional leaf + v14 overrides before the tree.
+**v20** PUCT prior 0.70 on the v14 action; leaves stay v19-style.
+
 
 ## Headline
 
@@ -30,7 +29,7 @@ the v14 action gets prior 0.70 so the 100 simulations concentrate on that line.
 - **v20 overrides on only ~19%** of search decisions and is the strongest MCTS agent
   (overall +5.6 pp vs v18). PUCT is mostly re-ranking v14, not replacing it.
 - Setup / hazards stay at v14 levels (~0.22 / ~0.04), not v12 levels. Five greedy
-  rollout turns do **not** recover delayed-payoff strategy.
+  rollout turns keep setup / hazards at v14 levels (~0.22 / ~0.04).
 
 ## Head-to-head
 

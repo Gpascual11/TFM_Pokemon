@@ -112,9 +112,9 @@ Below is the complete audit registry for all 70 exported columns across the 90 a
 | 43 | `xgb_stays_opp` | `int` | `opponent._xgb_stays_by_battle` | Mirror XGBoost stay counter for opponent. | ✅ PASS |
 | 44 | `xgb_prob_sum_us` | `float` | `player._xgb_prob_sum_by_battle` | Cumulative sum of predicted class probability scores. Validated non-NaN/Inf. | ✅ PASS |
 | 45 | `xgb_prob_sum_opp` | `float` | `opponent._xgb_prob_sum_by_battle` | Mirror probability sum for opponent ML agent. | ✅ PASS |
-| 46 | `search_switches_us` | `int` | `player._search_switches_by_battle`| Switch decisions selected by Minimax matrix search or IS-MCTS tree rollouts. | ✅ PASS |
+| 46 | `search_switches_us` | `int` | `player._search_switches_by_battle`| Switch decisions selected by 1-ply minimax or shallow MCTS rollouts. | ✅ PASS |
 | 47 | `search_switches_opp` | `int` | `opponent._search_switches_by_battle`| Mirror search switch counter for opponent. | ✅ PASS |
-| 48 | `search_moves_us` | `int` | `player._search_moves_by_battle` | Move actions selected by Minimax matrix search or IS-MCTS tree rollouts. | ✅ PASS |
+| 48 | `search_moves_us` | `int` | `player._search_moves_by_battle` | Move actions selected by 1-ply minimax or shallow MCTS rollouts. | ✅ PASS |
 | 49 | `search_moves_opp` | `int` | `opponent._search_moves_by_battle` | Mirror search move counter for opponent. | ✅ PASS |
 | 50 | `endgame_solves_us` | `int` | `player._endgame_solves_by_battle`| Triggers of deterministic endgame 1v1 solver. | ✅ PASS |
 | 51 | `endgame_solves_opp` | `int` | `opponent._endgame_solves_by_battle`| Mirror endgame solver counter for opponent. | ✅ PASS |

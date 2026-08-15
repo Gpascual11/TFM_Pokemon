@@ -30,9 +30,9 @@ class AgentFactory:
     """Unified Factory for building any Pokémon agent by its name label.
 
     This factory centralizes the creation of three distinct agent families:
-    1. Internal Heuristics (v1-v6): Rule-based experts built locally.
-    2. Baselines (abyssal, random, etc.): Standard poke-env agents.
-    3. LLM Agents (pokechamp, pokellmon): Model-based agents requiring the Pokechamp library.
+    1. Internal Heuristics (v1–v22): rule-based, 1-ply minimax, shallow MCTS, IL.
+    2. Baselines (abyssal, random, etc.): Standard poke-env / pokechamp agents.
+    3. LLM Agents (pokechamp, pokellmon): optional; not in the gen9 gauntlet.
 
     It serves as the main dependency injection point for evaluation scripts.
     """

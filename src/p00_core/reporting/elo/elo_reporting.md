@@ -2,7 +2,9 @@
 
 ## What it does
 
-This script runs a **Whole-History Rating (WHR)** calculation—a Maximum Likelihood Estimation of Elo ratings—using the Bradley-Terry model. It computes an objective "Elo Rating" for all the AI agents based on the 1v1 battle results recorded in the benchmark CSV files.
+This script fits a **Bradley-Terry** model (logistic / MLE) on the round-robin wins.
+Ratings are reported on an Elo-like scale.
+
 
 ## Input Data
 

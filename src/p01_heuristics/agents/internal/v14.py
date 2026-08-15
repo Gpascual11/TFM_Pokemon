@@ -157,6 +157,7 @@ class HeuristicV14(BaseHeuristic1v1):
 
         sets_dict = {}
         try:
+            # parents[5] is outside this repo; sets.json is never found. Cache stays {}.
             workspace_root = Path(__file__).resolve().parents[5]
             showdown_dir = workspace_root / "pokemon-showdown" / "data" / "random-battles"
 
@@ -1352,7 +1353,11 @@ class HeuristicV14(BaseHeuristic1v1):
     # -- Exact 16-Step Damage Calc Wrapper ------------------------------------
 
     def _calculate_exact_damage_range(self, move, attacker, defender, battle) -> tuple[float, float]:
-        """Calculates the 16-step exact damage range (min roll to max roll)."""
+        """Approximate damage range: (0.85 × score, score). Not 16 discrete rolls.
+
+        Opponent HP from poke-env is often a 0–100 percentage; do not treat this as
+        guaranteed KO math against true HP.
+        """
         if move.base_power <= 0:
             return 0.0, 0.0
 

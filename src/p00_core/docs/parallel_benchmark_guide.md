@@ -44,7 +44,7 @@ The `worker.py` script is highly optimized for RAM:
 2. **The Chunking Engine**:
     - It splits its assigned batch into smaller **chunks of 25**.
     - It utilizes `await player.battle_against(...)`.
-    - After 25 battles, it iterates through the finished battles, extracts **46 columns** per game (identity, outcome, decision quality, team state, tactical tracking, RNG metrics, and strategy counters) and appends them to a **Worker-Unique CSV**.
+    - After 25 battles, it iterates through the finished battles, extracts telemetry columns per game (~70 fields) and appends them to a **Worker-Unique CSV**.
     - It calls `player.reset_battles()` to clear all reference IDs.
     - It explicitly invokes `gc.collect()` to force Python to clear deleted objects from RAM.
 
@@ -64,13 +64,14 @@ The `AgentFactory` (and its alias `HeuristicFactory`) allows you to swap agents 
 | `v4` | The Field Expert | V3 damage + weather/terrain + accuracy × priority. Smart type-based switching. |
 | `v5` | The Boost Master | V4 + stat-boost-aware damage (in-battle stages). Smart type-based switching. |
 | `v6` | The Stable Peak | V3 damage + weather/terrain/priority (lightweight). V3 triggers (slot 0). |
-| `v7` | The Strategist | Hazards + setup + KO check + matchup switching. Abyssal-level play. |
-| `v8` | The Meta Reader | V7 + item/ability/screen/Trick Room awareness. Beyond Abyssal. |
-| `v9` | The Optimizer | V7 boost core + tight hazards/setup on free turns. |
-| `v10` | The Disruptor | V8 core + status moves + sack logic + pivot moves. |
-| `v11` | The Adaptable | Hybrid of V9 and V10 + Gen-Aware adaptations. |
-| `v12` | The Meta Master | V11 + teampreview lead + fainted switch + Terastallize. |
-| `v13` | The Prediction Master | V12 + sets prediction + sweeper reaction + recovery + dynamic hazards. |
+| `v7` | Boost-aware | Matchup switch. |
+| `v8` | Priority KO | Known-ability immunity. |
+| `v9` | Tight hazards/setup | Free turns only. |
+| `v10` | Status / sack / pivots | — |
+| `v11` | Hybrid | V9 + V10 + gen-aware. |
+| `v12` | Tera | Fainted switch-in. |
+| `v13` | Revealed-move matchups | Recovery, choice-lock, conservative Tera. |
+| `v14` | Yomi / scouting / endgame | Approx. damage range (0.85–1.0×). |
 
 ### 📊 Baselines & Poke-Env Standards
 
@@ -80,8 +81,8 @@ The `AgentFactory` (and its alias `HeuristicFactory`) allows you to swap agents 
 | `max_power` | Standard | Chooses the move with the highest base power. |
 | `simple_heuristic` | Optimized | Use basic type-effectiveness table. |
 | `abyssal` | Pokechamp | Uses the Abyssal rule-set for singles. |
-| `one_step` | Pokechamp | Evaluates moves based on one-step lookahead. |
-| `safe_one_step` | Pokechamp | One-step damage-based lookahead using poke_env only (no LocalSim/prompts). |
+| `one_step` | Same as `safe_one_step` | `SafeOneStepPlayer` (duplicate label). |
+| `safe_one_step` | Same as `one_step` | poke-env only, no LocalSim. |
 
 ### 🧠 LLM / AI Agents
 

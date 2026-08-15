@@ -34,7 +34,7 @@ All evaluation, benchmarking, and core utilities are stored in the shared `p00_c
 The heuristics do not "learn" in real-time; instead, they follow a pre-defined mathematical framework to evaluate the game state. Every agent follows a structured **Thinking Loop** that converts raw data into a strategic move.
 
 ### 2.1 State Extraction (The Sensory Phase)
-The process begins when the Pokémon Showdown server sends a JSON request. The framework parses this raw data into a high-level **Battle Object**. This object provides the agent with a "God's eye view" of the accessible information:
+The process begins when the Pokémon Showdown server sends a JSON request. The framework parses this into a **Battle Object** with **fog-of-war** fields: own team in full; opponent HP as a percentage; only **revealed** moves/items/abilities.
 *   **Our Team**: Current HP, status, remaining moves (PP), and active stat boosts.
 *   **The Field**: Active Weather (Rain, Sun), Terrain (Grassy, Electric), and Entry Hazards (Spikes, Stealth Rock).
 *   **The Opponent**: Known Pokémon, revealed moves, and estimated stat tiers.
