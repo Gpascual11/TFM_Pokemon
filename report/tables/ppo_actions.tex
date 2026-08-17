@@ -1,0 +1,15 @@
+\begin{table}[htbp]
+\centering
+\caption{Espai d'accions \texttt{Discrete(14)} de MaskablePPO. La màscara de legalitat i la traducció a \texttt{/choose} comparteixen el mateix mapeig de slots~\cite{huang_action_masking}.}
+\label{tab:ppo_actions}
+\small
+\begin{tabularx}{\textwidth}{clX}
+\toprule
+\textbf{Índex} & \textbf{Acció} & \textbf{Quan és legal} \\
+\midrule
+0--3 & Moviment $i$ de l'actiu & El slot té un moviment amb PP i no hi ha canvi forçat. \\
+4--7 & Moviment $i$ + Teracristal·litzar & El moviment $i$ és legal i la Tera encara no s'ha consumit. \\
+8--13 & Canvi a l'slot $i$ de l'equip & El membre existeix, no està debilitat, no és l'actiu i no hi ha bloqueig de canvi. \\
+\bottomrule
+\end{tabularx}
+\end{table}

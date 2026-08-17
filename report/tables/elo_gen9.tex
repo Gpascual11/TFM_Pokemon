@@ -1,6 +1,6 @@
 \begin{table}[H]
 \centering
-\caption{Elo Bradley--Terry a \texttt{gen9randombattle}, àncora \texttt{random}${}=1000$, usant \emph{ambdós} seients de cada fitxer dirigit. Agents no-MCTS: 506.000 partides al model; MCTS: 56.000 (28k com a nosaltres + 28k com a oponent). \texttt{v14} queda empatat amb Abyssal i Simple Heuristic ($\sim$1755): el mateix llançament de moneda ja vist a les cel·les de 10k.}
+\caption{Escala Bradley--Terry a \texttt{gen9randombattle}, ancorada a \texttt{random}${}=1000$ i ajustada amb les dues orientacions. Els agents no MCTS aporten 506.000 observacions i els MCTS, 56.000. No s'han calculat intervals: valors iguals després d'arrodonir no impliquen equivalència estadística.}
 \label{tab:elo_gen9}
 \small
 \begin{tabular}{rlrl}
@@ -18,7 +18,7 @@
 9  & \texttt{v21}               & 1729 & IL híbrid \\
 10 & \texttt{v17}               & 1722 & Minimax \\
 \midrule
--- & \texttt{v22}               & 1529 & IL pur \\
+-- & \texttt{v22}               & 1529 & IL (atributs) \\
 -- & \texttt{random}            & 1000 & Baseline (àncora) \\
 \bottomrule
 \end{tabular}

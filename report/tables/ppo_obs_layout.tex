@@ -1,0 +1,22 @@
+\begin{table}[htbp]
+\centering
+\caption{Composició del vector d'observació de MaskablePPO. El model A publicat té 328 dimensions; les fases 1 i 1.5 n'utilitzaven 318 (sense dany estimat ni enfrontaments de canvi). Les 18 dimensions addicionals de la fase 4 no entren al resultat principal.}
+\label{tab:ppo_obs_layout}
+\small
+\begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Bloc} & \textbf{Dim.} & \textbf{Contingut} \\
+\midrule
+Actiu propi / rival & $35+35$ & HP, tipus, condició d'estat i set etapes de modificadors. \\
+Moviments & $84+4+4$ & Tipus i potència dels 4 slots, PP i STAB$\times$efectivitat. \\
+Banc propi i rival & $6\times 6+1$ & HP, debilitats, indicador de capdavanter i estimació de supervivents rivals. \\
+Camp & $9+14+24+24$ & Clima, terreny i condicions laterals d'ambdós bàndols. \\
+Teracristal·lització & $3+20+20$ & Disponibilitat, ús previ i tipus Tera. \\
+Velocitat i restriccions & $5$ & Comparació de velocitat, \texttt{force\_switch} i \texttt{trapped}. \\
+Afegits de fase 2 & $4+6$ & Dany estimat dels 4 moviments i enfrontament dels 6 canvis. \\
+\midrule
+\textbf{Total model A} & \textbf{328} & Vector en $[0,1]$, compatible amb els checkpoints de les fases 2 i 3. \\
+Extensió de fase 4 & $+18$ & Enfrontaments del banc revelat, millor capdavanter, dany/defensa Tera i cost de perills. \\
+\bottomrule
+\end{tabularx}
+\end{table}

@@ -1,0 +1,17 @@
+\begin{table}[htbp]
+\centering
+\caption{Comparació conceptual dels cinc paradigmes. Tots decideixen sobre el mateix simulador i format; canvia la font de coneixement i el còmput per torn.}
+\label{tab:paradigm_mechanisms}
+\small
+\begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{2.2cm}}
+\toprule
+\textbf{Paradigma} & \textbf{Què decideix} & \textbf{Coneixement} & \textbf{Còmput per torn} & \textbf{Aprèn?} \\
+\midrule
+Heurística & Argmax d'una puntuació fixa sobre accions legals. & Regles escrites (dany, posició, Tera). & Constant, baix. & No durant l'execució. \\
+Minimax d'un torn & Maximin sobre una matriu d'accions i respostes estimades. & Funció de fulla + prior opcional. & Enumeració d'un torn. & No. \\
+MCTS ras & UCB/PUCT només als fills de l'arrel. & Determinització i, a \texttt{v20}, prior de \texttt{v14}. & 100 simulacions de 5 torns. & No (cerca en línia). \\
+Imitació & Classificador atacar/canviar + executor. & Trajectòries humanes Elo~$1800+$. & Inferència XGBoost. & Supervisat, fora de línia. \\
+PPO & Política estocàstica emmascarada $\pi_\theta(a\mid o)$. & Interacció amb recompensa + clonatge inicial. & Un pas de xarxa. & Per reforç, fora de partida. \\
+\bottomrule
+\end{tabularx}
+\end{table}

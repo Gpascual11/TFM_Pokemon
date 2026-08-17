@@ -1,33 +1,32 @@
 \begin{table}[H]
 \centering
-\caption{Taxonomia dels 28 agents del gauntlet \texttt{gen9randombattle}. Els identificadors es mantenen en anglès. El prefix de la figura de calor indica el paradigma: (H)~heurística, (MM)~minimax, (MCT)~MCTS, (IL)~imitació, (B)~baseline.}
+\caption[Taxonomia dels 28 agents de la matriu.]{Taxonomia dels 28 agents de la matriu \texttt{gen9randombattle}. Els identificadors de codi es mantenen en anglès. El prefix del mapa de calor indica la família: (H) heurística, (MM) minimax, (MCT) MCTS, (IL) imitació i (B) agent de referència. El PPO s'avalua separadament contra \texttt{v12}.}
 \label{tab:taxonomy}
 \small
-\begin{tabular}{llp{8.2cm}}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{3.1cm}X}
 \toprule
-\textbf{IDs} & \textbf{Paradigma} & \textbf{Què és, en una frase} \\
+\textbf{Identificadors} & \textbf{Paradigma} & \textbf{Descripció} \\
 \midrule
-\texttt{random}, \texttt{max\_power}, \texttt{one\_step}, \texttt{safe\_one\_step}, \texttt{abyssal}, \texttt{simple\_heuristic}
-  & Baselines (B)
-  & Referents de \textit{poke-env} i d'estil Pokechamp: atzar, potència bruta, un pas de dany, i heurístiques de matchup. \\
+\texttt{random}, \texttt{max\_power},\newline
+\texttt{one\_step}, \texttt{safe\_one\_step},\newline
+\texttt{abyssal}, \texttt{simple\_heuristic}
+  & Referències (B)
+  & Agents de \textit{poke-env} i PokéChamp: atzar, potència base, un pas de dany i regles d'enfrontament. \\
 \texttt{v1}--\texttt{v14}
   & Heurístiques (H)
-  & Escala d'ablació per construcció: cada versió afegeix una peça de coneixement expert (dany, hazards, Tera, Yomi,\ldots). \\
+  & Seqüència incremental de coneixement: dany, posició, perills d'entrada i Teracristal·lització, entre altres components. \\
 \texttt{v15}--\texttt{v17}
-  & Minimax 1-ply (MM)
-  & Maximin analític d'un torn sobre \texttt{HeuristicV14}; sense \texttt{LocalSim}. \\
+  & Minimax d'un torn (MM)
+  & Maximin analític d'un torn amb \texttt{HeuristicV14} com a base. \\
 \texttt{v18}--\texttt{v20}
-  & IS-MCTS (MCT)
-  & 100 simulacions $\times$ 5 torns de \texttt{LocalSim}; cel·les amb $n=1.000$. \\
+  & MCTS ras (MCT)
+  & UCB a l'arrel i 100 simulacions de cinc torns amb \texttt{LocalSim}; cel·les amb $n=1.000$. \\
 \texttt{v21}
-  & IL híbrid (IL)
-  & Macro XGBoost (mou vs canvia) + execució \texttt{v14}. \\
+  & Imitació híbrida (IL)
+  & XGBoost decideix atacar o canviar i \texttt{v14} executa l'acció. \\
 \texttt{v22}
-  & IL pur (IL)
-  & El mateix macro, dos XGBoost, \textbf{sense} \texttt{v14}. \\
-\texttt{v23+}
-  & PPO (fora del gauntlet)
-  & Framework a \texttt{src/p05\_ppo\_drl/}; no forma part d'aquesta matriu. \\
+  & Imitació (IL)
+  & El mateix classificador d'alt nivell; el model de moviments puntua potència, STAB i efectivitat. \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}

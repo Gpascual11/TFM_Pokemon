@@ -1,21 +1,21 @@
 \begin{table}[H]
 \centering
-\caption{Escala heurística \texttt{v1}--\texttt{v14} (253.000 partides cadascuna). Tres salts discrets i una inversió: la genealogia deia $\texttt{v14}\supset\texttt{v13}\supset\texttt{v12}$; el gauntlet diu $\texttt{v12}\ge\texttt{v13}>\texttt{v14}$. Els comptadors \texttt{setup\_uses}/\texttt{hazard\_sets} són 0 per a \texttt{v7}/\texttt{v8}/\texttt{v10} per un forat d'esquema, no perquè no posin roques.}
+\caption[Seqüència heurística \texttt{v1}--\texttt{v14}.]{Seqüència heurística \texttt{v1}--\texttt{v14} (253.000 partides per fila). La taxa global no creix de manera monotònica: els increments principals apareixen a \texttt{v7}, \texttt{v9} i \texttt{v12}, i les dues versions posteriors disminueixen.}
 \label{tab:heur_ladder}
 \small
-\begin{tabular}{llrrl}
+\begin{tabularx}{\textwidth}{llrr>{\raggedright\arraybackslash}X}
 \toprule
-\textbf{Agent} & \textbf{Règim} & \textbf{WR (\%)} & \textbf{vs Abyssal} & \textbf{Què s'hi afegeix} \\
+\textbf{Agent} & \textbf{Règim} & \textbf{TV (\%)} & \textbf{contra Abyssal} & \textbf{Incorporació principal} \\
 \midrule
-\texttt{v1}--\texttt{v6} & Altiplà & 44,25--45,86 & 30,6--32,5 & Dany, clima, boosts, pivot tòxic \\
-\texttt{v7} & Posicional & 54,25 & 40,80 & Hazards, setup, KO, switch de matchup \\
+\texttt{v1}--\texttt{v6} & Altiplà & 44,25--45,86 & 30,6--32,5 & Dany, clima, modificadors i canvis simples \\
+\texttt{v7} & Posicional & 54,25 & 40,80 & Dany modificat i canvi segons l'enfrontament \\
 \texttt{v8} & Posicional & 55,43 & 42,30 & Objectes, habilitats, pantalles, Trick Room \\
-\texttt{v9} & Tempo segur & 58,86 & 46,64 & Hazards/setup \emph{només en torns lliures} \\
+\texttt{v9} & Ritme segur & 58,86 & 46,64 & Perills i preparació \emph{només en torns lliures} \\
 \texttt{v10} & Posicional & 55,66 & 41,86 & Status, sacrifici $\le 20\%$ HP, U-turn \\
-\texttt{v11} & Tempo segur & 59,26 & 47,50 & Híbrid \texttt{v9}+\texttt{v10} \\
-\texttt{v12} & Tera / preview & \textbf{69,01} & \textbf{59,91} & Tera + lead de preview + switch-in \\
-\texttt{v13} & Predicció de set & 67,63 & 55,34 & Sets DB, Tera conservador, recuperació \\
-\texttt{v14} & Yomi / scouting & 62,03 & 51,36 & Yomi, scouting T1--3, 16 rolls, endgame 1-ply \\
+\texttt{v11} & Ritme segur & 59,26 & 47,50 & Combinació de \texttt{v9} i \texttt{v10} \\
+\texttt{v12} & Mecànica Gen.~IX & \textbf{69,01} & \textbf{59,91} & Tera i selecció del substitut \\
+\texttt{v13} & Moviments revelats & 67,63 & 55,34 & Enfrontament amb moviments revelats i Tera conservador \\
+\texttt{v14} & Model de rival & 62,03 & 51,36 & Perfil, sondeig inicial, rang de dany i final d'un torn \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}

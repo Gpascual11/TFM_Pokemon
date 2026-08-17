@@ -1,19 +1,19 @@
 \begin{table}[H]
 \centering
-\caption{IS-MCTS (100 simulacions $\times$ 5 torns de \texttt{LocalSim}). \textbf{Totes les cel·les $n=1.000$}; 28.000 partides per agent; IC global $\approx\pm 0{,}58$~pp, IC per cel·la $\approx\pm 3{,}1$~pp. Una fulla més rica (\texttt{v19}) no ajuda. PUCT amb prior 0,70 sobre \texttt{v14} (\texttt{v20}) és l'única millora, perquè discrepa \emph{menys}.}
+\caption{MCTS ras amb UCB a l'arrel i 100 simulacions de cinc torns. Totes les cel·les tenen $n=1.000$ (28.000 partides per agent). La fulla més rica de \texttt{v19} no aporta una millora observable; PUCT amb prior sobre \texttt{v14} redueix la discrepància i obté la taxa més alta de la família.}
 \label{tab:mcts_head}
 \small
 \begin{tabular}{lrrr}
 \toprule
  & \textbf{\texttt{v18} UCB1 HP} & \textbf{\texttt{v19} UCB1 pos.} & \textbf{\texttt{v20} PUCT 0,70} \\
 \midrule
-WR global (\%) & 54,02 & 53,29 & \textbf{59,66} \\
+TV global (\%) & 54,02 & 53,29 & \textbf{59,66} \\
 Cerca (\% torns) & 18,1 & 17,6 & 15,5 \\
-Override de \texttt{v14} (\%) & 71,3 & 71,1 & \textbf{18,7} \\
-Setup / partida & 0,22 & 0,22 & 0,20 \\
-Hazards / partida & 0,05 & 0,05 & 0,04 \\
+Discrepància amb \texttt{v14} (\%) & 71,3 & 71,1 & \textbf{18,7} \\
+Preparació / partida & 0,22 & 0,22 & 0,20 \\
+Perills / partida & 0,05 & 0,05 & 0,04 \\
 Tera / partida & 0,41 & 0,39 & 0,39 \\
-Mons restants (nosaltres) & 1,21 & 1,22 & 1,40 \\
+Pokémon restants & 1,21 & 1,22 & 1,40 \\
 \bottomrule
 \end{tabular}
 \end{table}

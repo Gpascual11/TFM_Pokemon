@@ -1,0 +1,17 @@
+\begin{table}[H]
+\centering
+\caption{Síntesi dels cinc paradigmes amb \texttt{v12} com a comparador comú. Les variants són les que obtenen el millor resultat observat dins de cada família; aquesta selecció és posterior a l'experiment. L'MCTS té una mostra menor i el PPO no participa en la matriu completa.}
+\label{tab:paradigm_summary}
+\small
+\begin{tabularx}{\textwidth}{llrrX}
+\toprule
+\textbf{Paradigma} & \textbf{Variant} & \textbf{$n$} & \textbf{vs \texttt{v12}} & \textbf{Lectura} \\
+\midrule
+Heurístiques & \texttt{v12} & 10.000 & 50,1\% & Autojoc de referència; 59,91\% contra Abyssal. \\
+Minimax d'un torn & \texttt{v17} & 10.000 & 40,94\% & El prior cap a \texttt{v14} millora les altres variants, però no supera \texttt{v12}. \\
+MCTS ras & \texttt{v20} & 1.000 & 42,7\% & PUCT redueix la discrepància amb \texttt{v14}; marge aproximat de $\pm 3$~pp. \\
+Imitació & \texttt{v21} & 10.000 & 41,28\% & El model decideix quan canviar i \texttt{v14} executa l'acció. \\
+PPO & model A & 10.000 & 34,1\% & Experiment separat, inicialitzat per clonatge de \texttt{v8}. \\
+\bottomrule
+\end{tabularx}
+\end{table}

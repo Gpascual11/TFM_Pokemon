@@ -1,61 +1,70 @@
 \chapter{Introducció}
 \label{chap:introduccio}
 
-La recerca en intel·ligència artificial aplicada a jocs ha passat dels clàssics d'informació perfecta ---escacs, Go--- a entorns on l'estat no és tot visible i el resultat d'una acció no és determinista. Pokémon, simulat amb precisió de motor a Pokémon Showdown~\cite{pokemon_showdown} i exposat a Python via \textit{poke-env}~\cite{poke_env}, concentra aquests dos ingredients: informació oculta (moviments, objecte, habilitat i banc del rival) i estocasticitat de combat (rolls de dany, precisió, crítics, empats de velocitat). El problema no és un MDP clàssic observable; és un \textbf{joc estocàstic d'observació parcial} (POSG), proper a un POMDP~\cite{pomdp,kaelbling_pomdp} de dos jugadors a suma zero~\cite{von_neumann}.
+Pokémon és un joc d'estratègia per torns caracteritzat per la informació parcial, les accions simultànies i les transicions estocàstiques. A cada torn, els jugadors han de decidir entre executar un moviment o substituir el Pokémon actiu sense conèixer amb certesa la configuració de l'equip rival, mentre que factors com la precisió dels atacs, els cops crítics i els efectes secundaris introdueixen aleatorietat inherent al combat.
 
-Aquest Treball de Final de Màster és un estudi de \textbf{comparació de paradigmes}, no un intent de «resoldre Pokémon» ni de construir l'agent més fort possible contra humans. El format és \textbf{exclusivament Singles} \texttt{gen9randombattle}. El competitiu oficial de Dobles (VGC) queda fora d'abast ---es va eliminar del pla del projecte--- i no ocupa cap capítol d'aquesta memòria. Un sol format, un sol simulador, la mateixa matriu d'oponents: la diferència entre agents s'ha d'atribuir a la política, no a un canvi de metagame.
+En aquest context, un \textbf{agent} és un sistema autònom que percep l'estat observable de la batalla i selecciona una acció per maximitzar la seva esperança de victòria~\cite{russell_norvig,wooldridge_mas}. Una \textbf{política} $\pi$ formalitza aquesta presa de decisions assignant una distribució sobre les accions legals a partir de l'observació disponible. Els diferents enfocaments d'Intel·ligència Artificial aborden aquesta política des de perspectives diverses: mitjançant regles heurístiques dissenyades per experts, planificació en línia mitjançant cerca adversària o simulació en arbre (MCTS), o bé aprenentatge de patrons a partir de dades humanes i recompenses per reforç.
+
+Aquest Treball de Final de Màster estudia i compara com cinc paradigmes d'agents afronten aquest problema de decisió sota condicions d'incertesa. L'objectiu no és construir un agent infal·lible, sinó avaluar empíricament implementacions concretes sota pressupostos computacionals explícits, en un entorn reproduïble i amb una escala mostral que permeti quantificar amb rigor la precisió dels resultats.
+
+Per a l'experimentació s'utilitza el simulador \textbf{Pokémon Showdown}~\cite{pokemon_showdown} i la llibreria \textit{poke-env}~\cite{poke_env}, focalitzant la recerca en el format individual \textbf{Random Battle de la Generació~IX} (\texttt{gen9randombattle}), on la generació procedural d'equips permet aïllar exclusivament la qualitat de la presa de decisions durant el combat.
 
 \section{Pregunta de recerca}
 
-La pregunta operativa és:
-
 \begin{quote}
-\textit{En un POSG com \texttt{gen9randombattle}, quin paradigma de decisió s'acosta més al sostre de coneixement d'una heurística forta: regles explícites, cerca adversària d'un torn, cerca de Monte Carlo a diversos torns, o clonatge d'experts humans?}
+\textit{Quin rendiment relatiu obtenen les heurístiques, el minimax d'un torn, l'MCTS ras, l'aprenentatge per imitació i PPO en batalles \texttt{gen9randombattle}, sota els pressupostos de còmput i el protocol experimental d'aquest treball?}
 \end{quote}
 
-«Sostre de coneixement» no vol dir «el millor agent concebible». Vol dir el millor agent \emph{d'aquesta} escala heurística, mesurat a la mateixa bateria bot-contra-bot. El gauntlet de 28 agents respon amb un rànquing, no amb una demostració d'optimalitat.
-
-Quatre paradigmes estan mesurats de cap a cap:
+La pregunta general es concreta en quatre preguntes:
 
 \begin{enumerate}
-    \item \textbf{Heurístiques \texttt{v1}--\texttt{v14}}: ablació per construcció. Cada versió afegeix una peça que un expert humà anomenaria (dany, hazards, Tera, predicció de set, Yomi).
-    \item \textbf{Minimax 1-ply \texttt{v15}--\texttt{v17}}: maximin analític sobre la resposta predita del rival, sense simulador intern.
-    \item \textbf{Information-Set MCTS \texttt{v18}--\texttt{v20}}: 100 determinacions $\times$ 5 torns de \texttt{LocalSim}.
-    \item \textbf{Imitació \texttt{v21}--\texttt{v22}}: el mateix classificador XGBoost de macro (mou vs canvia), dues piles d'execució (híbrid amb \texttt{v14} vs clon pur).
+    \item Quines incorporacions de coneixement expliquen els canvis de rendiment entre les catorze heurístiques?
+    \item La cerca adversària d'un torn o les simulacions Monte Carlo de cinc torns milloren l'heurística que utilitzen com a punt de partida?
+    \item Què aporta imitar la decisió humana d'atacar o canviar, i fins a quin punt el resultat depèn del mòdul que executa l'acció concreta?
+    \item Un agent MaskablePPO inicialitzat per clonatge conductual pot assolir el rendiment de l'heurística \texttt{v12}?
 \end{enumerate}
 
-El cinquè paradigma, \textbf{PPO / MaskablePPO} (\texttt{v23+}), té framework al repositori (\texttt{src/p05\_ppo\_drl/}) i \textbf{no} entra en aquesta matriu. S'avaluarà a part, gairebé segur \emph{només contra \texttt{v12}} ---el sostre bot-contra-bot---, no contra els 28 agents. Aquesta memòria el tracta com a treball futur.
+La comparació és principalment agent-contra-agent. L'avaluació de \texttt{v14} a la classificació pública de Showdown és una mostra externa i separada; no s'utilitza per reordenar la matriu experimental.
+
+\section{Paradigmes estudiats}
+
+S'implementen cinc formes de decidir sobre el mateix simulador i format:
+
+\begin{enumerate}
+    \item \textbf{Heurístiques} (\texttt{v1}--\texttt{v14}). Cada agent assigna una puntuació fixa a les accions legals. Les versions incorporen gradualment càlcul de dany, selecció per enfrontament, perills d'entrada, moviments de preparació i Teracristal·lització.
+    \item \textbf{Minimax d'un torn} (\texttt{v15}--\texttt{v17}). S'avalua una matriu maximin d'accions pròpies i respostes rivals estimades, amb una funció heurística a la fulla.
+    \item \textbf{Cerca Monte Carlo rasa} (\texttt{v18}--\texttt{v20}). S'aplica UCB o PUCT als fills de l'arrel i s'executen 100 simulacions de cinc torns amb \texttt{LocalSim}.
+    \item \textbf{Aprenentatge per imitació} (\texttt{v21}--\texttt{v22}). Un classificador XGBoost, entrenat amb repeticions de jugadors d'Elo~$1800+$, estima quan convé atacar o canviar. \texttt{v21} delega l'acció concreta a \texttt{v14}; \texttt{v22} utilitza un segon model basat en atributs dels moviments.
+    \item \textbf{Aprenentatge per reforç} (MaskablePPO). La política s'inicialitza mitjançant clonatge de \texttt{v8} i continua l'entrenament contra \texttt{v12}, amb emmascarament de les accions il·legals.
+\end{enumerate}
+
+Les quatre primeres famílies, juntament amb sis agents de referència, formen una matriu dirigida de \textbf{28 agents}. El PPO no forma part d'aquesta matriu: s'avalua en un experiment separat contra \texttt{v12}, l'agent amb millor resultat observat a la lliga. Aquesta asimetria es manté explícita en tota la memòria.
 
 \section{Objectius}
 
 \begin{itemize}
-    \item Formalitzar \texttt{gen9randombattle} com a POSG i justificar per què la mida del Pokédex \emph{no} entra a la variància d'una taxa de victòries binomial.
-    \item Construir i documentar una infraestructura de simulació paral·lela (Showdown local + workers aïllats) capaç de 10.000 partides per cel·la.
-    \item Desenvolupar l'escala heurística \texttt{v1}--\texttt{v14} com a ablació de coneixement, no com a catorze bots intercanviables.
-    \item Implementar cerca 1-ply i IS-MCTS \emph{a sobre} de \texttt{v14}, amb telemetria de si la cerca s'executa i de si discrepa de l'expert.
-    \item Entrenar un macro d'imitació sobre replays humans Elo~$1800+$ del \emph{mateix} format, i contrastar híbrid vs clon pur.
-    \item Publicar una matriu $28\times 28$ amb protocol honest: $n=10.000$ per defecte, $n=1.000$ quan intervé MCTS, ladder humana de \texttt{v14} com a validació ecològica (no com a substitut del round-robin).
+    \item Formalitzar el combat com un joc estocàstic d'observació parcial i definir una mètrica amb incertesa quantificada.
+    \item Construir una infraestructura de simulació paral·lela amb instàncies locals de Showdown i processos aïllats.
+    \item Desenvolupar \texttt{v1}--\texttt{v14} com una seqüència d'ablacions de coneixement, tot reconeixent que algunes versions introdueixen més d'un canvi.
+    \item Implementar i instrumentar minimax d'un torn i MCTS ras sobre \texttt{v14}, inclosa la taxa de discrepància respecte de l'acció heurística.
+    \item Entrenar un model d'imitació amb dades del mateix format i comparar una execució híbrida amb una execució principalment apresa.
+    \item Entrenar MaskablePPO amb clonatge inicial i avaluar el model final contra \texttt{v12}.
+    \item Analitzar la matriu $28\times 28$ amb 10.000 partides per cel·la, excepte les cel·les amb MCTS, que en contenen 1.000.
 \end{itemize}
 
-\section{Contribucions}
+\section{Contribucions i abast}
 
-\begin{enumerate}
-    \item \textbf{Protocol estadístic explícit.} Cada partida és un Bernoulli. Es deriva l'IC del 95\%, es justifica $n=10.000$ com a nivell de tesi ($\pm 0{,}98$~pp) i $n=1.000$ com a nivell de validació ($\pm 3{,}1$~pp), i es documenta per què MCTS no puja a 10k. El nombre de Pokémon de la generació no hi entra.
-    \item \textbf{Escala d'ablació heurística amb tres salts i una inversió.} El dany extra no guanya Random Battles (\texttt{v1}--\texttt{v6} $\approx 44$--$46\%$). La posició (\texttt{v7}) i el tempo (\texttt{v9}) sí. Les mecàniques natives de Gen~9 (\texttt{v12}: Tera, lead de preview, switch-in) són el salt gros: 69,01\% global, 59,91\% vs Abyssal. La genealogia deia $\texttt{v14}\supset\texttt{v13}\supset\texttt{v12}$; el gauntlet diu el contrari. Això no és un bug: \texttt{v14} està dissenyat per humans.
-    \item \textbf{Mesura de la cerca com a residual, no com a política.} Tant el minimax com l'MCTS s'executen en $\sim$16--18\% dels torns (la resta són dreceres de KO). La taxa de \emph{override} de \texttt{v14} predice qui guanya: 67\% / 71\% als no constrenyits, 37\% / 19\% als híbrids.
-    \item \textbf{Contrast híbrid vs pur en imitació.} El mateix model, el mateix llindar $\tau=0{,}5525$. Conservar \texttt{v14} dona un jugador de nivell \texttt{v9}/\texttt{v11} (58,71\%). Treure'l cau per sota de \texttt{v1} (33,49\%).
-    \item \textbf{Moral jeràrquica transversal.} Apareix tres vegades. El residual que substitueix l'expert perd; el que el conserva és l'única millora; cap no supera \texttt{v12}.
-\end{enumerate}
+Les contribucions principals són una infraestructura d'avaluació recuperable i paral·lela; una matriu experimental amb telemetria per decisió; una seqüència de catorze agents heurístics; tres variants de minimax, tres d'MCTS i dues d'imitació; i una avaluació específica de PPO. PokéChamp i PokéLLMon s'han integrat de manera exploratòria, però no formen part de la comparació quantitativa perquè el temps d'inferència observat no permetia completar el mateix volum de partides.
 
-No és una contribució d'aquesta passada presentar PPO com a experiment acabat, ni presentar Dobles/VGC com a part del corpus, ni citar 98 partides / 40,8\% / Elo~1151 com a mostra final de ladder.
+Els resultats descriuen aquestes implementacions, aquest format i aquests pressupostos. No demostren la superioritat general d'un paradigma, ni equivalen a rendiment contra jugadors humans.
 
 \section{Estructura de la memòria}
 
 \begin{itemize}
-    \item El \textbf{Capítol~\ref{chap:marc_teoric}} situa el POSG, les mecàniques de Singles que defineixen $S$, $A$ i $\Omega$, i els quatre paradigmes (heurística, minimax, IS-MCTS, imitació). El RL/PPO s'hi explica com a rerefons del treball futur, no com a resultat.
-    \item El \textbf{Capítol~\ref{chap:metodologia}} descriu Showdown, poke-env, la matriu $28\times 28$, i ---amb fórmula i taula--- per què 10.000 i 1.000 partides no són intercanviables.
-    \item El \textbf{Capítol~\ref{chap:infraestructura}} documenta el maquinari i el flux de treball remot.
-    \item El \textbf{Capítol~\ref{chap:implementacio}} detalla l'orquestrador master--worker, l'escala \texttt{v1}--\texttt{v14}, el maximin 1-ply, l'IS-MCTS i els dos agents IL.
-    \item El \textbf{Capítol~\ref{chap:resultats}} és el cos empíric: protocol, escala heurística, inversió, minimax, MCTS, IL, heatmap, Elo, ladder, discussió.
-    \item El \textbf{Capítol~\ref{chap:conclusions}} resumeix el que es pot afirmar i el que queda per PPO vs \texttt{v12}.
+    \item El \textbf{Capítol~\ref{chap:marc_teoric}} presenta el domini, la formalització i els cinc paradigmes.
+    \item El \textbf{Capítol~\ref{chap:metodologia}} defineix el protocol experimental, les mètriques i les amenaces a la validesa.
+    \item El \textbf{Capítol~\ref{chap:infraestructura}} documenta l'entorn de còmput i les dependències.
+    \item El \textbf{Capítol~\ref{chap:implementacio}} descriu el coordinador, els processos de treball i les implementacions dels agents.
+    \item El \textbf{Capítol~\ref{chap:resultats}} analitza la matriu, l'avaluació pública de \texttt{v14} i l'experiment PPO.
+    \item El \textbf{Capítol~\ref{chap:conclusions}} sintetitza els resultats, les limitacions i les línies de continuació.
 \end{itemize}

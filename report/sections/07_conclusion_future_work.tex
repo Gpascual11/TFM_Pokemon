@@ -1,35 +1,53 @@
-\chapter{Conclusions i Treball Futur}
+\chapter{Conclusions i línies futures}
 \label{chap:conclusions}
 
-\section{El que aquest TFM ha mesurat}
+\section{Resposta a la pregunta de recerca}
 
-S'ha comparat, en un sol format ---Singles \texttt{gen9randombattle}---, quatre paradigmes de decisió sobre la mateixa matriu de 28 agents. El Dobles/VGC no forma part de la contribució. El PPO no forma part d'aquest gauntlet.
+Aquest treball ha comparat cinc paradigmes d'agents en Pokémon Showdown Random Battle de la Generació~IX. Heurístiques, minimax d'un torn, MCTS ras i aprenentatge per imitació formen, amb sis agents de referència, una matriu dirigida de $28\times 28$. MaskablePPO s'ha avaluat separadament contra \texttt{v12}. La comparació comparteix simulador i format, però no és completament simètrica.
 
-El protocol és tan part del resultat com el rànquing. Cada partida és un Bernoulli. A 10.000 jocs l'IC del 95\% és $\pm 0{,}98$~pp; a 1.000, $\pm 3{,}1$~pp. MCTS es queda al pis de validació perquè 100 rollouts de \texttt{LocalSim} no caben en una nit de 10k. El Pokédex no entra a la variància. Els recíprocs sumen $\sim$100\%. L'autojoc és $\sim$50\%.
+Sota les implementacions i els pressupostos estudiats, les heurístiques obtenen el millor resultat observat. \texttt{v12} assoleix 69,01\% en la seva mitjana global descriptiva i 59,91\% contra Abyssal. Amb \texttt{v12} com a comparador comú, \texttt{v17} (minimax), \texttt{v20} (MCTS), \texttt{v21} (imitació) i el model PPO obtenen 40,94\%, 42,7\%, 41,28\% i 34,1\%, respectivament. La cel·la MCTS té $n=1.000$; les altres, $n=10.000$.
 
-\section{Respostes a la pregunta de recerca}
+La conclusió no és que les heurístiques siguin universalment superiors. És que, en aquest entorn, el coneixement explícit sobre Teracristal·lització, selecció del substitut, debilitaments garantits i control del ritme no queda recuperat per la cerca rasa ni pels models apresos amb els recursos utilitzats.
 
-En aquest POSG, \textbf{el coneixement heurístic té un sostre bot-contra-bot, i ni la cerca rasa ni el clonatge de macros humans el superen.}
+\section{Resultats principals}
 
 \begin{enumerate}
-    \item \textbf{L'escala \texttt{v1}--\texttt{v14} no és lineal.} Altiplà de dany (44--46\%). Salt posicional \texttt{v7} ($+$9~pp). Salt de tempo \texttt{v9} ($+$4~pp). Salt de format \texttt{v12} ($+$10~pp): Tera, preview, switch-in. \texttt{v12} és el primer intern que supera Abyssal ($59{,}91\%$, $n=10.000$).
-    \item \textbf{Inversió.} $\texttt{v12}\,(69{,}01)\ge\texttt{v13}\,(67{,}63)>\texttt{v14}\,(62{,}03)$. \texttt{v12} vs \texttt{v13} és una moneda a 10k. \texttt{v14} és l'agent orientat a humans, tercer al round-robin. La ladder (431 partides, 39,44\% $\pm 4{,}6$~pp, Elo $1085\to 1038$) valida ecològicament aquest disseny; no inverteix el rànquing.
-    \item \textbf{1-ply.} La matriu corre en el 16--18\% dels torns. Override 67\% (\texttt{v15}/\texttt{v16}) vs 37\% (\texttt{v17}). La fulla posicional de \texttt{v16} no puja el setup. \texttt{v17} vs \texttt{v14} $=43{,}6\%$ a 10k.
-    \item \textbf{5-ply IS-MCTS} ($n=1.000$). Override 71\% (UCB1) vs 19\% (PUCT). \texttt{v19} no ajuda. \texttt{v20} vs \texttt{v12} $=42{,}7\%$; vs \texttt{v14} $=47{,}0\%$. Setup/hazards nivell \texttt{v14}.
-    \item \textbf{IL.} Mateix XGB, $\tau=0{,}5525$. \texttt{v21} (15\% dels torns, guarda \texttt{v14}): 58,71\%, nivell \texttt{v9}. \texttt{v22} (80\%, zero KO): 33,49\%, sota \texttt{v1}. \texttt{v21} supera \texttt{v22} 28/28.
-    \item \textbf{Moral jeràrquica.} El residual que substitueix \texttt{v14} perd. El que el conserva (\texttt{v17}, \texttt{v20}, \texttt{v21}) és l'única millora. \textbf{Cap no supera \texttt{v12}.}
+    \item \textbf{La complexitat heurística no produeix una millora monotònica.} \texttt{v1}--\texttt{v6} formen un altiplà; \texttt{v7}, \texttt{v9} i \texttt{v12} introdueixen els increments principals. \texttt{v13} i \texttt{v14} afegeixen funcionalitats, però redueixen la taxa global.
+    \item \textbf{El minimax d'un torn no supera l'heurística de partida.} \texttt{v17} és la millor variant de la família perquè redueix la discrepància respecte de \texttt{v14}, però obté 43,6\% contra aquest agent.
+    \item \textbf{L'MCTS ras depèn del prior.} UCB1 discrepa de \texttt{v14} en aproximadament el 71\% de les decisions de cerca; PUCT redueix aquesta taxa al 19\% i millora el resultat de la família. Amb tot, \texttt{v20} obté 42,7\% contra \texttt{v12}.
+    \item \textbf{La imitació és sensible a l'executor.} \texttt{v21}, que utilitza XGBoost per decidir quan canviar i \texttt{v14} per executar, supera \texttt{v22} en els 28 enfrontaments. El contrast també canvia altres components, de manera que no aïlla un únic efecte causal.
+    \item \textbf{El currículum PPO només valida les dues primeres etapes.} La política supera els llindars contra Random i MaxBasePower, però obté 40,6\% contra \texttt{v8} i no arriba al 55\% previst. El model final fa 34,1\% contra \texttt{v12}, proper al 32,9\% de \texttt{v8} contra el mateix oponent.
+    \item \textbf{La integració residual és el patró més consistent.} \texttt{v17}, \texttt{v20} i \texttt{v21} conserven una part important de \texttt{v14} i són les variants amb millor resultat dins de les seves famílies.
 \end{enumerate}
 
 \section{Contribucions}
 
-Infraestructura master--worker capaç de 10k per cel·la; escala d'ablació heurística amb telemetria; cerca 1-ply i IS-MCTS instrumentades (override, no només WR); contrast híbrid vs pur en imitació sobre dades \emph{in-format}; protocol honest 10k/1k i ladder com a canal separat.
+\begin{itemize}
+    \item una infraestructura coordinador--processos de treball, recuperable i instrumentada, que ha produït 6.409.000 batalles a la matriu;
+    \item catorze heurístiques que documenten la incorporació de coneixement específic del format;
+    \item variants instrumentades de minimax i MCTS, amb telemetria de freqüència i discrepància;
+    \item dos agents d'imitació entrenats amb dades del mateix format i una anàlisi del paper de l'executor;
+    \item un entorn d'accions emmascarades, clonatge conductual i MaskablePPO sobre Showdown;
+    \item un protocol que separa l'avaluació local, l'experiment PPO i la mostra pública contra persones.
+\end{itemize}
 
-\section{Treball futur: PPO contra \texttt{v12}}
+\section{Limitacions}
 
-El framework MaskablePPO existeix (\texttt{v23+}). L'experiment d'aquesta memòria no el cobreix. El pla és una avaluació \textbf{separada}, gairebé segur \textbf{només contra \texttt{v12}} ---el sostre bot-contra-bot---, no contra la matriu de 28. Qualsevol WR de PPO que es publiqui haurà de dir $n$, l'oponent, i si el residual conserva o substitueix l'heurística: el gauntlet d'aquesta tesi diu que aquesta distinció pesa més que el nom del paradigma.
+Els cinc paradigmes no participen en una mateixa lliga: el PPO només s'avalua contra \texttt{v12} i l'MCTS utilitza una mostra menor. Les taxes globals tenen ponderacions diferents; no hi ha equips o llavors aparellats; es fan moltes comparacions exploratòries; i les millors variants es seleccionen després d'observar la matriu. Algunes versions heurístiques introdueixen diversos canvis alhora, el llindar d'imitació es tria sobre la partició retinguda, i no s'han repetit els entrenaments complets d'IL i PPO amb diverses llavors. Finalment, els resultats només descriuen \texttt{gen9randombattle} i les versions de programari utilitzades.
 
-Altres extensions naturals, no fetes aquí: MCTS amb més simulacions o un rollout que no sigui golós; un cap d'IL que imiti Tera i KO com a accions de primera classe; un ladder de \texttt{v12} (sense usar-lo per reescriure el rànquing bot). Cap d'aquestes línies reobre el Dobles.
+\section{Línies futures}
+
+Les continuacions prioritàries són:
+
+\begin{itemize}
+    \item completar una matriu que inclogui PPO i comparar també cost de decisió i cost d'entrenament;
+    \item utilitzar equips i llavors aparellats, intervals per a diferències i repeticions independents dels entrenaments;
+    \item substituir l'UCB només a l'arrel per un arbre més complet o per Information Set MCTS, amb polítiques de simulació apreses i diversos pressupostos;
+    \item entrenar un model d'imitació condicionat al conjunt de candidats legals, capaç de seleccionar moviments, canvis i Teracristal·lització, amb validació final independent;
+    \item repetir PPO amb clonatge de \texttt{v12}, diverses llavors, ablacions de recompensa i una observació recurrent o explícitament orientada a creences;
+    \item ampliar l'avaluació contra persones amb diversos agents, períodes més llargs i un protocol que controli millor el nivell dels oponents.
+\end{itemize}
 
 \section{Tancament}
 
-Random Battle de la Generació~IX, vist de prop i amb $n$ de tesi, no premia la puresa algorísmica. Premia saber qui ha de ser al camp, quan gastar el Tera, i no deixar escapar un KO. La cerca i l'imitació, a aquests pressupostos, només afegeixen quan se'ls impedeix oblidar-ho.
+El resultat central és metodològic i tècnic: comparar paradigmes exigeix fer explícits el coneixement incorporat, el pressupost de còmput, la representació de l'estat i el protocol d'avaluació. En aquest experiment, conservar coneixement específic de Random Battle és més efectiu que substituir-lo per cerca rasa o per una política apresa. Una comparació futura més simètrica permetrà determinar fins a quin punt aquesta conclusió depèn dels límits de les implementacions actuals.

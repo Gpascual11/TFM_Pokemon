@@ -19,29 +19,41 @@
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{tikz}
-\usetikzlibrary{shapes,arrows,positioning}
+\usepackage{multirow}
+\usetikzlibrary{shapes,shapes.geometric,arrows,positioning,calc,fit,decorations.pathreplacing,chains}
+\usepackage{csquotes}
+\DeclareQuoteStyle{catalan}
+  {\guillemotleft}{\guillemotright}
+  {\textquotedblleft}{\textquotedblright}
 \usepackage[backend=bibtex]{biblatex}
 \usepackage{hyperref}
 
-% --- Path to your images ---
-\graphicspath{{images/}{../data/}}
+% --- Report assets and bibliography ---
+\graphicspath{{images/}}
 \addbibresource{bibliography.bib}
 
 \captionsetup{font=small, labelfont=bf, skip=6pt}
 \hypersetup{colorlinks=true, linkcolor=blue!50!black, citecolor=blue!50!black, urlcolor=blue!60!black}
+\urlstyle{same}
+\setcounter{tocdepth}{2}
+\setlength{\emergencystretch}{2em}
 
 \begin{document}
 
-\title{Comparació de paradigmes d'intel·ligència artificial en un joc estocàstic d'observació parcial: heurístiques, cerca adversària i aprenentatge per imitació a \texttt{gen9randombattle}}
-\author{Gerard Pascual Fontanilles}
-\date{Agost 2026}
-\maketitle
+\hypersetup{pageanchor=false}
+\input{sections/00_tapa_oficial}
 
+\hypersetup{pageanchor=true}
+\pagenumbering{roman}
+\include{sections/01_abstract}
 \tableofcontents
+\listoffigures
+\listoftables
+\clearpage
+\pagenumbering{arabic}
 
 % --- Importing Sections ---
 \include{sections/00_introduction}
-\include{sections/01_abstract}
 \include{sections/02_theoretical_background}
 \include{sections/03_methodology}
 \include{sections/04_infrastructure}
@@ -49,6 +61,6 @@
 \include{sections/06_results}
 \include{sections/07_conclusion_future_work}
 
-\printbibliography
+\printbibliography[heading=bibintoc,title={Referències bibliogràfiques}]
 
 \end{document}

@@ -1,41 +1,83 @@
-\chapter{Marc Teòric i Contextualització}
+\chapter{Marc teòric i contextualització}
 \label{chap:marc_teoric}
 
-Aquest capítol estableix els fonaments necessaris per llegir la comparació de paradigmes. S'introdueix la IA en jocs, es formalitza Pokémon Singles com a POSG, es detallen les mecàniques que defineixen els espais $S$, $A$ i $\Omega$, es presenta el format \texttt{gen9randombattle} ---l'únic d'aquest TFM---, es revisen heurístiques, minimax, IS-MCTS i imitació, i es posiciona el treball respecte la literatura. El Reinforcement Learning (PPO) s'explica com a rerefons del treball futur: el framework existeix, l'experiment no forma part del gauntlet d'aquesta memòria.
+Aquest capítol estableix els fonaments per llegir la comparació. S'introdueix la IA en jocs, es formalitza el combat Pokémon com a joc estocàstic d'observació parcial, es detallen les mecàniques que defineixen els espais $S$, $A$ i $\Omega$, es presenta el format Random Battle, i es revisen heurístiques, minimax, cerca de Monte Carlo, imitació i PPO.
 
 % ============================================================
-\section{Contextualització de la IA en Jocs}
+\section{Contextualització de la IA en jocs}
 \label{sec:ia_jocs}
 
 \subsection{Informació perfecta}
 
-Els jocs han estat el banc de proves clàssic de la IA. En informació perfecta, tot l'estat és visible. \textbf{Deep Blue} (IBM, 1997) va derrotar Kasparov amb Minimax i esporgada alfa-beta~\cite{CAMPBELL200257,minimax_knuth}. \textbf{AlphaGo}~\cite{alphago} i \textbf{AlphaZero}~\cite{alphazero} van combinar MCTS~\cite{mcts_survey} amb xarxes neuronals i \textit{self-play} per superar el factor de ramificació del Go ($\sim 250$ moviments legals per torn davant $\sim 35$ als escacs).
+Els jocs han estat el banc de proves clàssic de la IA, des del programa d'escacs de Shannon~\cite{shannon_chess} fins a sistemes que aprenen per diferència temporal, com TD-Gammon~\cite{tesauro_tdgammon}. En informació perfecta, tot l'estat és visible. \textbf{Deep Blue} (IBM, 1997) va derrotar Kasparov amb minimax i poda alfa-beta~\cite{CAMPBELL200257,minimax_knuth}. \textbf{AlphaGo}~\cite{alphago} i \textbf{AlphaZero}~\cite{alphazero} van combinar MCTS~\cite{mcts_survey,kocsis_uct,coulom_mcts} amb xarxes neuronals~\cite{lecun_deep_learning} i \textit{self-play} per superar el factor de ramificació del Go ($\sim 250$ moviments legals per torn davant $\sim 35$ als escacs).
 
 \subsection{Informació imperfecta i videojocs}
 
-El salt posterior és a entorns amb estat ocult, accions simultànies i horitzons llargs. \textbf{AlphaStar}~\cite{alphastar} va assolir Gran Mestre a \textit{StarCraft~II}. \textbf{OpenAI Five}~\cite{openai_five} va cooperar en \textit{Dota~2}. En pòquer, \textbf{Libratus}~\cite{libratus} i \textbf{Pluribus}~\cite{pluribus} van superar professionals en \textit{No-Limit Texas Hold'em}, on les cartes ocultes són l'estratègia.
+El salt posterior és a entorns amb estat ocult, accions simultànies i horitzons llargs, també en videojocs d'acció amb observació visual com l'Arcade Learning Environment~\cite{bellemare_ale}. \textbf{AlphaStar}~\cite{alphastar} va assolir Gran Mestre a \textit{StarCraft~II}. \textbf{OpenAI Five}~\cite{openai_five} va cooperar en \textit{Dota~2}. En pòquer, \textbf{Libratus}~\cite{libratus} i \textbf{Pluribus}~\cite{pluribus} van superar professionals en \textit{No-Limit Texas Hold'em}, on les cartes ocultes són l'estratègia.
 
 La distinció operativa:
 
 \begin{itemize}
     \item \textbf{Informació perfecta} (escacs, Go): l'estat complet és comú. La incertesa, si n'hi ha, és només sobre el que farà l'oponent.
-    \item \textbf{Informació imperfecta} (pòquer, StarCraft, Pokémon): part de l'estat roman oculta. Cal un \textit{belief} sobre sets, objectes i banc.
+    \item \textbf{Informació imperfecta} (pòquer, StarCraft, Pokémon): part de l'estat roman oculta. Cal mantenir una distribució de creença sobre configuracions, objectes i equip rival.
 \end{itemize}
 
 Si, a més, $T(s'\mid s,a)$ no és determinista ---rolls de dany, precisió, crítics--- l'entorn és \textbf{estocàstic}. La combinació és el que fa Pokémon un laboratori, no un trencaclosques resoluble per força bruta.
 
 \subsection{MDP, POMDP i POSG}
 
-Un MDP~\cite{sutton_barto} és la tupla $(S,A,T,R,\gamma)$: estats, accions, transició, recompensa i descompte. La política $\pi(a\mid s)$ maximitza el retorn esperat. Si l'agent no observa $s$ sinó una observació $o\in\Omega$ via $O(o\mid s',a)$, el model és un POMDP~\cite{pomdp,kaelbling_pomdp}: cal un \textit{belief state}.
+Un MDP~\cite{sutton_barto} és la tupla $(S,A,T,R,\gamma)$: estats, accions, transició, recompensa i descompte. La política $\pi(a\mid s)$ maximitza el retorn esperat. Si l'agent no observa $s$ sinó una observació $o\in\Omega$ via $O(o\mid s',a)$, el model és un POMDP~\cite{pomdp,kaelbling_pomdp} i cal un estat de creença.
 
-Una batalla de Pokémon de dos jugadors no és un POMDP d'un sol agent contra la natura. L'oponent també tria accions, sovint alhora. El marc més honest és un \textbf{joc estocàstic d'observació parcial} (POSG): dos jugadors, transicions estocàstiques, observacions privades, suma zero al terminal (un guanya, l'altre perd; els empats són rareses de timer que el protocol de Showdown resol). En la pràctica, cada agent tracta l'oponent com a part de $T$ i manté un belief sobre el set rival. Això és el que fan les heurístiques amb la base de sets de Showdown, el minimax amb respostes predites, i l'MCTS amb determinització.
+Una batalla entre dos jugadors no és un POMDP d'un únic agent contra la natura: l'oponent també pren decisions i ambdós jugadors escullen l'acció del torn sense observar abans l'acció contrària. El model conceptual més adequat és un \textbf{joc estocàstic d'observació parcial} (POSG), hereu dels jocs estocàstics~\cite{shapley_stochastic_games} i de la teoria de jocs de suma zero~\cite{von_neumann}: dos decisors, observacions privades, transicions aleatòries i recompensa terminal de suma zero. Les implementacions d'aquest treball no resolen el POSG complet. En fan aproximacions diferents: les heurístiques utilitzen la informació revelada, el minimax considera un conjunt limitat de respostes estimades i l'MCTS determina un estat plausible abans de simular.
 
-La Figura~\ref{fig:mdp_pomdp} recorda la diferència MDP / POMDP. El POSG afegeix el segon decisor.
+\input{tables/mdp_pomdp_posg}
 
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.75\linewidth]{mdp_vs_pomdp.png}
-    \caption{MDP (esquerra) versus POMDP (dreta). En Pokémon Singles l'agent no veu $s$ complet ---moviments, objecte, EVs, banc--- i l'oponent decideix alhora: POSG, no control òptim d'un sol agent.}
+    \IfFileExists{images/mdp_vs_pomdp.png}{%
+        \includegraphics[width=0.72\linewidth]{mdp_vs_pomdp.png}%
+    }{%
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\small,
+        box/.style={rectangle, rounded corners, draw, align=center, minimum height=0.85cm, inner sep=3pt},
+        arr/.style={->, thick, >=stealth}
+    ]
+        % MDP
+        \node[font=\bfseries] at (0,3.3) {MDP};
+        \node[box, fill=blue!12, text width=2.2cm] (s) at (0,2.3) {Estat $s$};
+        \node[box, fill=green!12, text width=2.2cm] (a) at (0,0.9) {Acció $a$};
+        \node[box, fill=orange!12, text width=2.2cm] (r) at (0,-0.4) {Recompensa $r$};
+        \draw[arr] (s) -- (a);
+        \draw[arr] (a) -- (r);
+        \draw[arr] (a.east) to[out=0,in=0,looseness=2.2] node[right, font=\scriptsize] {$T$} (s.east);
+
+        % POMDP
+        \node[font=\bfseries] at (5.2,3.3) {POMDP};
+        \node[box, fill=blue!12, text width=2.3cm] (hs) at (5.2,2.3) {Estat ocult $s$};
+        \node[box, fill=yellow!20, text width=2.3cm] (o) at (5.2,0.9) {Observació $o$};
+        \node[box, fill=green!12, text width=2.3cm] (pa) at (5.2,-0.4) {Acció $a$};
+        \draw[arr] (hs) -- node[right, font=\scriptsize] {$O$} (o);
+        \draw[arr] (o) -- (pa);
+        \draw[arr] (pa.east) to[out=0,in=0,looseness=2.0] node[right, font=\scriptsize] {$T$} (hs.east);
+
+        % POSG
+        \node[font=\bfseries] at (10.6,3.3) {POSG};
+        \node[box, fill=blue!12, text width=2.6cm] (gs) at (10.6,2.3) {Estat conjunt};
+        \node[box, fill=yellow!20, text width=1.5cm] (o1) at (9.3,0.9) {$o_1$};
+        \node[box, fill=yellow!20, text width=1.5cm] (o2) at (11.9,0.9) {$o_2$};
+        \node[box, fill=green!12, text width=1.5cm] (a1) at (9.3,-0.4) {$a_1$};
+        \node[box, fill=green!12, text width=1.5cm] (a2) at (11.9,-0.4) {$a_2$};
+        \draw[arr] (gs) -- (o1);
+        \draw[arr] (gs) -- (o2);
+        \draw[arr] (o1) -- (a1);
+        \draw[arr] (o2) -- (a2);
+        \draw[arr] (a1.south) -- ++(0,-0.55) -| (gs.south);
+        \draw[arr] (a2.south) -- ++(0,-0.55) -| (gs.south);
+    \end{tikzpicture}%
+    }%
+    }
+    \caption{Diferència conceptual entre un MDP, un POMDP i un POSG. En el POMDP l'agent rep una observació parcial de l'estat. Una batalla Pokémon afegeix un segon decisor i, per tant, s'aproxima millor amb un POSG.}
     \label{fig:mdp_pomdp}
 \end{figure}
 
@@ -47,71 +89,164 @@ La Figura~\ref{fig:mdp_pomdp} recorda la diferència MDP / POMDP. El POSG afegei
     \begin{tabular}{|l|p{10.5cm}|}
     \hline
     \textbf{Component} & \textbf{Instanciació a Singles \texttt{gen9randombattle}} \\ \hline
-    $S$ & Sis Pokémon per bàndol (espècie, HP, set, objecte, habilitat, boosts, status), clima, hazards, Tera gastat, torn. $|S|$ és astronòmic; no el cobrim. \\ \hline
-    $A$ & Fins a 4 moviments + fins a 5 canvis, opcionalment amb Teracristal·lització. $|A|\le 9$ per torn, dinàmic (PP, faint, Choice lock, encore). \\ \hline
+    $S$ & Sis Pokémon per bàndol (espècie, HP, configuració, objecte, habilitat, modificadors i condició d'estat), clima, perills d'entrada, Tera consumit i torn. $|S|$ és astronòmic i no s'enumera. \\ \hline
+    $A$ & Fins a quatre moviments, cinc canvis i la Teracristal·lització com a modificador. La legalitat depèn de PP, debilitaments i bloqueigs; el PPO ho codifica en 14 índexs. \\ \hline
     $T$ & Motor de Showdown: dany amb roll $[0{,}85,1{,}00]$, STAB, Taula de Tipus, prioritat, velocitat, secundaris. \\ \hline
-    $R$ & $+1$ victòria, $0$ derrota (o Bernoulli $W\in\{0,1\}$). Sense reward shaping en el gauntlet bot-contra-bot: la mètrica és la taxa de victòries. \\ \hline
-    $\Omega$ & Equip propi complet; rival: espècie i HP\% dels revelats, moviments ja usats, side conditions. EVs, Nature, objecte i moviments no revelats ocults. En Random Battle el \emph{pool} de sets és conegut a priori, cosa que fa el belief tractable. \\ \hline
+    $R$ & Recompensa terminal conceptual $+1$ per victòria i $-1$ per derrota. Per a l'avaluació s'enregistra l'indicador binari $W\in\{0,1\}$ i se'n publica la mitjana. \\ \hline
+    $\Omega$ & Equip propi complet; del rival, espècies revelades, percentatge d'HP, moviments utilitzats i condicions laterals. EV, naturalesa, objecte i moviments no revelats romanen ocults. \\ \hline
     \end{tabular}
-    \caption{Mapatge POSG/POMDP a Singles \texttt{gen9randombattle}. El TFM no estudia Dobles: $|A|$ no és el producte cartesià de dues unitats.}
+    \caption{Mapatge POSG/POMDP al combat individual de Random Battle (Generació~IX). $|A|$ és el de l'actiu: fins a quatre moviments i els canvis del banc.}
     \label{tab:pomdp_pokemon}
 \end{table}
 
 % ============================================================
-\section{Pokémon: El Joc}
+\section{Pokémon com a domini de decisió}
 \label{sec:pokemon_joc}
 
-Abans dels algorismes cal el domini. Les regles de combat ---stats, tipus, velocitat, status, atzar--- \emph{són} $S$, $A$ i $\Omega$.
+Abans dels algorismes cal descriure el domini. Les regles de combat ---estadístiques, tipus, velocitat, condicions d'estat i aleatorietat--- defineixen els espais $S$, $A$ i $\Omega$ sobre els quals decideixen els agents.
 
-\subsection{Franquícia i formats}
+\subsection{Què és Pokémon i com es desenvolupa una batalla}
 
-\textit{Pokémon}~\cite{bulbapedia_pokemon} és una franquícia de batalles per torns (Figura~\ref{fig:pokemon30}). Hi ha dos formats principals de combat: \textbf{Singles} (un Pokémon actiu per bàndol) i \textbf{Doubles} (dos). El circuit oficial VGC és Dobles. \textbf{Aquest TFM és Singles \texttt{gen9randombattle} i prou}; el Dobles es va descartar del pla i no s'hi justifica en pàgines.
+\textit{Pokémon} és una franquícia de videojocs centrada en criatures que es capturen, s'entrenen i participen en combats per torns~\cite{bulbapedia_pokemon}. En una batalla individual (\textit{Singles}), cada jugador disposa habitualment d'un equip de sis Pokémon, però només un és actiu a cada banda. L'objectiu és debilitar tots els membres de l'equip rival abans que el rival faci el mateix.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.35\linewidth]{pokemon30.png}
-    \caption{Logotip commemoratiu del 30è aniversari de la franquícia Pokémon.}
-    \label{fig:pokemon30}
+    \IfFileExists{images/pokemon30.png}{%
+        \includegraphics[width=0.28\linewidth]{pokemon30.png}%
+    }{%
+    \begin{tikzpicture}[
+        font=\footnotesize,
+        mon/.style={rectangle, rounded corners, draw, align=center, minimum height=0.9cm, text width=2.0cm},
+        bench/.style={rectangle, rounded corners, draw, align=center, minimum height=0.55cm, text width=1.15cm, font=\scriptsize}
+    ]
+        \node[mon, fill=blue!15] (me) at (0,1.4) {Actiu A};
+        \node[mon, fill=red!15] (opp) at (5.2,1.4) {Actiu B};
+        \node[bench, fill=blue!6] at (-1.8,-0.2) {Banc};
+        \node[bench, fill=blue!6] at (-0.4,-0.2) {Banc};
+        \node[bench, fill=blue!6] at (1.0,-0.2) {Banc};
+        \node[bench, fill=blue!6] at (2.4,-0.2) {Banc};
+        \node[bench, fill=blue!6] at (3.8,-0.2) {Banc};
+        \node[bench, fill=red!6] at (1.4,2.85) {Banc};
+        \node[bench, fill=red!6] at (2.8,2.85) {Banc};
+        \node[bench, fill=red!6] at (4.2,2.85) {Banc};
+        \node[bench, fill=red!6] at (5.6,2.85) {Banc};
+        \node[bench, fill=red!6] at (7.0,2.85) {Banc};
+        \draw[<->, thick] (me) -- node[above, font=\scriptsize]{torn simultani} (opp);
+        \node[font=\small\bfseries] at (2.6,-1.15) {Combat individual (\textit{Singles})};
+    \end{tikzpicture}%
+    }
+    \caption{Estructura d'una batalla individual: un Pokémon actiu per bàndol i un banc de fins a cinc substituts. Si el fitxer commemoratiu original és present al repositori, s'utilitza com a contextualització visual; si no, el esquema recull la mateixa informació estructural.}
+    \label{fig:pokemon_context}
 \end{figure}
 
-\subsection{Estadístiques}
+En cada torn, un jugador pot escollir un dels moviments disponibles o canviar el Pokémon actiu per un membre no debilitat de l'equip. Un Pokémon pot conèixer com a màxim quatre moviments. Alguns causen dany; d'altres modifiquen estadístiques, imposen una condició d'estat, alteren el camp o permeten canviar conservant la iniciativa. Els dos jugadors envien l'acció sense conèixer la decisió actual de l'altre. El motor ordena les accions segons la prioritat i la velocitat, comprova la precisió i resol el dany i els efectes secundaris.
+
+Aquesta estructura fa que una acció no es pugui valorar de manera aïllada. Un atac molt potent pot ser inútil contra una immunitat; un canvi pot evitar un debilitament, però permetre que el rival col·loqui un perill d'entrada; i un moviment de preparació pot sacrificar el torn actual per augmentar la probabilitat de guanyar els següents. Aquestes dependències expliquen per què el projecte evoluciona des d'un agent que només valora potència i tipus fins a agents que també consideren posició, recursos, resposta rival i conseqüències futures.
+
+\subsection{De l'espècie a les estadístiques finals}
 \label{subsec:stats}
 
-Sis stats: HP, Atac, Defensa, Atac Especial, Defensa Especial, Velocitat. La Figura~\ref{fig:pikachu_stats} mostra Pikachu com a exemple ofensiu i fràgil.
+Cada Pokémon té sis estadístiques de combat: punts de salut (\textit{Hit Points}, HP), atac, defensa, atac especial, defensa especial i velocitat~\cite{bulbapedia_stats}. Els HP determinen quant dany pot rebre; atac i defensa intervenen en els moviments físics; atac especial i defensa especial, en els moviments especials; i la velocitat ajuda a decidir quin Pokémon actua abans.
 
-\begin{figure}[H]
+La xifra final que mostra el joc no depèn només de l'espècie. Es construeix a partir de cinc components:
+
+\begin{enumerate}
+    \item \textbf{Estadística base ($B$).} És pròpia de l'espècie. Dos Pikachu comparteixen les mateixes estadístiques base, però no necessàriament les mateixes xifres finals.
+    \item \textbf{Nivell ($L$).} Escala el valor final. Random Battle també utilitza el nivell com a mecanisme d'equilibri entre espècies.
+    \item \textbf{Valors individuals (IV).} Cada estadística té un IV enter entre 0 i 31~\cite{bulbapedia_iv}. Representa variació individual i pot aportar fins a 31 punts abans de l'escalat pel nivell.
+    \item \textbf{Punts d'esforç (EV).} Es poden distribuir fins a 510 EV en total, amb un màxim efectiu de 252 en una mateixa estadística~\cite{bulbapedia_ev}. La fórmula utilitza $\lfloor \mathrm{EV}/4\rfloor$; a nivell 100, cada quatre EV aporten un punt abans d'aplicar la naturalesa.
+    \item \textbf{Naturalesa ($N$).} La majoria de naturaleses multipliquen una estadística per 1,1 i una altra per 0,9; les naturaleses neutres utilitzen $N=1$~\cite{bulbapedia_nature}.
+\end{enumerate}
+
+Per a una estadística diferent dels HP, la fórmula general és:
+
+\begin{equation}
+    \mathrm{Stat} =
+    \left\lfloor
+        \left(
+            \left\lfloor
+                \frac{(2B+\mathrm{IV}+\lfloor \mathrm{EV}/4\rfloor)L}{100}
+            \right\rfloor + 5
+        \right)N
+    \right\rfloor .
+    \label{eq:stat_formula}
+\end{equation}
+
+Per als HP, excepte casos especials com Shedinja:
+
+\begin{equation}
+    \mathrm{HP} =
+    \left\lfloor
+        \frac{(2B+\mathrm{IV}+\lfloor \mathrm{EV}/4\rfloor)L}{100}
+    \right\rfloor + L + 10 .
+    \label{eq:hp_formula}
+\end{equation}
+
+\begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.65\linewidth]{l8fk6a303p7c1.jpeg}
-    \caption{Estadístiques base de Pikachu: velocitat i atac especial alts, defenses baixes.}
+    \IfFileExists{images/l8fk6a303p7c1.jpeg}{%
+        \includegraphics[width=0.82\linewidth]{l8fk6a303p7c1.jpeg}%
+    }{%
+    \begin{tikzpicture}[font=\small, x=0.018cm, y=0.55cm]
+        \foreach \y/\lab/\val in {5/HP/211, 4/Atac/131, 3/Defensa/116, 2/At.\ esp./136, 1/Def.\ esp./136, 0/Velocitat/306} {
+            \node[anchor=east] at (0,\y) {\lab};
+            \fill[blue!35] (0.2,\y-0.22) rectangle (\val,\y+0.22);
+            \draw (0.2,\y-0.22) rectangle (\val,\y+0.22);
+            \node[anchor=west, font=\scriptsize] at (\val+8,\y) {\val};
+        }
+        \node[font=\footnotesize] at (160,-1.15) {Exemple Pikachu, nivell 100 (Taula~\ref{tab:pikachu_stat_example})};
+    \end{tikzpicture}%
+    }
+    \caption{Valors finals de combat d'un Pikachu d'exemple. Si hi ha una captura al repositori, s'hi mostra la pantalla de resum; si no, les barres reprodueixen els totals de la Taula~\ref{tab:pikachu_stat_example}.}
     \label{fig:pikachu_stats}
 \end{figure}
 
-Tres modificadors, tots \textbf{ocults} per a l'oponent en un combat:
+\input{tables/pikachu_stat_example}
 
-\begin{enumerate}
-    \item \textbf{IVs} $\in[0,31]$. En competitiu solen ser 31.
-    \item \textbf{EVs}: 510 punts, màxim 252 per stat. Defineixen el rol (sweeper, tank, scarfer).
-    \item \textbf{Nature}: $+10\%$ / $-10\%$ en un parell de stats.
-\end{enumerate}
+La Figura~\ref{fig:pikachu_stats} i la Taula~\ref{tab:pikachu_stat_example} mostren valors finals, que són els que utilitza el motor durant el combat. La Figura~\ref{fig:ev_iv_nature} mostra, en canvi, com es combinen estadística base, IV, EV, nivell i naturalesa. Les dues il·lustracions no representen necessàriament el mateix Pikachu ni la mateixa distribució; precisament il·lustren que una mateixa espècie pot acabar amb valors finals diferents.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.65\linewidth]{evsivsnat.png}
-    \caption{IVs, EVs i Nature sobre les stats base.}
-    \label{fig:evsivsnature_stats}
+    \IfFileExists{images/evsivsnat.png}{%
+        \includegraphics[width=0.46\linewidth]{evsivsnat.png}%
+    }{%
+    \begin{tikzpicture}[
+        font=\small,
+        box/.style={rectangle, rounded corners, draw, align=center, minimum height=0.75cm, text width=2.15cm},
+        arr/.style={->, thick, >=stealth}
+    ]
+        \node[box, fill=gray!12] (b) {Base $B$};
+        \node[box, fill=gray!12, right=0.35cm of b] (iv) {IV};
+        \node[box, fill=gray!12, right=0.35cm of iv] (ev) {EV};
+        \node[box, fill=blue!12, below=0.55cm of iv] (mix) {$(2B+\mathrm{IV}+\lfloor\mathrm{EV}/4\rfloor)L/100$};
+        \node[box, fill=green!12, below=0.55cm of mix] (n) {$\times$ naturalesa $N$};
+        \node[box, fill=orange!15, below=0.55cm of n] (fin) {Estadística final};
+        \draw[arr] (b) -- (mix);
+        \draw[arr] (iv) -- (mix);
+        \draw[arr] (ev) -- (mix);
+        \draw[arr] (mix) -- (n);
+        \draw[arr] (n) -- (fin);
+    \end{tikzpicture}%
+    }
+    \caption{Construcció d'una estadística de combat. Si el calculador original és present, s'hi mostra com a captura; el diagrama recull els mateixos cinc components de les equacions~\eqref{eq:stat_formula}--\eqref{eq:hp_formula}.}
+    \label{fig:ev_iv_nature}
 \end{figure}
 
-Fórmules oficials~\cite{bulbapedia_stats}, amb $L$ el nivell:
+\subsection{Modificadors durant la batalla i informació visible}
 
-\begin{equation}
-    \mathrm{Stat} = \left\lfloor \left( \frac{(2 \times \mathrm{Base} + \mathrm{IV} + \lfloor \mathrm{EV}/4 \rfloor ) \times L}{100} + 5 \right) \times \mathrm{Nature} \right\rfloor
-\end{equation}
+Els valors anteriors defineixen les estadístiques inicials, però el combat hi aplica modificadors dinàmics. Moviments com \textit{Swords Dance} o \textit{Dragon Dance} augmenten etapes d'atac o velocitat; d'altres les redueixen. Les etapes solen variar entre $-6$ i $+6$ i modifiquen temporalment el valor efectiu. Les condicions d'estat, els objectes, les habilitats, el clima i el terreny també poden alterar el dany o l'ordre d'acció.
 
-\begin{equation}
-    \mathrm{HP} = \left\lfloor \frac{(2 \times \mathrm{Base} + \mathrm{IV} + \lfloor \mathrm{EV}/4 \rfloor ) \times L}{100} \right\rfloor + L + 10
-\end{equation}
+A Random Battle, Showdown fixa el nivell, els EV, els IV, la naturalesa, els moviments, l'objecte i l'habilitat de cada membre. L'agent no construeix l'equip. Coneix la configuració pròpia, però del rival només observa allò que s'ha revelat. Aquesta diferència és decisiva:
 
-A Showdown Random Battle els Pokémon arriben amb un set del servidor (nivell, EVs, moviments) ja fixat. L'agent no construeix l'equip: el \emph{juga}.
+\begin{itemize}
+    \item les heurístiques inicials utilitzen tipus, potència i estadístiques visibles per estimar dany;
+    \item les versions intermèdies incorporen modificadors, velocitat, habilitats i objectes coneguts;
+    \item \texttt{v13} utilitza els moviments rivals revelats per refinar l'enfrontament;
+    \item minimax i MCTS han de construir una resposta o una determinització amb informació incompleta;
+    \item PPO rep una representació vectorial de la mateixa observació parcial, no l'estat intern complet de Showdown.
+\end{itemize}
+
+Per tant, entendre IV, EV i naturalesa no és només contextualització del joc. Explica per què dues criatures de la mateixa espècie poden tenir velocitats o rangs de dany diferents, per què una estimació pot ser incerta i per què els agents necessiten distingir entre informació pròpia exacta i informació rival inferida.
 
 \subsection{Taula de tipus, STAB i categories}
 \label{subsec:tipus}
@@ -120,12 +255,12 @@ Divuit tipus, matriu de multiplicadors $\times 2$, $\times 1/2$, $\times 0$ (Tau
 
 \input{tables/type_chart}
 
-Categories: físic (Atac vs Defensa), especial (Atac Esp.\ vs Defensa Esp.), status (sense dany directe: hazards, boosts, Protect, Toxic).
+Els moviments poden ser físics (atac contra defensa), especials (atac especial contra defensa especial) o d'estat. Els darrers no causen necessàriament dany directe: poden crear perills d'entrada, modificar estadístiques o protegir.
 
 \subsection{Velocitat i prioritat}
 \label{subsec:velocitat}
 
-Sense modificadors, ataca primer qui té més Velocitat. La \textbf{prioritat} del moviment (de $-7$ a $+5$) sobreescriu la velocitat: \textit{Protect} ($+4$) va gairebé sempre primer; \textit{Trick Room} ($-7$) va últim i inverteix l'ordre durant cinc torns. Un empat de velocitat és una moneda $1/2$. Les heurístiques i el minimax resolen velocitat i prioritat de forma analítica; l'MCTS ho mostreja al rollout.
+Sense modificadors, actua primer qui té més velocitat. La \textbf{prioritat} del moviment (de $-7$ a $+5$) preval sobre aquesta estadística: \textit{Protect} ($+4$) s'executa abans que la majoria de moviments, mentre que \textit{Trick Room} ($-7$) s'executa tard i inverteix l'ordre durant cinc torns. Un empat de velocitat es resol aleatòriament. Les heurístiques i el minimax ho aproximen analíticament; l'MCTS ho mostreja durant la simulació.
 
 \subsection{Condicions d'estat}
 \label{subsec:status}
@@ -136,13 +271,13 @@ Sense modificadors, ataca primer qui té més Velocitat. La \textbf{prioritat} d
     \begin{tabular}{|l|l|p{7.5cm}|}
     \hline
     \textbf{Estat} & \textbf{Efecte} & \textbf{Mecànica} \\ \hline
-    Burn & $\downarrow 50\%$ Atac físic & 1/16 HP per torn. \\ \hline
-    Paralysis & $\downarrow 50\%$ Velocitat (Gen~7+) & 25\% de no actuar. \\ \hline
-    Poison / Toxic & --- & 1/8 per torn, o dany creixent. \\ \hline
-    Sleep & --- & 1--3 torns sense actuar. \\ \hline
-    Freeze & --- & Sense actuar; 20\% de desgel per torn. \\ \hline
+    Cremada & $\downarrow 50\%$ atac físic & 1/16 dels HP per torn. \\ \hline
+    Paràlisi & $\downarrow 50\%$ velocitat (Gen.~VII+) & 25\% de probabilitat de no actuar. \\ \hline
+    Verí / tòxic & --- & 1/8 dels HP per torn, o dany creixent. \\ \hline
+    Son & --- & 1--3 torns sense actuar. \\ \hline
+    Congelació & --- & No pot actuar; 20\% de probabilitat de descongelar-se per torn. \\ \hline
     \end{tabular}
-    \caption{Status principals. Un agent pot preferir cremar un físic abans que atacar.}
+    \caption{Condicions d'estat principals. Una política pot preferir cremar un atacant físic abans que causar dany immediat.}
     \label{tab:status}
 \end{table}
 
@@ -152,146 +287,188 @@ Sense modificadors, ataca primer qui té més Velocitat. La \textbf{prioritat} d
 Tres fonts que cap política elimina:
 
 \begin{enumerate}
-    \item \textbf{Damage roll} uniforme en $[0{,}85,1{,}00]$: un KO «segur» al roll alt pot fallar al baix. \texttt{v14} calcula 16 rolls per decidir si un KO és garantit.
-    \item \textbf{Accuracy}: \textit{Hydro Pump} té 80\%. L'esperança no és el dany nominal.
-    \item \textbf{Crític} base $1/24$, $\times 1{,}5$ i ignora boosts defensius~\cite{smogon_damage}.
+    \item \textbf{Tirada de dany}: el motor mostreja uniformement un dels setze factors enters entre 85 i 100. Un debilitament possible amb la tirada màxima pot no produir-se amb la mínima. \texttt{v14} aproxima aquest interval.
+    \item \textbf{Precisió}: un moviment pot fallar; per tant, el dany esperat no coincideix amb el nominal.
+    \item \textbf{Cop crític}: a la Generació~IX, la probabilitat base és $1/24$ i el multiplicador de dany és $1{,}5$~\cite{smogon_damage}.
 \end{enumerate}
 
-Això és el motiu pel qual $n=100$ partides no és un resultat: la variància per partida és alta, i la mètrica que agrega tot és el Bernoulli de victòria.
+Aquestes fonts d'aleatorietat, juntament amb la generació dels equips, exigeixen informar la incertesa de la taxa de victòries.
 
 % ============================================================
-\section{El Format d'Aquest TFM: \texttt{gen9randombattle}}
+\section{El format Random Battle}
 \label{sec:format}
 
-\subsection{Per què Singles Random Battle, i no VGC}
+\subsection{Combat individual amb equips aleatoris}
 
-VGC és el circuit oficial: Dobles, Bring~6 / Pick~4, teambuilding, regulacions per temporada. És un POSG encara més dur ($|A|$ combinatori, Protect, atacs spread). \textbf{No és el corpus d'aquesta tesi.} El pla del projecte va eliminar les heurístiques de Dobles com a fora d'abast. Un format, una pregunta, una matriu.
-
-\texttt{gen9randombattle} (Smogon / Showdown) assigna a cada jugador un equip aleatori de sis Pokémon del pool de la Generació~IX, amb sets (moviments, objecte, habilitat, Tera) trets d'una base pública. Propietats útils per a recerca:
+El format \texttt{gen9randombattle}~\cite{smogon_random_battle,smogon_rb_sets} assigna a cada jugador un equip aleatori de sis Pokémon de la Generació~IX, amb configuracions extretes d'una base pública de Smogon i Showdown. Propietats útils per a la recerca:
 
 \begin{itemize}
-    \item \textbf{Sense teambuilding.} L'habilitat que es mesura és la decisió en combat, no la construcció d'equip. Dos agents reben equips comparables en llei; amb $n$ gran, l'avantatge d'equip s'atenuï.
-    \item \textbf{Team preview.} Es veuen les sis espècies rivals abans del torn 1. \texttt{v12} ordena el lead per matchup mitjà; els baselines d'Abyssal no.
-    \item \textbf{Sets d'un pool conegut.} El belief és una mescla sobre files de \texttt{sets.json}, no sobre tot l'espai OU. Això fa viable la predicció de \texttt{v13} i la determinització de l'MCTS.
-    \item \textbf{Teracristal·lització} (Gen~9): un cop per batalla, canvi de tipus. És la mecànica que \texttt{v1}--\texttt{v11} no tenen i que \texttt{v12} usa gairebé cada partida.
-    \item \textbf{Ladder pública.} El mateix format es juga contra humans a play.pokemonshowdown.com. \texttt{v14} s'hi ha connectat (Capítol~\ref{chap:resultats}); això no substitueix el round-robin.
+    \item \textbf{Sense construcció d'equips.} La variable estudiada és la decisió durant el combat. Ambdues bandes reben equips de la mateixa distribució, tot i que no s'utilitzen parelles d'equips idèntiques entre agents.
+    \item \textbf{Posició inicial del servidor.} Showdown determina el Pokémon actiu inicial; l'agent decideix moviments, Teracristal·lització i canvis durant la partida.
+    \item \textbf{Configuracions d'un conjunt conegut.} La creença sobre el rival es pot restringir a partir de l'espècie i dels moviments revelats.
+    \item \textbf{Teracristal·lització} (Gen~9): un cop per batalla, canvi de tipus. És la mecànica que \texttt{v12} puntua ofensiva i defensivament.
+    \item \textbf{Ladder pública.} El mateix format es juga contra humans a play.pokemonshowdown.com. \texttt{v14} s'hi ha connectat (Capítol~\ref{chap:resultats}).
 \end{itemize}
 
-El metagame OU de Smogon~\cite{smogon_metagame} és un altre joc (equips portats, stall, weather). Entrenar imitació en OU i avaluar en Random Battle va ser un error de pipeline (WR de l'ordre del 2\%); el dataset d'aquest TFM és Elo~$1800+$ del \emph{mateix} format.
+El metagame OU de Smogon~\cite{smogon_metagame,smogon_ou} és un altre joc (equips portats, stall, weather). El dataset d'imitació d'aquest TFM és Elo~$1800+$ del \emph{mateix} format Random Battle~\cite{smogon_random_battle}.
 
-\subsection{Generació IX, no un escombrat de nou generacions}
+\subsection{Generació IX}
 
-El repositori \emph{pot} llançar \texttt{gen1randombattle} \ldots \texttt{gen9randombattle}. El gauntlet publicat aquí és \textbf{Gen~9}. La mida del pool (151 vs 1.025 espècies) no canvia la fórmula $\mathrm{Var}(\hat p)=p(1-p)/n$. Mantenir el mateix $n$ entre gens seria una elecció metodològica, no un requisit de cobertura combinatòria. No es reivindica un resultat cross-generacional en aquesta memòria.
+La matriu publicada correspon exclusivament a la \textbf{Generació~IX}. La mida del conjunt de Pokémon no apareix directament a $\mathrm{Var}(\hat p)=p(1-p)/n$.
 
 % ============================================================
-\section{L'Entorn Virtual}
+\section{L'entorn virtual}
 \label{sec:entorn_virtual}
 
 La consola no és instrumentable. La comunitat ha construït Showdown i poke-env.
 
 \subsection{Pokémon Showdown}
 
-Showdown~\cite{pokemon_showdown} replica el motor oficial (dany, tipus, items, habilitats) en Node.js/TypeScript, validat durant anys per Smogon. Per a aquest TFM:
+Showdown~\cite{pokemon_showdown} implementa en Node.js i TypeScript les mecàniques de dany, tipus, objectes i habilitats, i és mantingut per la comunitat competitiva. Per a aquest TFM:
 
 \begin{enumerate}
     \item Precisió de mecàniques: $T$ no l'hem reescrit.
     \item Mode \textit{headless} local, moltes instàncies, ports 8000+.
-    \item El mateix servidor serveix ladder pública i el gauntlet local.
+    \item El mateix motor permet l'avaluació local i la classificació pública.
 \end{enumerate}
 
 \subsection{poke-env}
 
-\textit{poke-env}~\cite{poke_env} tradueix el WebSocket a objectes Python (\texttt{Battle}, \texttt{Pokemon}, \texttt{Move}) i exposa \texttt{Player.choose\_move}. El pin del projecte és \textbf{0.11.x}: milions de partides hi han corregut; 0.15 trenca l'API. Pokechamp porta un fork més antic amb \texttt{LocalSim}, necessari per a l'MCTS. El Capítol~\ref{chap:metodologia} detalla el protocol; el Capítol~\ref{chap:implementacio}, l'orquestrador.
+\textit{poke-env}~\cite{poke_env} tradueix el protocol WebSocket a objectes Python (\texttt{Battle}, \texttt{Pokemon}, \texttt{Move}) i exposa \texttt{Player.choose\_move}. Els experiments utilitzen la branca \textbf{0.11.x}. El fork de PokéChamp aporta \texttt{LocalSim} per a les simulacions de l'MCTS. El Capítol~\ref{chap:metodologia} detalla el protocol i el Capítol~\ref{chap:implementacio}, el programari.
 
 % ============================================================
-\section{Quatre Paradigmes de Decisió (i un de futur)}
+\section{Cinc paradigmes de decisió}
 \label{sec:ia_tecniques}
 
-La tesi compara polítiques, no «si la IA funciona». Cada família té una hipòtesi falsable.
+Cada paradigma introdueix un mecanisme diferent: coneixement codificat, anticipació adversària, simulació, supervisió amb dades humanes o optimització per reforç. La comparació estudia si aquests mecanismes modifiquen la taxa de victòries respecte dels agents que utilitzen com a referència.
+
+\input{tables/paradigm_mechanisms}
 
 \subsection{Heurístiques: coneixement com a ablació}
 
-Una heurística no aprèn. A cada decisió puntua accions legals amb una fórmula fixa i tria l'argmax. L'escala \texttt{v1}--\texttt{v14} és una \textbf{ablació per construcció}: si afegir hazards mou el WR i afegir un decimal extra a la fórmula de dany no, el coneixement útil és posicional, no aritmètic. Això és el que un sol «bot expert» no permetria dir.
+Una heurística no ajusta els seus paràmetres durant l'execució. A cada decisió puntua les accions legals amb regles fixes i tria l'argmax. La seqüència \texttt{v1}--\texttt{v14} funciona com una \textbf{ablació incremental}: permet relacionar blocs de coneixement amb canvis de rendiment, encara que algunes versions incorporen més d'una modificació i, per tant, no sempre aïllen un únic factor.
 
-L'herència no és una cadena única (Capítol~\ref{chap:implementacio}): \texttt{v1}--\texttt{v3}--\texttt{v6} és dany i pivot; \texttt{v7} reescriu l'estratègia; \texttt{v12} afegeix Gen~9; \texttt{v14} afegeix modelatge d'humans. La genealogia $\texttt{v14}\supset\texttt{v13}\supset\texttt{v12}$ és de \emph{codi}, no de WR.
+L'herència no forma una única cadena lineal (Capítol~\ref{chap:implementacio}): \texttt{v1}--\texttt{v3}--\texttt{v6} se centren en dany i canvis simples; \texttt{v7} reescriu l'estratègia; \texttt{v12} incorpora mecàniques de la Generació~IX, i \texttt{v14} modela patrons de l'oponent. La relació d'herència de codi no implica una ordenació equivalent de rendiment.
 
-\subsection{Minimax 1-ply: la resposta del rival, un torn}
+\subsection{Minimax d'un torn: resposta adversària immediata}
 
-Minimax~\cite{minimax_knuth} assigna a cada estat el valor maximin. En Pokémon les accions són \emph{simultànies}: el model honest d'un torn és una matriu $|A_{\mathrm{me}}|\times |A_{\mathrm{opp}}|$, no un arbre d'alternança perfecta. Amb $|A|\le 9$, la matriu té $\le 81$ cel·les. A 2-ply serien $81^2=6561$ i el calculador de 16 rolls de \texttt{v14} esclata el temps de torn (Capítol~\ref{chap:implementacio}). Per això \texttt{v15}--\texttt{v17} són \textbf{1-ply} i analítics: dany exacte, velocitat i KO resolts sense \texttt{LocalSim}. La fulla és aversió al risc
+Minimax~\cite{minimax_knuth} assigna a cada estat el valor de la millor acció sota la resposta més desfavorable. Com que a Pokémon les accions del torn són simultànies, la implementació construeix una matriu d'accions pròpies i respostes rivals estimades. No resol el joc d'informació imperfecta complet: considera els moviments revelats i una resposta de canvi genèrica. \texttt{v15}--\texttt{v17} són variants analítiques d'un torn; la funció de fulla incorpora aversió al risc:
 \begin{equation}
     V = \mathrm{HP}_{\mathrm{me}} - 1{,}5\,\mathrm{HP}_{\mathrm{opp}} + \text{bonificacions}.
 \end{equation}
-El factor $1{,}5$ sobre el dany rival és una hipòtesi, no un teorema: els resultats mostren que domina els bonuses de setup de \texttt{v16}.
+Un horitzó d'un torn valora sobretot la rèplica immediata. Els efectes diferits, com els moviments de preparació o els perills d'entrada, només hi entren a través de bonificacions de la funció de fulla de \texttt{v16} i del prior de \texttt{v17}.
 
-\textbf{Limitació estructural.} Un horitzó d'un torn no valora Dragon Dance ni Stealth Rock. Posar $+0{,}3$ a la fulla no allarga l'horitzó; només decora el maximin.
+\subsection{Cerca de Monte Carlo a l'arrel}
 
-\subsection{Information-Set MCTS}
+L'MCTS complet~\cite{mcts_survey,coulom_mcts} alterna selecció, expansió, simulació i retropropagació en un arbre. La regla de selecció clàssica és UCT~\cite{kocsis_uct}, que tracta cada aresta com un bandit. La implementació d'aquest treball és més limitada: aplica UCB1 o PUCT només als fills de l'\textbf{arrel}. Cada iteració selecciona una acció, executa una simulació de cinc torns amb \texttt{LocalSim}~\cite{pokechamp} i actualitza el valor del fill. Per precisió, la memòria l'anomena \emph{MCTS ras} o \emph{UCB a l'arrel}; no és una expansió recursiva de l'arbre.
 
-MCTS~\cite{mcts_survey} mostreja en lloc d'enumerar. Les quatre fases clàssiques ---selecció (UCB1 o PUCT), expansió, simulació, retropropagació--- s'apliquen aquí a un \textbf{conjunt d'informació}~\cite{ismcts_cowling}: cada simulació \emph{determiniza} el rival (set de la DB de Showdown compatible amb el revelat) i fa un rollout de 5 torns amb \texttt{LocalSim}. El fill arrel amb més visites és l'acció.
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[
+        font=\small,
+        box/.style={rectangle, rounded corners, draw, align=center, minimum height=1.05cm, text width=2.55cm},
+        arr/.style={->, thick, >=stealth}
+    ]
+        \node[box, fill=blue!12] (sel) {\textbf{1. Selecció}\\UCB / PUCT};
+        \node[box, fill=green!12, right=0.45cm of sel] (exp) {\textbf{2. Expansió}\\nou fill};
+        \node[box, fill=orange!12, right=0.45cm of exp] (sim) {\textbf{3. Simulació}\\rollout};
+        \node[box, fill=purple!12, right=0.45cm of sim] (back) {\textbf{4. Còpia enrere}\\actualitza $Q,n$};
+        \draw[arr] (sel) -- (exp);
+        \draw[arr] (exp) -- (sim);
+        \draw[arr] (sim) -- (back);
+        \draw[arr] (back.south) -- ++(0,-0.45) -| node[below, font=\scriptsize, pos=0.25] {aquest TFM: només fills de l'arrel} (sel.south);
+    \end{tikzpicture}
+    \caption{Cicle clàssic de l'MCTS. La variant d'aquest treball omet l'expansió recursiva: les 100 visites es reparteixen entre les accions legals de l'arrel i cada simulació dura cinc torns.}
+    \label{fig:mcts_cycle}
+\end{figure}
+
+La informació oculta es tracta mitjançant una determinització que conserva els moviments rivals ja revelats. Aquest procediment és una aproximació més simple que l'Information Set MCTS~\cite{ismcts_cowling} i pot introduir biaix si l'estat determinat no representa bé la distribució de configuracions rivals.
 
 UCB1:
 \begin{equation}
     \mathrm{UCB1}(j) = \bar X_j + C\sqrt{\frac{\ln N}{n_j}}, \qquad C=1{,}4.
 \end{equation}
-PUCT (com AlphaGo) afegeix un prior $\pi(a)$ ---aquí, $0{,}70$ sobre l'acció de \texttt{v14} a \texttt{v20}--- que concentra les 100 visites.
+PUCT afegeix un prior $\pi(a)$; a \texttt{v20}, l'acció proposada per \texttt{v14} rep un pes de $0{,}70$, que concentra part de les 100 visites.
 
-La hipòtesi de l'MCTS era: cinc torns de lookahead valoren payoffs retardats que l'1-ply no veu. La telemetria (Capítol~\ref{chap:resultats}) la falsifica a aquest pressupost: setup i hazards queden a nivell \texttt{v14}, no \texttt{v12}.
+La hipòtesi és que cinc torns simulats poden capturar efectes que l'horitzó d'un torn no observa. El Capítol~\ref{chap:resultats} contrasta aquesta hipòtesi mitjançant la taxa de discrepància, els moviments de preparació i els perills d'entrada.
 
 \subsection{Imitació / clonatge conductual}
 
-L'aprenentatge supervisat sobre traces d'experts (\textit{behavioral cloning}) estima $\pi_{\mathrm{E}}(a\mid o)$. El problema clàssic és el \textbf{biaix d'exposició}: una acció fora del suport de $\pi_{\mathrm{E}}$ porta a estats que l'expert no va visitar, i l'error es compon~\cite{ross_dagger}. En Pokémon s'hi afegeix un problema de \textbf{semàntica d'acció}: el slot~0 no és una classe estable (Stealth Rock en un lead, Hydro Pump en el següent). Per això el cap d'aquest TFM predice només $\{\mathrm{move},\mathrm{switch}\}$, no l'índex del moviment.
+L'aprenentatge supervisat sobre trajectòries d'experts (\textit{behavioral cloning}) estima $\pi_{\mathrm{E}}(a\mid o)$. El precedent clàssic és l'entrenament d'una política a partir de demostracions, com ALVINN~\cite{pomerleau_alvinn}; les enquestes d'aprenentatge per demostració~\cite{argall_lfd} en recullen el marc. El problema clàssic és el \textbf{biaix d'exposició}: una decisió errònia porta l'agent a estats poc representats a les dades i els errors es poden acumular~\cite{ross_dagger}. En Pokémon també hi ha un problema de \textbf{semàntica d'acció}: el mateix índex pot representar moviments diferents segons el Pokémon actiu. Per aquest motiu, el primer model d'aquest treball només prediu $\{\mathrm{atacar},\mathrm{canviar}\}$, no l'índex concret.
 
-XGBoost~\cite{xgboost} és el classificador: 1.150 features, $\sim$1{,}12 milions de torns Elo~$1800+$, \texttt{GroupShuffleSplit} per \texttt{battle\_id}. El llindar calibrat és $\tau=0{,}5525$. \texttt{v21} executa amb \texttt{v14}; \texttt{v22} executa amb un segon XGBoost i un banc contrafactual. Sense \texttt{v22} no es pot dir que l'híbrid sigui necessari; sense \texttt{v21} no es pot dir que el timing humà serveixi de res.
+El classificador és XGBoost~\cite{xgboost}: 1.150 característiques i aproximadament 1,12 milions de torns de jugadors amb Elo~$1800+$, amb separació per \texttt{battle\_id}. El llindar $\tau=0{,}5525$ es va seleccionar sobre la partició retinguda; com que aquesta mateixa partició també informa les mètriques del model, aquestes mètriques s'han d'interpretar com a validació de desenvolupament i no com una prova final independent. \texttt{v21} executa amb \texttt{v14}, mentre que \texttt{v22} utilitza un segon model basat en potència, STAB i efectivitat.
 
-El \texttt{ml\_baseline} de tres features i execució uniforme \textbf{no} és al gauntlet: era el diagnòstic que «predir mou/canvia i després triar a l'atzar» cau a $\sim$8--16\% WR.
+\subsection{PPO amb emmascarament d'accions}
 
-\subsection{PPO, com a rerefons (no avaluat aquí)}
+L'aprenentatge per reforç~\cite{sutton_barto} ajusta una política a partir de la interacció amb l'entorn. En el cas tabular, Q-learning~\cite{watkins_qlearning} estima valors d'acció; amb aproximadors profunds, DQN~\cite{dqn} va mostrar que una xarxa pot jugar Atari a partir de píxels. Les polítiques d'actor--crític~\cite{konda_actor_critic,a3c} separen dues sortides: l'\textbf{actor} $\pi_\theta(a\mid o)$ proposa accions i el \textbf{crític} $V_\phi(o)$ estima el retorn esperat. L'actor s'actualitza en la direcció de l'\textbf{avantatge} $\hat A_t$, sovint estimat amb GAE~\cite{gae}.
 
-El Reinforcement Learning~\cite{sutton_barto} aprèn $\pi$ per interacció. PPO~\cite{ppo} recorre l'objectiu amb \textit{clipping}
+PPO~\cite{ppo} simplifica TRPO~\cite{trpo}: en lloc d'una restricció explícita de divergència, retalla la raó de probabilitats
+\[
+r_t(\theta)=\frac{\pi_\theta(a_t\mid o_t)}{\pi_{\theta_{\mathrm{old}}}(a_t\mid o_t)}
+\]
+i optimitza
 \begin{equation}
-    L^{\mathrm{CLIP}}(\theta)=\hat{\mathbb{E}}_t\left[\min\left(r_t(\theta)\hat A_t,\;\mathrm{clip}(r_t(\theta),1-\epsilon,1+\epsilon)\hat A_t\right)\right],
+    L^{\mathrm{CLIP}}(\theta)=\hat{\mathbb{E}}_t\left[\min\left(r_t(\theta)\hat A_t,\;\mathrm{clip}(r_t(\theta),1-\epsilon,1+\epsilon)\hat A_t\right)\right].
 \end{equation}
-útil en entorns estocàstics on un crític afortunat no ha de destruir la política. L'\textit{action masking}~\cite{huang_action_masking,sb3_contrib} anul·la logits il·legals. El \textit{reward shaping}~\cite{ng_reward_shaping} i el currículum~\cite{bengio_curriculum} són l'estàndard per recompenses terminals escasses.
+El retall limita l'amplitud de cada actualització respecte de la política anterior i afavoreix l'estabilitat de l'entrenament. La Figura~\ref{fig:ppo_clip} il·lustra el cas $\hat A_t>0$: si $r_t$ creix massa, el terme retallat deixa de premiar actualitzacions addicionals.
 
-Tot això és al repositori (\texttt{v23+}, Gymnasium, MaskablePPO). \textbf{No hi ha nombres de PPO en aquesta memòria.} L'avaluació prevista és separada i, gairebé segur, només contra \texttt{v12}. DQN~\cite{dqn} i els LLM~\cite{qwen_2024} es mencionen com a context, no com a agents del gauntlet. Pokechamp~\cite{pokechamp} aporta Abyssal i \texttt{LocalSim}, no un agent LLM a la matriu de 28.
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}[font=\small, x=2.4cm, y=1.35cm]
+        \draw[->, thick] (-0.15,0) -- (2.35,0) node[right] {$r_t$};
+        \draw[->, thick] (0,-0.15) -- (0,1.85) node[above] {terme};
+        \draw[thick, blue!70!black] (0.15,0.2) -- (1.85,1.55);
+        \draw[thick, orange!80!black] (0.15,0.2) -- (0.7,0.72) -- (1.85,0.72);
+        \draw[dashed] (0.7,0) node[below] {$1+\epsilon$} -- (0.7,0.72);
+        \draw[dashed] (1,0) node[below] {$1$} -- (1,0.95);
+        \node[font=\scriptsize, blue!70!black, anchor=west] at (1.55,1.45) {$r_t\hat A_t$};
+        \node[font=\scriptsize, orange!80!black, anchor=west] at (1.55,0.55) {clip};
+        \node[font=\footnotesize] at (1.05,-0.85) {Cas $\hat A_t>0$: PPO pren el mínim, no la línia oberta};
+    \end{tikzpicture}
+    \caption{Intuïció de l'objectiu retallat de PPO. Per a avantatges positius, una raó $r_t$ massa gran deixa de contribuir un cop supera $1+\epsilon$; simètricament, per a avantatges negatius es limita la caiguda per sota de $1-\epsilon$.}
+    \label{fig:ppo_clip}
+\end{figure}
+
+L'emmascarament d'accions~\cite{huang_action_masking,sb3_contrib} assigna probabilitat nul·la a accions il·legals, com moviments sense PP, una segona Teracristal·lització o el canvi a un Pokémon debilitat. Sense màscara, el gradient malgastaria massa en accions que Showdown rebutjaria. El model també utilitza recompensa modelada~\cite{ng_reward_shaping} i un currículum d'oponents~\cite{bengio_curriculum}. El clonatge conductual previ situa $\pi_\theta$ a prop d'una heurística abans del reforç; no elimina el biaix d'exposició, però redueix l'exploració inicial d'accions absurdes.
+
+El cinquè paradigma és MaskablePPO~\cite{raffin_sb3_jmlr,sb3_contrib} sobre Showdown, amb l'API Gymnasium~\cite{gymnasium,towers_gymnasium,brockman2016openai}: observació vectorial, espai discret de 14 accions (4 moviments, 4 moviments amb Teracristal·lització i 6 posicions d'equip), clonatge inicial d'una heurística i entrenament contra un oponent fix. El disseny és al Capítol~\ref{chap:metodologia}, la implementació al Capítol~\ref{chap:implementacio} i els resultats al Capítol~\ref{chap:resultats}.
 
 % ============================================================
-\section{Estat de l'Art: IA i Pokémon}
+\section{Estat de l'art: IA i Pokémon}
 \label{sec:estat_art}
 
-\textit{poke-env}~\cite{poke_env,pokemon_ai_sahovic} va obrir el domini a Gym. Els primers bots són heurístics; la llibreria porta \texttt{RandomPlayer}, \texttt{MaxBasePowerPlayer} i \texttt{SimpleHeuristicsPlayer}. Smogon~\cite{smogon_metagame} és el corpus expert de metagame i calculadores de dany.
+\textit{poke-env}~\cite{poke_env,pokemon_ai_sahovic} va facilitar l'ús de Pokémon Showdown com a entorn d'aprenentatge. La biblioteca inclou \texttt{RandomPlayer}, \texttt{MaxBasePower\-Player} i \texttt{SimpleHeuristics\-Player}. Smogon~\cite{smogon_metagame,smogon_ou,smogon_damage,smogon_random_battle,smogon_rb_sets,smogon_forums} aporta coneixement expert, configuracions públiques i eines de càlcul.
 
-Huang et al.~\cite{pokemon_rl_huang} entrenen DQN amb atenció sobre Showdown. Pokechamp~\cite{pokechamp} (ICML 2025) combina LLM i minimax d'un pas i situa agents de llenguatge al nivell expert en Singles; el cost d'inferència els fa inviables com a cel·la de 10.000 partides en aquest projecte. El pòquer~\cite{libratus,pluribus} i StarCraft~\cite{alphastar} informen la gestió d'informació oculta, no es transfereixen com a codi.
+Huang i Lee~\cite{pokemon_rl_huang} entrenen un agent PPO amb \textit{self-play} a Showdown i mostren transferència entre formats. Més recentment, Grigsby et al.~\cite{grigsby_metamon} apliquen imitació i RL fora de línia amb Transformers sobre repeticions humanes, especialment a les primeres generacions. PokéChamp~\cite{pokechamp,pokechamp_icml} combina un model de llenguatge amb minimax d'un pas. PokéLLMon~\cite{pokellmon} també utilitza models de llenguatge per decidir en combat. Ambdós sistemes LLM es van integrar de manera exploratòria, però el cost d'inferència observat en va impedir una avaluació amb el volum de la matriu principal. El pòquer~\cite{libratus,pluribus} i StarCraft~\cite{alphastar} proporcionen antecedents sobre decisió amb informació oculta.
 
-\subsection{Què no cobria la literatura, i què cobreix aquest TFM}
+\subsection{Què afegeix aquest TFM}
 
 \begin{enumerate}
-    \item \textbf{Una matriu comuna de paradigmes a $n$ de tesi.} Heurística, 1-ply, IS-MCTS i IL, mateixos oponents, 10k/1k documentats, telemetria d'override. No un xampió aïllat.
-    \item \textbf{Ablació de coneixement, no un únic expert.} Catorze versions per dir \emph{quina} regla mou el WR.
-    \item \textbf{Híbrid vs pur} en cerca i en imitació, amb el mateix professor \texttt{v14}.
+    \item \textbf{Una matriu comuna} per a heurístiques, minimax, MCTS ras i imitació, amb oponents compartits, volums mostrals explícits i telemetria de discrepància.
+    \item \textbf{Una seqüència de catorze heurístiques} que permet estudiar blocs de coneixement específic del format.
+    \item \textbf{Variants guiades i no guiades} de cerca i d'imitació, amb \texttt{v14} com a prior o executor.
+    \item \textbf{Una avaluació de MaskablePPO} contra \texttt{v12}, amb clonatge inicial i 10.000 partides.
 \end{enumerate}
-
-No es reivindica haver resolt Dobles, ni haver publicat PPO, ni haver superat humans a la ladder (el pilot de \texttt{v14} és 39,4\%).
 
 % ============================================================
 \section{Justificació}
 \label{sec:justificacio}
 
-Pokémon Singles Random Battle concentra, en un motor obert:
+Pokémon Singles Random Battle concentra, en un motor obert, les propietats següents:
 
 \begin{itemize}
     \item Estocasticitat irreducible (roll, accuracy, crític, speed tie).
-    \item Informació oculta amb un pool de sets \emph{conegut} (belief tractable).
+    \item Informació oculta restringida per un conjunt de configuracions conegut.
     \item Decisions simultànies.
-    \item $|A|$ discret i emmascarable ($\le 9$).
+    \item Un espai d'accions discret i emmascarable.
     \item Suma zero al terminal.
     \item Ladder humana al mateix format.
 \end{itemize}
 
-L'objectiu no és un bot imbatible. És mesurar, amb $n$ honest, si la cerca poc profunda i el clonatge de macros humans superen ---o ni tan sols igualen--- una heurística que ja sap fer KO, Tera i switch-in. El capítol de resultats respon: no ho fan, tret que es quedin a prop de \texttt{v14}; i ni així arriben a \texttt{v12}.
+L'objectiu és mesurar com es comporten la cerca rasa, el clonatge d'una decisió humana d'alt nivell i PPO davant d'heurístiques que ja incorporen debilitaments, Teracristal·lització i selecció del substitut. El disseny experimental explicita les diferències de pressupost que limiten aquesta comparació.
 
 % ============================================================
 \section{Síntesi}
 \label{sec:marc_teoric_sintesi}
 
-S'ha fixat el marc: POSG, Singles \texttt{gen9randombattle}, quatre paradigmes mesurats i PPO com a continuació. Les mecàniques de tipus, velocitat i atzar defineixen per què la mètrica és un Bernoulli i per què calen 10.000 partides. El capítol següent tradueix això a protocol: Showdown, workers, $n$, recíprocs i Elo.
+El marc queda definit per un combat individual de Random Battle, cinc paradigmes i el simulador Showdown. Les mecàniques de tipus, velocitat, informació oculta i aleatorietat determinen tant el problema de decisió com la necessitat de quantificar la incertesa. El capítol següent converteix aquest marc en un disseny experimental.

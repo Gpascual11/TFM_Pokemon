@@ -1,0 +1,16 @@
+\begin{table}[htbp]
+\centering
+\caption{Com cada paradigma representa observació i acció. El contracte extern (Showdown) és el mateix; canvia la representació interna.}
+\label{tab:paradigm_spaces}
+\small
+\begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Paradigma} & \textbf{Observació interna} & \textbf{Acció interna} \\
+\midrule
+Heurístiques / minimax & Objectes \texttt{Battle} de \textit{poke-env}: actiu, banc, camp i historial revelat. & Argmax sobre moviments, canvis i Tera com a modificador. \\
+MCTS ras & El mateix, més un estat determinat per a \texttt{LocalSim}. & UCB/PUCT sobre els fills de l'arrel; s'envia l'acció més visitada. \\
+Imitació & 1.150 característiques tabulars per a atacar/canviar; l'executor veu l'objecte \texttt{Battle}. & Binari d'alt nivell + moviment o canvi concret. \\
+PPO & Vector de 328 (o 346 a la prova interrompuda) floats en $[0,1]$. & Enter $0\ldots 13$ emmascarat. \\
+\bottomrule
+\end{tabularx}
+\end{table}

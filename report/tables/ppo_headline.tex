@@ -1,0 +1,20 @@
+\begin{table}[H]
+\centering
+\caption{Currículum i avaluacions de MaskablePPO. El resultat principal és el del model A contra \texttt{HeuristicV12}, amb $n=10.000$ i les dues orientacions. La fase 4 només informa la finestra d'entrenament, no una avaluació independent.}
+\label{tab:ppo_head}
+\small
+\begin{tabularx}{\textwidth}{llrr>{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Fase} & \textbf{Oponent} & \textbf{$n$} & \textbf{TV (\%)} & \textbf{Notes} \\
+\midrule
+1 & Random & 1.000 & 91,8 & Graduació ($\ge 90\%$) \\
+1.5 & MaxBP & 1.000 & 70,5 & Graduació \\
+2 & \texttt{v8} & 1.000 & 40,6 & No assoleix el llindar del 55\% \\
+\textbf{3 (resultat)} & \textbf{\texttt{v12}} & \textbf{10.000} & \textbf{34,1} & Model A, 328 dimensions, $\pm 0{,}93$~pp \\
+3B (diagnòstic) & \texttt{v12} & 1.000 & 32,6 & Model B, taxa $1{,}5\times10^{-4}$ \\
+4 (interrompuda) & \texttt{v12} & 12.554 & 33,5 & Taxa d'entrenament; 346 dimensions i clonatge de \texttt{v14} \\
+Control (model A) & Random & 1.000 & 98,3 & Verificació de la política \\
+Matriu (context) & \texttt{v8} contra \texttt{v12} & 10.000 & 32,9 & Professor de clonatge \\
+\bottomrule
+\end{tabularx}
+\end{table}

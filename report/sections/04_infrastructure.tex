@@ -1,39 +1,66 @@
-\chapter{Entorn de Desenvolupament i Infraestructura de Computació}
+\chapter{Entorn de desenvolupament i infraestructura de còmput}
 \label{chap:infraestructura}
 
-El gauntlet de 784 cel·les, amb 10.000 partides a la majoria, no es pot executar en un portàtil sense disciplina de memòria i de processos. Aquest capítol documenta el maquinari i el flux de treball. L'orquestrador en si és al Capítol~\ref{chap:implementacio}.
+La matriu de 784 cel·les i l'entrenament PPO requereixen una màquina estable, accés remot i supervisió d'execucions llargues. Aquest capítol documenta el maquinari, la xarxa, les notificacions i les dependències. El coordinador dels experiments es descriu al Capítol~\ref{chap:implementacio}.
+
+\section{Organització del projecte}
+\label{sec:kanban}
+
+El desenvolupament s'ha organitzat amb un tauler Kanban dividit en objectius, tasques pendents, treball en curs i tasques completades. Cada targeta representa una unitat verificable, com una versió heurística, un agent de cerca, un entrenament o una secció de la memòria.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{kanban.png}
+    \caption{Tauler Kanban utilitzat per organitzar el desenvolupament del TFM.}
+    \label{fig:kanban}
+\end{figure}
 
 \section{Evolució de l'arquitectura}
 
 \subsection{Fase 1: prototipatge en portàtil}
 
-El prototip va córrer en un Intel Core Ultra 7 155H (22 fils) amb 16~GB de RAM. Un disc NVMe d'1~TB dedicat a \texttt{data/} es va muntar amb \textit{bind mount} (no un symlink, que Git tracta malament). Amb 16~GB, múltiples Showdown + Python obligaven a \texttt{gc.collect()}, chunks petits i reinicis de Node.js: aquestes rutines neixen d'aquesta fase, no d'una abstracció.
+El prototip va córrer en un Intel Core Ultra 7 155H (22 fils) amb 16~GB de RAM. Un disc NVMe d'1~TB dedicat a \texttt{data/} es va muntar amb \textit{bind mount}. Amb 16~GB, múltiples Showdown + Python obligaven a \texttt{gc.collect()}, chunks petits i reinicis de Node.js: aquestes rutines neixen d'aquesta fase.
 
-\subsection{Fase 2: workstation}
+\subsection{Fase 2: estació de treball}
 
-L'execució de tesi corre en torre: AMD Ryzen 7 5700X3D (8 nuclis / 16 fils, 96~MB L3), 32~GB DDR4, GPU NVIDIA RTX 2080 (8~GB). La GPU \textbf{no} intervé al gauntlet heurística / minimax / MCTS / IL: tot és CPU. La 2080 queda per al PPO futur i, si es volgués, per a LLM. Refrigeració de torre i SAI permeten nits senceres de benchmark. Tot el sistema viu en un NVMe, sense bind mount.
+Els experiments finals s'executen en una torre amb AMD Ryzen 7 5700X3D (8 nuclis i 16 fils, 96~MB de memòria cau L3), 32~GB DDR4 i una GPU NVIDIA RTX 2080 de 8~GB. La matriu d'heurístiques, minimax, MCTS i imitació utilitza principalment la CPU. La GPU s'empra per a MaskablePPO i les proves amb models de llenguatge. El sistema i les dades de treball resideixen en una unitat NVMe.
 
-Configuració típica del gauntlet: 8 instàncies Showdown (ports 8000--8007) $\times$ 15--25 batalles asyncio $\approx$ 120--200 combats simultanis. Les heurístiques acaben una cel·la de 10k en minuts; MCTS, amb el mateix hardware, obliga $n=1.000$.
+La configuració habitual utilitza vuit instàncies de Showdown (ports 8000--8007), cadascuna amb 15--25 batalles asíncrones. Les cel·les heurístiques es completen molt més ràpidament que les d'MCTS; aquesta diferència de cost motiva els volums de 10.000 i 1.000 partides. L'avaluació PPO contra \texttt{v12} també utilitza vuit ports.
 
-\section{Dependències: uv}
+\section{Accés remot: Tailscale}
 
-El gestor \textbf{uv} i \texttt{pyproject.toml} segmenten extras:
+El portàtil i la torre formen una xarxa privada amb \textbf{Tailscale}~\cite{tailscale} (WireGuard). SSH va per aquesta malla, sense obrir el port 22 al WAN. L'editor (Cursor / VS Code) treballa amb Remote-SSH sobre el disc del servidor: el codi, els CSV i els checkpoints PPO viuen a la torre.
+
+Les execucions llargues i els entrenaments PPO s'executen dins de \textbf{tmux}; així, una desconnexió del portàtil no interromp el coordinador ni el procés CUDA.
+
+\section{Bot de Telegram}
+
+Els scripts de llançament de \path{src/p00_core/scripts/runs_benchmark/} i el monitor \path{src/p00_core/scripts/seguretat_tfm.sh} envien notificacions mitjançant un bot de Telegram~\cite{telegram_bot_api}. El token s'emmagatzema a \texttt{.env} i no es versiona.
+
+Funcions que s'han usat de debò:
 
 \begin{itemize}
-    \item nucli: \texttt{poke-env==0.11.x}, pandas, xgboost;
-    \item \texttt{rl}: Gymnasium, Stable-Baselines3 (PPO futur);
-    \item \texttt{gpu}: PyTorch CUDA (\texttt{cu124}) al servidor, índex CPU al portàtil;
-    \item \texttt{pokechamp}: pont cap al fork amb \texttt{LocalSim}.
+    \item \textbf{Avisos de progrés:} inici i final d'un enfrontament, reintents, temps d'espera i partides completades.
+    \item \textbf{Supervisió de recursos:} temperatura de CPU i NVMe, ús de memòria i aturada d'emergència a $92^\circ$C.
+    \item \textbf{Comandes interactives} mitjançant \texttt{seguretat\_tfm.sh}: consulta de l'estat, resum de la sessió, registres i pausa o represa de l'execució.
 \end{itemize}
 
-No s'actualitza poke-env a 0.15 a mitja tesi: el gauntlet s'ha mesurat a 0.11.
+Aquesta infraestructura permet supervisar les execucions sense exposar serveis directament a Internet: Tailscale proporciona l'accés remot i Telegram informa del progrés.
 
-\section{Accés remot}
+\section{Dependències}
 
-Tailscale SSH (WireGuard) entre portàtil i torre, sense obrir el port 22 al WAN. L'editor treballa amb Remote-SSH sobre el disc del servidor. Les nits de 10k corren dins \textbf{tmux}: una desconnexió no mata el master.
+El gestor de paquets és \textbf{uv}~\cite{uv} amb Python \textbf{3.12} i \texttt{pyproject.toml}. Node.js~\cite{nodejs} construeix Pokémon Showdown. Resum:
 
-Un script de monitoratge (\texttt{seguretat\_tfm.sh}) segueix temperatura (aturada d'emergència a $92^\circ$C) i RAM (flush de page cache cap a 27,5~GB). No és part de la contribució científica; és el que ha permès acabar 253.000 partides per agent sense fondre el node.
+\begin{itemize}
+    \item \textbf{Nucli de combat:} \texttt{poke-env>=0.11,<0.12}~\cite{poke_env}; Node.js~\cite{nodejs} per a Showdown.
+    \item \textbf{Dades / estadística:} numpy~\cite{numpy}, pandas~\cite{pandas}, polars~\cite{polars}, scipy~\cite{scipy}.
+    \item \textbf{ML tabular:} scikit-learn~\cite{sklearn}, XGBoost~\cite{xgboost}, Hugging Face Datasets~\cite{huggingface_datasets}.
+    \item \textbf{Visualització i notebooks:} matplotlib~\cite{matplotlib}, seaborn~\cite{seaborn}, ipykernel, nbconvert.
+    \item \textbf{Utilitats:} tqdm, tabulate, orjson, requests, websockets.
+    \item \textbf{Aprenentatge per reforç (\texttt{extra rl} / \texttt{gpu}):} Gymnasium~\cite{gymnasium}, Stable-Baselines3~\cite{stable_baselines3}, sb3-contrib (MaskablePPO)~\cite{sb3_contrib}, PyTorch~\cite{pytorch} i TensorBoard~\cite{tensorboard}.
+    \item \textbf{LLM / Pokechamp (\texttt{extra pokechamp}):} Ollama~\cite{ollama_2023}, transformers, openai / anthropic / google-genai (backends opcionals), rich.
+    \item \textbf{Qualitat:} Ruff~\cite{ruff} (format + lint), \texttt{ty} (tipus).
+    \item \textbf{Sistema:} Git/GitHub, tmux, Tailscale~\cite{tailscale}, Telegram Bot API~\cite{telegram_bot_api}, \LaTeX{} (\texttt{report/}).
+\end{itemize}
 
-\section{Control de versions i qualitat}
-
-Git/GitHub per al codi. Les dades de benchmark (\texttt{data/benchmarks/all\_10k/}) no es commitegen senceres. Ruff formata i bota; \texttt{ty} comprova tipus. La memòria es compila amb LaTeX al mateix arbre (\texttt{report/}).
+El fork \texttt{pokechamp/} s'incorpora al \texttt{sys.path} dels processos que necessiten \texttt{LocalSim} o Abyssal. Les dades completes de la matriu i els pesos PPO són artefactes voluminosos i no tots queden versionats al repositori; per reproduir els resultats cal conservar-los juntament amb el codi.
