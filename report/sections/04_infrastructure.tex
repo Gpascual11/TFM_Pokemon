@@ -65,3 +65,46 @@ El gestor de paquets és \textbf{uv}~\cite{uv} amb Python \textbf{3.12} i \textt
 \end{itemize}
 
 El fork \texttt{pokechamp/} s'incorpora al \texttt{sys.path} dels processos que necessiten \texttt{LocalSim} o Abyssal. Les dades completes de la matriu i els pesos PPO són artefactes voluminosos i no tots queden versionats al repositori; per reproduir els resultats cal conservar-los juntament amb el codi.
+
+% ============================================================
+\section{Anàlisi de cost econòmic i pressupost de recursos}
+\label{sec:cost_economic}
+
+El desenvolupament d'aquest Treball de Final de Màster s'ha caracteritzat per una gestió altament eficient dels recursos computacionals, d'infraestructura i de programari. Atès l'elevat volum de batalles de la matriu d'avaluació (més de 6,4 milions) i la durada dels entrenaments, la principal despesa operativa directa s'associa al consum energètic derivat de l'execució ininterrompuda. Aquesta secció desglossa l'anàlisi econòmica i les mesures d'eficiència aplicades.
+
+\subsection{Desglossament de recursos i optimització de costos}
+
+Els costos del projecte es resumeixen en quatre eixos principals:
+
+\begin{enumerate}
+    \item \textbf{Maquinari i equips de còmput (0,00~€):} Tant el portàtil de desenvolupament inicial com l'estació de treball principal (AMD Ryzen 7 5700X3D, 32~GB RAM, NVIDIA RTX 2080 8~GB) són equips de propietat personal del desenvolupador utilitzats prèviament per a altres activitats. No s'ha realitzat cap adquisició de maquinari dedicada exclusivament al TFM.
+    \item \textbf{Consum energètic de 24/7 ($Y$~€):} A causa de l'alta complexitat computacional de la matriu d'enfrontaments i la necessitat d'aprofitar al màxim el temps disponible, l'estació de treball va funcionar de manera continuada les \textbf{24 hores del dia durant diverses setmanes sense aturar-se}, acumulant un total aproximat de $X$ hores de còmput. La gestió d'aquesta despesa energètica es va estructurar de la següent manera:
+    \begin{itemize}
+        \item \textbf{Autoconsum solar diürn:} Durant les hores de sol, la instal·lació de \textbf{plaques solars domèstiques} va reduir dràsticament el cost energètic cobrint directament la demanda de la torre mitjançant energia renovable gratuïta.
+        \item \textbf{Consum nocturn de xarxa:} Durant les hores nocturnes i períodes sense insolació, el còmput continuat va requerir subministrament directe de la xarxa elèctrica convencional, generant un cost estimat en $Y$~€.
+        \item \textbf{Mode terminal headless:} Per tal de minimitzar el consum de potència (Watts/hora) durant el funcionament 24/7, l'estació de treball es va executar en mode purament terminal (sense entorn gràfic GUI) supervisada mitjançant \texttt{tmux}, mantenint actius únicament els processos strictly necessaris.
+    \end{itemize}
+    \item \textbf{Models de llenguatge i eines de desenvolupament (0,00~€):} Les proves exploratòries amb models de llenguatge (\textit{PokéChamp} i \textit{PokéLLMon}) es van executar de manera 100\% local mitjançant el motor \textbf{Ollama}, sense consumir cap API comercial de pagament. Així mateix, l'ús d'eines de desenvolupament basades en IA (Antigravity, Cursor, PyCharm i VS Code) es va realitzar mitjançant llicències d'estudiant/pro, permetent accedir a models LLM d'altes capacitats sense cap despesa econòmica.
+    \item \textbf{Infraestructura de programari i comunicacions (0,00~€):} Totes les eines de la cadena de valor (Pokémon Showdown, \textit{poke-env}, entorn de desenvolupament Python, Tailscale per a la xarxa privada virtual, Telegram Bot API per a la telemetria en temps real, i \LaTeX{} per a la redacció) són de codi obert (\emph{open-source}) o s'han utilitzat en les seves modalitats gratuïtes.
+\end{enumerate}
+
+\begin{table}[htbp]
+\centering
+\caption{Resum del pressupost econòmic i costos directes del TFM.}
+\label{tab:cost_economic}
+\small
+\begin{tabularx}{\textwidth}{lX r}
+\toprule
+\textbf{Concepte} & \textbf{Estratègia d'optimització / Font} & \textbf{Cost Directe (€)} \\
+\midrule
+Maquinari i equips & Ús d'equips personals preexistents (sense adquisicions noves) & 0,00 \\
+Consum energètic & Execució 24/7 (setmanes continus, plaques solars de dia / xarxa de nit) & $Y$ \\
+Inferència d'LLMs & Execució local amb Ollama i llicències d'estudiant (Cursor/PyCharm) & 0,00 \\
+Eines i Infraestructura & Programari de codi obert (\emph{open-source}) i serveis gratuïts & 0,00 \\
+\midrule
+\textbf{Cost Total Directe} & & \textbf{$Y$} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Aquesta combinació d'autoconsum solar diürn, optimització de còmput en mode terminal, execució local d'LLMs i llicències d'estudiant ha permès contenir el cost energètic de les setmanes d'execució ininterrompuda 24/7 i completar el projecte de manera altament eficient i sostenible.

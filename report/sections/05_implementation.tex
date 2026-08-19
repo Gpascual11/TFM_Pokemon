@@ -21,26 +21,26 @@ Aquest capítol tradueix la metodologia a programari: el coordinador que permet 
 \begin{figure}[htbp]
     \centering
     \resizebox{\textwidth}{!}{%
-    \begin{tikzpicture}[
-        font=\small,
-        box/.style={rectangle, rounded corners, draw, align=center, minimum height=1.0cm, text width=2.15cm},
-        arr/.style={->, thick, >=stealth}
-    ]
-        \node[box, fill=gray!15] (p00) {\texttt{p00\_core}\\coordinador,\\fàbrica, CSV};
-        \node[box, fill=blue!12, right=0.4cm of p00] (p01) {\texttt{p01}\\heurístiques\\\texttt{v1}--\texttt{v14}};
-        \node[box, fill=green!12, right=0.4cm of p01] (p03) {\texttt{p03}\\minimax};
-        \node[box, fill=orange!12, right=0.4cm of p03] (p04) {\texttt{p04}\\MCTS};
-        \node[box, fill=yellow!20, below=0.55cm of p01] (p02) {\texttt{p02}\\imitació};
-        \node[box, fill=red!12, below=0.55cm of p04] (p05) {\texttt{p05}\\MaskablePPO};
-        \draw[arr] (p00) -- (p01);
-        \draw[arr] (p00) -- (p03);
-        \draw[arr] (p00) -- (p04);
-        \draw[arr] (p00) -- (p02);
-        \draw[arr] (p00) -- (p05);
-        \draw[arr] (p01) -- (p03);
-        \draw[arr] (p01) -- (p04);
-        \draw[arr] (p01) -- (p02);
-    \end{tikzpicture}%
+        \begin{tikzpicture}[
+                font=\small,
+                box/.style={rectangle, rounded corners, draw, align=center, minimum height=1.0cm, text width=2.15cm},
+                arr/.style={->, thick, >=stealth}
+            ]
+            \node[box, fill=gray!15] (p00) {\texttt{p00\_core}\\coordinador,\\fàbrica, CSV};
+            \node[box, fill=blue!12, right=0.4cm of p00] (p01) {\texttt{p01}\\heurístiques\\\texttt{v1}--\texttt{v14}};
+            \node[box, fill=green!12, right=0.4cm of p01] (p03) {\texttt{p03}\\minimax};
+            \node[box, fill=orange!12, right=0.4cm of p03] (p04) {\texttt{p04}\\MCTS};
+            \node[box, fill=yellow!20, below=0.55cm of p01] (p02) {\texttt{p02}\\imitació};
+            \node[box, fill=red!12, below=0.55cm of p04] (p05) {\texttt{p05}\\MaskablePPO};
+            \draw[arr] (p00) -- (p01);
+            \draw[arr] (p00) -- (p03);
+            \draw[arr] (p00) -- (p04);
+            \draw[arr] (p00) -- (p02);
+            \draw[arr] (p00) -- (p05);
+            \draw[arr] (p01) -- (p03);
+            \draw[arr] (p01) -- (p04);
+            \draw[arr] (p01) -- (p02);
+        \end{tikzpicture}%
     }
     \caption{Mapa de mòduls. \texttt{p00} aïlla simulació i persistència; \texttt{p01}--\texttt{p05} només afegeixen la política. Minimax, MCTS i imitació reutilitzen coneixement de \texttt{p01}; PPO té entorn, checkpoints i avaluació propis.}
     \label{fig:module_map}
@@ -68,11 +68,11 @@ L'opció \texttt{--no-security} elimina l'autenticació en el servidor local. El
 \begin{figure}[htbp]
     \centering
     \begin{tikzpicture}[
-        node distance=1.0cm, auto, font=\footnotesize,
-        block/.style={rectangle, draw, fill=blue!5, text width=4.6cm, align=center, minimum height=0.7cm},
-        msg/.style={->, thick, >=stealth},
-        lbl/.style={font=\scriptsize, midway}
-    ]
+            node distance=1.0cm, auto, font=\footnotesize,
+            block/.style={rectangle, draw, fill=blue!5, text width=4.6cm, align=center, minimum height=0.7cm},
+            msg/.style={->, thick, >=stealth},
+            lbl/.style={font=\scriptsize, midway}
+        ]
         \node[font=\small\bfseries] (agent_title) at (0,0) {Agent Python};
         \node[font=\small\bfseries] (server_title) at (7,0) {Showdown Node.js};
         \draw[dashed, gray] (0,-0.5) -- (0,-8.8);
@@ -96,10 +96,10 @@ L'opció \texttt{--no-security} elimina l'autenticació en el servidor local. El
 \begin{figure}[htbp]
     \centering
     \begin{tikzpicture}[
-        node distance=0.7cm, font=\footnotesize,
-        box/.style={rectangle, draw, text width=2.7cm, align=center, minimum height=0.9cm},
-        arr/.style={->, thick, >=stealth}
-    ]
+            node distance=0.7cm, font=\footnotesize,
+            box/.style={rectangle, draw, text width=2.7cm, align=center, minimum height=0.9cm},
+            arr/.style={->, thick, >=stealth}
+        ]
         \node[box, fill=red!8] (ws) {Missatge WebSocket};
         \node[box, fill=yellow!10, right=of ws] (parser) {Parser};
         \node[box, fill=blue!8, right=of parser] (battle) {Objecte \texttt{Battle}};
@@ -135,31 +135,31 @@ Les execucions llargues en un únic procés Python acumulaven objectes \texttt{B
 \begin{figure}[H]
     \centering
     \resizebox{\textwidth}{!}{%
-    \begin{tikzpicture}[
-        node distance=1cm, font=\footnotesize,
-        master/.style={rectangle, draw, fill=blue!10, text width=3.8cm, align=center, minimum height=1.2cm, rounded corners},
-        worker/.style={rectangle, draw, fill=green!8, text width=3cm, align=center, minimum height=1cm},
-        server/.style={rectangle, draw, fill=orange!10, text width=2.8cm, align=center, minimum height=0.9cm},
-        disk/.style={cylinder, draw, fill=gray!15, shape border rotate=90, aspect=0.25, minimum height=0.9cm, minimum width=2cm, align=center, font=\scriptsize}
-    ]
-        \node[master] (master) {\textbf{COORDINADOR}\\\texttt{benchmark.py}};
-        \node[worker, below left=2cm and 1.5cm of master] (w1) {Procés 1};
-        \node[worker, below=2cm of master] (w2) {Procés 2};
-        \node[worker, below right=2cm and 1.5cm of master] (wn) {Procés N};
-        \node[server, below=1cm of w1] (s1) {Showdown :8000};
-        \node[server, below=1cm of w2] (s2) {Showdown :8001};
-        \node[server, below=1cm of wn] (sn) {Showdown :800N};
-        \node[disk, right=2.5cm of wn] (tmp) {\_tmp\_*.csv};
-        \node[disk, below=0.8cm of tmp] (final) {agent\_vs\_opp.csv};
-        \draw[->, thick] (master) -- (w1);
-        \draw[->, thick] (master) -- (w2);
-        \draw[->, thick] (master) -- (wn);
-        \draw[<->, thick] (w1) -- (s1);
-        \draw[<->, thick] (w2) -- (s2);
-        \draw[<->, thick] (wn) -- (sn);
-        \draw[->, dashed, gray] (wn.east) -- (tmp.west);
-        \draw[->, thick, dotted] (master.east) -| (final.north);
-    \end{tikzpicture}
+        \begin{tikzpicture}[
+                node distance=1cm, font=\footnotesize,
+                master/.style={rectangle, draw, fill=blue!10, text width=3.8cm, align=center, minimum height=1.2cm, rounded corners},
+                worker/.style={rectangle, draw, fill=green!8, text width=3cm, align=center, minimum height=1cm},
+                server/.style={rectangle, draw, fill=orange!10, text width=2.8cm, align=center, minimum height=0.9cm},
+                disk/.style={cylinder, draw, fill=gray!15, shape border rotate=90, aspect=0.25, minimum height=0.9cm, minimum width=2cm, align=center, font=\scriptsize}
+            ]
+            \node[master] (master) {\textbf{COORDINADOR}\\\texttt{benchmark.py}};
+            \node[worker, below left=2cm and 1.5cm of master] (w1) {Procés 1};
+            \node[worker, below=2cm of master] (w2) {Procés 2};
+            \node[worker, below right=2cm and 1.5cm of master] (wn) {Procés N};
+            \node[server, below=1cm of w1] (s1) {Showdown :8000};
+            \node[server, below=1cm of w2] (s2) {Showdown :8001};
+            \node[server, below=1cm of wn] (sn) {Showdown :800N};
+            \node[disk, right=2.5cm of wn] (tmp) {\_tmp\_*.csv};
+            \node[disk, below=0.8cm of tmp] (final) {agent\_vs\_opp.csv};
+            \draw[->, thick] (master) -- (w1);
+            \draw[->, thick] (master) -- (w2);
+            \draw[->, thick] (master) -- (wn);
+            \draw[<->, thick] (w1) -- (s1);
+            \draw[<->, thick] (w2) -- (s2);
+            \draw[<->, thick] (wn) -- (sn);
+            \draw[->, dashed, gray] (wn.east) -- (tmp.west);
+            \draw[->, thick, dotted] (master.east) -| (final.north);
+        \end{tikzpicture}
     }
     \caption{Arquitectura de la matriu experimental, sense memòria compartida entre processos de treball.}
     \label{fig:master_worker_full}
@@ -190,9 +190,29 @@ En execucions llargues es va observar creixement de memòria al procés V8 de No
     \label{fig:ram_usage}
 \end{figure}
 
-\subsection{Esquema CSV}
+\subsection{Esquema CSV i telemetria emmagatzemada}
 
-Cada fila representa una batalla. L'esquema final té \textbf{73 columnes}: identitat (\texttt{battle\_id}, \texttt{format}, \texttt{heuristic}, \texttt{opponent}, \texttt{won}, \texttt{turns}), errors i accions de reserva, HP i Pokémon debilitats, canvis voluntaris o forçats, esdeveniments aleatoris i telemetria del paradigma (\texttt{search\_diff}, \texttt{xgb\_stays}, \texttt{ko\_guards}, \texttt{terastallized}, entre d'altres). \texttt{StatsBattle} intercepta missatges del protocol, com \texttt{|-crit|}, abans que la capa d'alt nivell els descarti.
+Cada fila del fitxer de resultats representa l'execució d'una batalla completa. L'esquema final consta de \textbf{73 columnes} estandarditzades organitzades en sis blocs funcionals de dades:
+
+\begin{enumerate}
+    \item \textbf{Identificadors i metadades:} \texttt{battle\_id}, \texttt{format}, \texttt{heuristic} (agent avaluat com a jugadors principals \emph{us}), \texttt{opponent} (oponent \emph{opp}), \texttt{won} (1 si guanya \emph{us}, 0 si guanya \emph{opp}) i \texttt{turns} (durada total en torns).
+    \item \textbf{Resultats i estat final dels equips:} HP residual propi i del rival (\texttt{total\_hp\_us}, \texttt{total\_hp\_opp}), nombre de Pokémon debilitats a cada equip (\texttt{self\_fainted\_count}, \texttt{opp\_fainted\_count}) i integrants restants (\texttt{remaining\_pokemon\_us/opp}).
+    \item \textbf{Accions i control d'execució:} comptadors de canvis voluntaris (\texttt{voluntary\_switches\_us/opp}), canvis forçats per debilitament (\texttt{forced\_switches\_us/opp}), ús de la Teracristal·lització (\texttt{terastallized\_us/opp}), així com gestió d'excepcions i accions de reserva (\texttt{error\_moves\_us/opp}, \texttt{fallback\_moves\_us/opp}).
+    \item \textbf{Estocasticitat i esdeveniments aleatoris:} comptadors de cops crítics rebuts i infligits (\texttt{crits\_dealt}, \texttt{crits\_received}), fallades de precisió (\texttt{misses}), efectivitat de tipus aplicada (\texttt{supereffective}) i condicions d'estat imposades (\texttt{status\_applied}). El mòdul \texttt{StatsBattle} intercepta missatges bruts del protocol de Showdown, com ara \texttt{|-crit|}, abans que la capa d'alt nivell els descarti.
+    \item \textbf{Mètriques conductuals i de ritme (\emph{tempo}):} comptadors de col·locació i neteja de perills d'entrada (\texttt{hazard\_sets}, \texttt{hazard\_removals}), ús de moviments de preparació (\texttt{setup\_uses}) i comprovacions de debilitament segur (\texttt{ko\_checks}, \texttt{ko\_guards}).
+    \item \textbf{Telemetria específica dels paradigmes:} camps especialitzats segons la família d'agent (\texttt{search\_diff}, \texttt{xgb\_switches}, \texttt{xgb\_stays}, \texttt{endgame\_solves}).
+\end{enumerate}
+
+\subsubsection{Gestió de columnes opcionals i especificitat per paradigma}
+
+Per tal d'evitar la proliferació de fitxers heterogenis o errors d'esquema en posterioritat, el procés de treball (\texttt{worker.py}) genera una estructura de diccionari unificada de 73 columnes per a \textbf{tots} els agents. Si un camp és específic d'un paradigma concret i no s'aplica a l'agent avaluat, el sistema l'inicialitza per defecte a \texttt{0} (o valor buit de seguretat). Aquesta decisió de disseny garanteix que les llibreries d'anàlisi de dades (\texttt{pandas} i \texttt{polars}) puguin concatenar i analitzar qualsevol dels 784 fitxers CSV de la matriu sense cap excepcions per discrepància de columnes (\emph{schema mismatch}) ni errors de clau absent (\emph{KeyError}):
+
+\begin{itemize}
+    \item \textbf{Heurístiques expertes (\texttt{v1}--\texttt{v14}):} Omplen tots els camps generals de nucli (HP, KOs, canvis, Teracristal·lització, crítics, fallades, \texttt{fallback\_moves}, \texttt{error\_moves}). Els camps de cerca (\texttt{search\_diff}) i d'XGBoost (\texttt{xgb\_stays}) romanen a \texttt{0}.
+    \item \textbf{Cerca adversària Minimax (\texttt{v15}--\texttt{v17}) i MCTS ras (\texttt{v18}--\texttt{v20}):} A més de les columnes de nucli, enregistren activament \texttt{search\_diff\_us/opp} (nombre de torns on la cerca en línia discrepa de l'heurística de base i sobreescriu la seva recomanació), \texttt{search\_switches\_us/opp} (canvis determinats per la cerca) i \texttt{endgame\_solves\_us/opp} (resolucions exactes fins al final de la partida).
+    \item \textbf{Aprenentatge per imitació XGBoost (\texttt{v21}--\texttt{v22} / \texttt{ml\_advanced}):} A més de les columnes de nucli, enregistren activament \texttt{xgb\_switches\_us/opp} (canvis ordenats pel cap macro d'XGBoost), \texttt{xgb\_stays\_us/opp} (torns on el model avalua el tauler i decideix romandre actiu) i \texttt{xgb\_prob\_sum\_us/opp} (suma acumulada de confiança probabilística).
+    \item \textbf{Extracció de la Teracristal·lització (\texttt{\_is\_tera}):} Per mantenir la compatibilitat entre diferents forks de \textit{poke-env} i agents personalitzats, \texttt{worker.py} utilitza una funció d'extracció d'atributs universals (\texttt{getattr(mon, "terastallized", getattr(mon, "\_terastallized", False))}) que evita fallades d'atributs si un agent utilitza una implementació interna diferent.
+\end{itemize}
 
 \subsection{Automatització de la matriu}
 
@@ -225,34 +245,29 @@ El flux habitual és:
     \item validar l'ordre i, només si la política no pot retornar-ne cap, utilitzar una acció legal de reserva.
 \end{enumerate}
 
-Cada versió afegeix informació a un d'aquests passos. Aquest punt és important: \texttt{v12} no és només una fórmula amb més termes, perquè modifica la selecció del substitut i l'ús d'un recurs d'una vegada per partida; \texttt{v14} tampoc és simplement \texttt{v13} amb un pes diferent, perquè manté estat sobre el comportament rival.
+Cada versió afegeix informació a un d'aquests passos. Aquest punt és important: \texttt{v12} no és només una fórmula amb més termes, perquè modifica la selecció del substitut i l'ús d'un recurs d’una vegada per partida; \texttt{v14} tampoc és simplement \texttt{v13} amb un pes diferent, perquè manté estat sobre el comportament rival.
 
 \begin{table}[htbp]
-\centering
-\caption{Correspondència entre les fases heurístiques i els components implementats.}
-\label{tab:heuristic_implementation}
-\small
-\begin{tabularx}{\textwidth}{lX}
-\toprule
-\textbf{Versions} & \textbf{Component principal implementat} \\
-\midrule
-\texttt{v1}--\texttt{v6} & Estimadors successius de dany, seguiment lleuger de moviments, camp i prioritat. \\
-\texttt{v7}--\texttt{v8} & Nova puntuació de l'enfrontament, canvis voluntaris i immunitats conegudes. \\
-\texttt{v9}--\texttt{v11} & Regles de torn lliure, preparació, perills d'entrada, estats, sacrificis i pivots. \\
-\texttt{v12} & Teracristal·lització ofensiva/defensiva i selecció del substitut per puntuació. \\
-\texttt{v13} & Inferència amb moviments revelats, bloqueig Choice, recuperació i política conservadora. \\
-\texttt{v14} & Perfil persistent del rival, sondeig inicial, rang de dany i resolució de finals. \\
-\bottomrule
-\end{tabularx}
+    \centering
+    \caption{Correspondència entre les fases heurístiques i els components implementats.}
+    \label{tab:heuristic_implementation}
+    \small
+    \begin{tabularx}{\textwidth}{lX}
+        \toprule
+        \textbf{Versions}         & \textbf{Component principal implementat}                                                 \\
+        \midrule
+        \texttt{v1}--\texttt{v6}  & Estimadors successius de dany, seguiment lleuger de moviments, camp i prioritat.         \\
+        \texttt{v7}--\texttt{v8}  & Nova puntuació de l'enfrontament, canvis voluntaris i immunitats conegudes.              \\
+        \texttt{v9}--\texttt{v11} & Regles de torn lliure, preparació, perills d'entrada, estats, sacrificis i pivots.       \\
+        \texttt{v12}              & Teracristal·lització ofensiva/defensiva i selecció del substitut per puntuació.          \\
+        \texttt{v13}              & Inferència amb moviments revelats, bloqueig Choice, recuperació i política conservadora. \\
+        \texttt{v14}              & Perfil persistent del rival, sondeig inicial, rang de dany i resolució de finals.        \\
+        \bottomrule
+    \end{tabularx}
 \end{table}
 
 \subsection{Evolució de les versions}
 
-\paragraph{\texttt{v1}--\texttt{v6} (altiplà de dany).}
-\texttt{v1} maximitza $\mathrm{bp}\times\mathrm{eff}\times\mathrm{STAB}$. \texttt{v2} afegeix estadístiques i penalització per cremada; \texttt{v3}, seguiment de moviments i canvis simples; \texttt{v4}/\texttt{v5}, clima, terreny i modificadors; i \texttt{v6}, prioritat. Aquest grup permet estudiar els rendiments decreixents d'afinar només el càlcul de dany.
-
-\paragraph{\texttt{v7} (salt posicional).}
-La versió reescriu el càlcul amb estadístiques modificades i introdueix el \textbf{canvi per puntuació de l'enfrontament}, inspirat en Abyssal. És el primer agent que valora explícitament un canvi voluntari. Els perills d'entrada i els moviments de preparació s'incorporen a \texttt{v9}.
 
 \paragraph{\texttt{v8} / \texttt{v10}.}
 \texttt{v8} incorpora objectes, habilitats, pantalles i \textit{Trick Room}. \texttt{v10} incorpora condicions d'estat, sacrificis amb pocs HP i moviments de pivot.
@@ -413,10 +428,10 @@ A cada pas es calcula una màscara de legalitat que exclou moviments sense PP, u
 \begin{figure}[htbp]
     \centering
     \begin{tikzpicture}[
-        font=\small,
-        box/.style={rectangle, rounded corners, draw, align=center, minimum height=0.9cm, text width=2.35cm},
-        arr/.style={->, thick, >=stealth}
-    ]
+            font=\small,
+            box/.style={rectangle, rounded corners, draw, align=center, minimum height=0.9cm, text width=2.35cm},
+            arr/.style={->, thick, >=stealth}
+        ]
         \node[box, fill=yellow!20] (obs) {Observació\\328-d};
         \node[box, fill=orange!15, right=0.4cm of obs] (mask) {Màscara\\legal};
         \node[box, fill=blue!12, right=0.4cm of mask] (pi) {Actor $\pi_\theta$\\$+$ crític $V$};
@@ -441,10 +456,10 @@ Abans de l'entrenament per reforç, \texttt{bc.py} genera tuples $(o,m,a)$ d'obs
 \begin{figure}[htbp]
     \centering
     \begin{tikzpicture}[
-        font=\small,
-        box/.style={rectangle, rounded corners, draw, align=center, minimum height=0.95cm, text width=2.5cm},
-        arr/.style={->, thick, >=stealth}
-    ]
+            font=\small,
+            box/.style={rectangle, rounded corners, draw, align=center, minimum height=0.95cm, text width=2.5cm},
+            arr/.style={->, thick, >=stealth}
+        ]
         \node[box, fill=green!12] (prof) {Professor \texttt{v8}};
         \node[box, fill=yellow!20, right=0.45cm of prof] (buf) {Buffer $(o,m,a)$};
         \node[box, fill=blue!12, right=0.45cm of buf] (bc) {BC actor\\Adam $10^{-3}$};
@@ -478,20 +493,20 @@ El codi desa el valor potencial anterior i només afegeix la diferència de la p
 La Taula~\ref{tab:ppo_curriculum_impl} diferencia el criteri dissenyat, l'avaluació congelada i la decisió presa. Les taxes de les corbes d'entrenament no substitueixen la columna de validació.
 
 \begin{table}[htbp]
-\centering
-\caption{Implementació i validació del currículum PPO. «Superada» es refereix al llindar previst, no al fet que s'executés una fase posterior.}
-\label{tab:ppo_curriculum_impl}
-\small
-\begin{tabularx}{\textwidth}{cl>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{2.4cm}}
-\toprule
-\textbf{Fase} & \textbf{Oponent} & \textbf{Canvi implementat} & \textbf{Validació congelada} & \textbf{Decisió} \\
-\midrule
-1 & Random & PPO inicial, 318 dimensions, 4 entorns, 500k passos. & 91,8\% a 1.000; llindar 90\%. & Superada \\
-1.5 & MaxBP & Reprèn fase 1; taxa $2\times10^{-4}$, 500k passos. & 70,5\% a 1.000; llindar $>70\%$. & Superada per estimació puntual \\
-2 & \texttt{v8} & Amplia a 328 dimensions, 400 partides de clonatge, 8 entorns. & 40,6\% a 1.000; llindar $>55\%$. & No superada \\
-3 & \texttt{v12} & Continua des de fase 2 i prova taxes/entorns diferents. & Model A: 34,1\% a 10.000. & Mesura final \\
-\bottomrule
-\end{tabularx}
+    \centering
+    \caption{Implementació i validació del currículum PPO. «Superada» es refereix al llindar previst, no al fet que s'executés una fase posterior.}
+    \label{tab:ppo_curriculum_impl}
+    \small
+    \begin{tabularx}{\textwidth}{cl>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{2.4cm}}
+        \toprule
+        \textbf{Fase} & \textbf{Oponent} & \textbf{Canvi implementat}                                    & \textbf{Validació congelada}     & \textbf{Decisió}               \\
+        \midrule
+        1             & Random           & PPO inicial, 318 dimensions, 4 entorns, 500k passos.          & 91,8\% a 1.000; llindar 90\%.    & Superada                       \\
+        1.5           & MaxBP            & Reprèn fase 1; taxa $2\times10^{-4}$, 500k passos.            & 70,5\% a 1.000; llindar $>70\%$. & Superada per estimació puntual \\
+        2             & \texttt{v8}      & Amplia a 328 dimensions, 400 partides de clonatge, 8 entorns. & 40,6\% a 1.000; llindar $>55\%$. & No superada                    \\
+        3             & \texttt{v12}     & Continua des de fase 2 i prova taxes/entorns diferents.       & Model A: 34,1\% a 10.000.        & Mesura final                   \\
+        \bottomrule
+    \end{tabularx}
 \end{table}
 
 \paragraph{Fase 1: Random.}
@@ -530,6 +545,35 @@ Tot i el resultat anterior, es continua contra \texttt{v12} per mesurar si l'ent
     \caption{Corbes de les quatre etapes del currículum. Són taxes durant l'entrenament sobre una política canviant; les validacions independents són les de la Taula~\ref{tab:ppo_curriculum_impl}. El panell de fase 3 correspon a la passada secundària, no al model A publicat.}
     \label{fig:ppo_curriculum_curves}
 \end{figure}
+
+% ============================================================
+\section{Desplegament i operativitat en entorn real (Deployment)}
+\label{sec:deployment}
+
+El desplegament de l'agent en entorns reals de producció exigeix operar fora de la xarxa local de simulació i interactuar directament amb els servidors oficials públics de Pokémon Showdown (\texttt{play.pokemonshowdown.com}). Aquest mòdul, organitzat a \texttt{src/p00\_core/online\_bot/run\_online\_bot.py}, implementa l'arquitectura de desplegament operatiu per al funcionament autònom.
+
+\subsection{Arquitectura del client WebSocket i autenticació}
+
+El bot opera com un client asíncronic en Python basat en \texttt{websockets} i \texttt{asyncio}. El flux d'establiment de sessió segueix el protocol oficial de Showdown:
+
+\begin{enumerate}
+    \item \textbf{Connexió al WebSocket públic:} establiment del canal bidireccional amb el servidor d'enfrontaments (\texttt{sim3.psim.us:80} / \texttt{showdown}).
+    \item \textbf{Recepció del desafiament del servidor (\emph{Challstr}):} obtenció del token d'identificació de sessió generat pel servidor Showdown.
+    \item \textbf{Autenticació HTTP POST:} enviament de les credencials de l'agent i del \emph{challstr} a l'API d'autenticació oficial (\texttt{play.pokemonshowdown.com/action.php}) per generar l'asserció d'identitat.
+    \item \textbf{Enviament del token d'asserció:} transmissió de l'asserció al WebSocket (\texttt{|/trn <username>,0,<assertion>}) per registrar l'usuari (\texttt{SirPThesis}).
+\end{enumerate}
+
+\subsection{Gestió d'estat, xarxa i tolerància a fallades}
+
+Per tal de garantir l'operativitat continuada en producció sense intervenció humana, el mòdul integra mecanismes de tolerància a fallades:
+
+\begin{itemize}
+    \item \textbf{Reconnexió automàtica i recuperació de sessió:} en cas de pèrdua de socket o tall de xarxa, el bot reintenta la connexió mitjançant un algorisme de reescalat exponencial d'espera (\emph{exponential backoff}).
+    \item \textbf{Gestió de temps de resposta (\emph{timer}):} la presa de decisions està acotada temporalment per evitar la pèrdua per exhauriment de temps (\emph{timer loss}). Si l'agent no respon en menys de 10 segons, el connector aplica una acció de reserva legal de manera immediata.
+    \item \textbf{Control de freqüència (\emph{Rate Limiting}):} aplicació d'esperes entre comandes per complir les polítiques del servidor públic i evitar el bloqueig d'IP (\emph{spam throttle}).
+\end{itemize}
+
+L'agent principal desplaçat al \emph{ladder} oficial va ser \texttt{v14}, acumulant 431 batalles reals contra jugadors humans. Aquest entorn de desplegament demostra la capacitat del programari per operar com un servei autònom i de producció.
 
 \subsection{Avaluació i preservació del model principal}
 
