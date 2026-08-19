@@ -25,12 +25,20 @@
 \DeclareQuoteStyle{catalan}
   {\guillemotleft}{\guillemotright}
   {\textquotedblleft}{\textquotedblright}
-\usepackage[backend=bibtex]{biblatex}
+\usepackage[numbers,sort&compress]{natbib}
 \usepackage{hyperref}
 
 % --- Report assets and bibliography ---
-\graphicspath{{images/}}
-\addbibresource{bibliography.bib}
+\graphicspath{
+    {images/}
+    {images/logos/}
+    {images/diagrams/}
+    {images/heuristics/}
+    {images/minimax/}
+    {images/mcts/}
+    {images/il/}
+    {images/results/}
+}
 
 \captionsetup{font=small, labelfont=bf, skip=6pt}
 \hypersetup{colorlinks=true, linkcolor=blue!50!black, citecolor=blue!50!black, urlcolor=blue!60!black}
@@ -61,6 +69,7 @@
 \include{sections/06_results}
 \include{sections/07_conclusion_future_work}
 
-\printbibliography[heading=bibintoc,title={Referències bibliogràfiques}]
+\bibliographystyle{unsrt}
+\bibliography{bibliography}
 
 \end{document}

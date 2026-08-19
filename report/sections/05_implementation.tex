@@ -1,3 +1,4 @@
+% !TEX root = ../main.tex
 \chapter{Implementació dels cinc paradigmes}
 \label{chap:implementacio}
 
@@ -184,22 +185,8 @@ En execucions llargues es va observar creixement de memòria al procés V8 de No
 
 \begin{figure}[htbp]
     \centering
-    \IfFileExists{images/ram_usage_singles1.png}{%
-        \includegraphics[width=0.95\linewidth]{ram_usage_singles1.png}%
-    }{%
-    \begin{tikzpicture}[font=\small, x=0.85cm, y=0.045cm]
-        \draw[->, thick] (0,0) -- (12.2,0) node[right] {temps};
-        \draw[->, thick] (0,0) -- (0,95) node[above] {RAM};
-        \draw[thick, blue!70!black]
-            (0,35) -- (2.2,62) -- (2.3,38) -- (4.6,70) -- (4.7,40)
-            -- (7.1,78) -- (7.2,42) -- (9.6,86) -- (9.7,44) -- (11.5,55);
-        \foreach \x in {2.25, 4.65, 7.15, 9.65} {
-            \draw[dashed, gray] (\x,30) -- (\x,90);
-        }
-        \node[font=\scriptsize, align=left] at (6,-18) {Caigudes: reinici de Showdown o fi d'un procés de treball};
-    \end{tikzpicture}%
-    }
-    \caption{Monitoratge durant una execució al prototip de 16~GB. La memòria creix mentre s'acumulen batalles i cau després de reiniciar processos; el patró va motivar els blocs curts, la recollida de memòria i els reinicis de Showdown. Si la captura original no és al directori d'imatges, el diagrama recull el mateix patró de dent de serra.}
+    \includegraphics[width=0.95\linewidth]{images/diagrams/ram_usage_singles1.png}
+    \caption{Monitoratge durant una execució al prototip de 16~GB. La memòria creix mentre s'acumulen batalles i cau després de reiniciar processos; el patró va motivar els blocs curts, la recollida de memòria i els reinicis de Showdown.}
     \label{fig:ram_usage}
 \end{figure}
 
@@ -351,39 +338,30 @@ La implementació es divideix en quatre directoris que corresponen a etapes repr
     \item \texttt{s03\_training/} transforma els torns en una matriu tabular, separa per batalla i entrena XGBoost;
     \item \texttt{s04\_agent/} carrega els models i converteix-ne la predicció en una acció legal de Showdown.
 \end{enumerate}
-
 La separació és necessària perquè una repetició no conté directament el mateix objecte que rep l'agent en línia. El procés d'extracció reconstrueix, torn a torn, HP, camp, ús de Tera, identitat dels actius i acció observada. La llista de característiques desada amb el model garanteix que l'agent en producció generi les columnes en el mateix ordre que durant l'entrenament.
 
 \subsection{Dades}
 
-Les dades són repeticions de \texttt{gen9randombattle} de jugadors amb Elo $\ge 1800$, obtingudes mitjançant Hugging Face i PokéChamp entre 2023 i 2025. Contenen aproximadament 1,12 milions de torns. \texttt{GroupShuffleSplit} separa les dades per \texttt{battle\_id} per evitar que torns d'una mateixa batalla apareguin a entrenament i validació. \texttt{scale\_pos\_weight} compensa un desequilibri aproximat de 2,88 entre atacar i canviar.
+Les dades són repeticions de \texttt{gen9randombattle} de jugadors amb Elo $\ge 1800$.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{../src/p02_imitation_learning/s02_eda/plots/behavioral_matrix_validation.png}
+    \includegraphics[width=\linewidth]{images/il/behavioral_matrix_validation.png}
     \caption{Validació exploratòria de les repeticions humanes: desequilibri entre atacar i canviar, evolució de la taxa de canvi amb el torn i espècies més representades. La figura descriu el conjunt de dades, no el rendiment final de l'agent.}
     \label{fig:il_dataset_validation}
 \end{figure}
 
-La classe «canviar» representa aproximadament el 25,8\% dels torns. La taxa és especialment alta al començament ---on també hi ha canvis forçats o ajustos de posició--- i disminueix amb la durada. La identitat del Pokémon actiu conté senyal predictiu, però també pot fer que el model memoritzi patrons del metajoc de 2023--2025. Per això els resultats no s'extrapolen automàticament a una altra generació o a un altre format.
+La classe «canviar» representa aproximadament el 25,8\% dels torns. La taxa és especialment alta al començament ---on també hi ha canvis forçats o ajustos de posició--- i disminueix amb la durada.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.9\linewidth]{../src/p02_imitation_learning/s02_eda/plots/strategic_profiling_switch_rates.png}
-    \caption{Taxa de canvi humana per espècie activa en una selecció del conjunt d'experts. La variació justifica incloure identitat i context, però no implica causalitat: espècie, rol, rival i estat de la partida estan correlacionats.}
+    \includegraphics[width=0.9\linewidth]{images/il/strategic_profiling_switch_rates.png}
+    \caption{Taxa de canvi humana per espècie activa en una selecció del conjunt d'experts. La variació justifica incloure identitat i context, però no implica causalitat.}
     \label{fig:il_switch_profiles}
 \end{figure}
 
 \subsection{Decisió d'alt nivell}
 
-El classificador XGBoost utilitza 1.150 característiques (HP, perills d'entrada, indicadors de Teracristal·lització i codificació de l'espècie activa, entre d'altres), 300 arbres, profunditat màxima 6, taxa d'aprenentatge 0,08, \texttt{subsample}=0,85 i \texttt{colsample\_bytree}=0,85. La sortida és $p(\mathrm{canvi})$ i el llindar seleccionat és $\tau=0{,}5525$ (\texttt{xgboost\_advanced\_threshold.json}). A la partició retinguda s'obtenen aproximadament 65,5\% d'exactitud i 0,72 de ROC-AUC; el mateix conjunt es va utilitzar per seleccionar el llindar, fet que limita la independència d'aquestes mètriques.
-
-\subsection{Dues piles}
-
-\paragraph{\texttt{v21} (\texttt{HeuristicV21XGBoost}).}
-Hereta \texttt{v14}. L'ordre és: debilitament garantit, final amb com a màxim dos Pokémon, regles de preparació o absorció i, finalment, XGBoost. Si el model decideix canviar, utilitza el canvi de pivot o \texttt{\_get\_best\_switch}; si decideix atacar, utilitza \texttt{\_score\_move}. Una protecció evita bucles de canvis. XGBoost intervé aproximadament en el 15\% dels torns.
-
-\paragraph{\texttt{v22} (\texttt{HeuristicV22PureIL}).}
 Hereta només de \texttt{BaseHeuristic1v1}. Si el model decideix canviar, avalua cada candidat com si fos l'actiu i selecciona el que minimitza $p(\mathrm{canvi})$. Si decideix atacar, un segon model (\texttt{xgboost\_move\_evaluator.json}) puntua atributs com potència, STAB, efectivitat, estat i prioritat. Aquest segon model s'entrena amb candidats sintetitzats, no amb la identitat dels moviments de les repeticions; per tant, \texttt{v22} no és un clonatge complet de l'acció humana.
 
 \texttt{v21} és l'híbrid (macro de dades, micro de \texttt{v14}); \texttt{v22} executa els dos caps XGBoost.
@@ -531,22 +509,22 @@ Tot i el resultat anterior, es continua contra \texttt{v12} per mesurar si l'ent
 \begin{figure}[htbp]
     \centering
     \begin{subfigure}[t]{0.48\textwidth}
-        \includegraphics[width=\linewidth]{../data/models/ppo/plots/p1_random/winrate.png}
+        \includegraphics[width=\linewidth]{images/results/ppo_p1_random_winrate.png}
         \caption{Fase 1 contra Random.}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.48\textwidth}
-        \includegraphics[width=\linewidth]{../data/models/ppo/plots/p15_maxbp/winrate.png}
+        \includegraphics[width=\linewidth]{images/results/ppo_p15_maxbp_winrate.png}
         \caption{Fase 1.5 contra MaxBP.}
     \end{subfigure}
 
     \begin{subfigure}[t]{0.48\textwidth}
-        \includegraphics[width=\linewidth]{../data/models/ppo/plots/p2_v8/winrate.png}
+        \includegraphics[width=\linewidth]{images/results/ppo_p2_v8_winrate.png}
         \caption{Fase 2 contra \texttt{v8}.}
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.48\textwidth}
-        \includegraphics[width=\linewidth]{../data/models/ppo/plots/p3_v12/winrate.png}
+        \includegraphics[width=\linewidth]{images/results/ppo_p3_v12_winrate.png}
         \caption{Passada secundària de fase 3 contra \texttt{v12}.}
     \end{subfigure}
     \caption{Corbes de les quatre etapes del currículum. Són taxes durant l'entrenament sobre una política canviant; les validacions independents són les de la Taula~\ref{tab:ppo_curriculum_impl}. El panell de fase 3 correspon a la passada secundària, no al model A publicat.}

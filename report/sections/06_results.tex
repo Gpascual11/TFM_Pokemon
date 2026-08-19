@@ -1,3 +1,4 @@
+% !TEX root = ../main.tex
 \chapter{Resultats}
 \label{chap:resultats}
 
@@ -50,7 +51,7 @@ Abans d'interpretar versions concretes, es comproven la cobertura, la distribuci
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.9\linewidth]{../src/p00_core/reporting/plots/tournament_coverage_heatmap.png}
+    \includegraphics[width=0.9\linewidth]{images/results/tournament_coverage_heatmap.png}
     \caption{Nombre de partides completades a les 784 cel·les. El bloc fosc correspon a 10.000 partides; les files i columnes clares de \texttt{v18}--\texttt{v20}, a 1.000. La creu no és un buit de dades, sinó el pressupost reduït de l'MCTS.}
     \label{fig:tournament_coverage}
 \end{figure}
@@ -59,7 +60,7 @@ La Figura~\ref{fig:tournament_coverage} confirma que la reducció de mostra segu
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.88\linewidth]{../src/p00_core/reporting/plots/win_rate_distribution.png}
+    \includegraphics[width=0.88\linewidth]{images/results/win_rate_distribution.png}
     \caption{Distribució de la taxa de victòries de les 784 cel·les dirigides. El centre prop del 50\% conté autojoc i enfrontaments equilibrats; les cues reflecteixen diferències grans, especialment davant de Random i MaxBasePower.}
     \label{fig:wr_distribution}
 \end{figure}
@@ -68,7 +69,7 @@ La distribució no és una campana estreta al voltant del 50\%. Hi ha massa a pr
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.88\linewidth]{../src/p00_core/reporting/plots/game_length_distribution.png}
+    \includegraphics[width=0.88\linewidth]{images/results/game_length_distribution.png}
     \caption{Distribució de la durada de les batalles analitzades. La mediana és de 17 torns i hi ha una cua dreta de partides excepcionalment llargues.}
     \label{fig:length_distribution}
 \end{figure}
@@ -114,7 +115,7 @@ PPO no rep un número \texttt{v23} ni forma part de la taula global. La seva pre
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\linewidth]{heur_overall_wr.png}
+    \includegraphics[width=0.95\linewidth]{images/heuristics/heur_overall_wr.png}
     \caption{Taxa global de victòries de \texttt{v1}--\texttt{v14} (253.000 partides per fila; les tres cel·les contra MCTS tenen $n=1.000$). S'observen canvis destacats a \texttt{v7}, \texttt{v9} i \texttt{v12}, seguits d'una disminució a \texttt{v13} i \texttt{v14}.}
     \label{fig:heur_overall_wr}
 \end{figure}
@@ -153,14 +154,14 @@ En \texttt{gen9randombattle}, el bloc format per la Teracristal·lització i la 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\linewidth]{heur_vs_baselines.png}
+    \includegraphics[width=0.95\linewidth]{images/heuristics/heur_vs_baselines.png}
     \caption{\texttt{v1}--\texttt{v14} contra els sis agents de referència ($n=10.000$ per cel·la). \texttt{v12} és el primer que deixa Abyssal i Simple Heuristic clarament per sota del 50\%. Contra \texttt{random}, totes les heurístiques arriben al 97--98\% i la columna deixa de ser discriminant.}
     \label{fig:heur_vs_baselines}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\linewidth]{heur_fingerprint_bars.png}
+    \includegraphics[width=0.95\linewidth]{images/heuristics/heur_fingerprint_bars.png}
     \caption{Empremta tàctica de la seqüència heurística. \texttt{v12} utilitza la Teracristal·lització gairebé una vegada per partida; \texttt{v13}, 0,20 vegades. \texttt{ko\_checks} augmenta fins a aproximadament 15 a \texttt{v14}; la preparació i els perills d'entrada apareixen a partir de \texttt{v9}.}
     \label{fig:heur_fingerprint}
 \end{figure}
@@ -175,7 +176,7 @@ La complexitat creix de \texttt{v12} a \texttt{v14}, però la taxa global observ
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\linewidth]{heur_inversion_h2h.png}
+    \includegraphics[width=0.85\linewidth]{images/heuristics/heur_inversion_h2h.png}
     \caption{Enfrontaments directes, amb $n=10.000$ per orientació. \texttt{v12} i \texttt{v13} no presenten una separació concloent; \texttt{v14} obté 44,74\% contra \texttt{v12} i 41,60\% contra \texttt{v13}.}
     \label{fig:heur_inversion}
 \end{figure}
@@ -221,28 +222,28 @@ En el subconjunt amb telemetria, \texttt{v13} utilitza la Teracristal·lització
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\linewidth]{heur_key_matchups.png}
+    \includegraphics[width=0.95\linewidth]{images/heuristics/heur_key_matchups.png}
     \caption{Enfrontaments de referència de \texttt{v12}, \texttt{v13} i \texttt{v14}. Les files representen l'agent avaluat. Les cel·les MCTS tenen $n=1.000$ i la resta, $n=10.000$. \texttt{v12} domina els agents de referència; \texttt{v13} és més fort contra cerca i \texttt{v21}.}
     \label{fig:heur_key}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\linewidth]{heur_wr_by_paradigm.png}
+    \includegraphics[width=0.95\linewidth]{images/heuristics/heur_wr_by_paradigm.png}
     \caption{Taxa de victòries de la inversió, agregada per paradigma d'oponent. \texttt{v12} és millor contra agents de referència i altres heurístiques; \texttt{v13}, contra minimax, MCTS i imitació híbrida.}
     \label{fig:heur_paradigm}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\linewidth]{heur_switching_vs_wr.png}
+    \includegraphics[width=0.95\linewidth]{images/heuristics/heur_switching_vs_wr.png}
     \caption{Relació entre volum de canvis i taxa de victòries. La freqüència de canvi, per si sola, no mesura la qualitat de la política; cal distingir-ne el motiu.}
     \label{fig:heur_switch}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\linewidth]{heur_length_hp.png}
+    \includegraphics[width=0.95\linewidth]{images/heuristics/heur_length_hp.png}
     \caption{Durada i membres de l'equip disponibles al final. \texttt{v13} juga partides més llargues i conserva més Pokémon, mentre que \texttt{v12} obté una taxa de victòries superior.}
     \label{fig:heur_length}
 \end{figure}
@@ -271,7 +272,7 @@ Aquest patró és comparable al de \texttt{v21}, que consulta XGBoost en aproxim
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{minimax_override.png}
+    \includegraphics[width=0.92\linewidth]{images/minimax/minimax_override.png}
     \caption{Taxa de discrepància respecte de \texttt{v14} en els torns en què s'executa el maximin. \texttt{v15}/\texttt{v16} discrepen aproximadament en el 67\% dels casos; \texttt{v17}, amb prior $+0{,}15$, en el 37\%. Les derrotes presenten una discrepància mitjana superior, una associació que no implica causalitat.}
     \label{fig:minimax_override}
 \end{figure}
@@ -286,7 +287,7 @@ Aquest resultat és coherent amb una limitació d'horitzó: afegir una bonificac
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{minimax_future_proxies.png}
+    \includegraphics[width=0.92\linewidth]{images/minimax/minimax_future_proxies.png}
     \caption{Indicadors d'efectes diferits: preparació, perills d'entrada i Teracristal·lització. \texttt{v16} manté la preparació al voltant de 0,21 usos per partida, un nivell semblant al de \texttt{v14} i molt inferior al de \texttt{v12}.}
     \label{fig:minimax_future}
 \end{figure}
@@ -322,7 +323,7 @@ Cap variant de minimax supera \texttt{v14} o \texttt{v12}. La variant amb millor
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.94\linewidth]{../src/p00_core/reporting/agents/minimax_v15_v17/minimax_length_hp.png}
+    \includegraphics[width=0.94\linewidth]{images/minimax/minimax_length_hp.png}
     \caption{Distribució de la durada i dels Pokémon restants a minimax. Les tres variants duren aproximadament 19 torns, però \texttt{v17} conserva 1,39 membres de mitjana, davant d'1,28--1,29.}
     \label{fig:minimax_length_hp}
 \end{figure}
@@ -331,7 +332,7 @@ La millora de \texttt{v17} no prové d'allargar sistemàticament les batalles: l
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.94\linewidth]{../src/p00_core/reporting/agents/minimax_v15_v17/minimax_switching_box.png}
+    \includegraphics[width=0.94\linewidth]{images/minimax/minimax_switching_box.png}
     \caption{Distribució dels canvis voluntaris, dels canvis decidits pel maximin i de la fracció de decisions de cerca que són canvis. \texttt{v17} presenta una mediana superior de canvis tot i discrepar menys de \texttt{v14}.}
     \label{fig:minimax_switching}
 \end{figure}
@@ -340,28 +341,28 @@ La combinació «més canvis decidits per cerca» i «menys discrepància» no �
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{minimax_fingerprint_bars.png}
+    \includegraphics[width=0.92\linewidth]{images/minimax/minimax_fingerprint_bars.png}
     \caption{Empremta \texttt{v15}--\texttt{v17}: KO checks $\sim$14, cerca $\sim$16--18\% dels torns, Tera $\sim$0,39 (nivell \texttt{v14}, no \texttt{v12}).}
     \label{fig:minimax_fp}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{minimax_key_matchups.png}
+    \includegraphics[width=0.92\linewidth]{images/minimax/minimax_key_matchups.png}
     \caption{Enfrontaments de referència del minimax d'un torn. Les cel·les contra MCTS tenen $n=1.000$. \texttt{v17} millora respecte de les altres variants, però no supera el 50\% contra \texttt{v14}.}
     \label{fig:minimax_key}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{minimax_winrate_grouped.png}
+    \includegraphics[width=0.92\linewidth]{images/minimax/minimax_winrate_grouped.png}
     \caption{Taxa de victòries agrupada. \texttt{v15} i \texttt{v16} se superposen; \texttt{v17} queda per sobre, encara per sota de \texttt{v9}/\texttt{v11}.}
     \label{fig:minimax_grouped}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{minimax_wr_by_paradigm.png}
+    \includegraphics[width=0.92\linewidth]{images/minimax/minimax_wr_by_paradigm.png}
     \caption{Taxa de victòries del minimax per família d'oponent. El prior de \texttt{v17} s'associa amb les millores principals contra heurístiques i MCTS.}
     \label{fig:minimax_paradigm}
 \end{figure}
@@ -472,7 +473,7 @@ L'MCTS ras amb 100 simulacions de cinc torns no supera \texttt{v12} ni aporta ev
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.94\linewidth]{../src/p00_core/reporting/agents/mcts_v18_v20/mcts_length_hp.png}
+    \includegraphics[width=0.94\linewidth]{images/mcts/mcts_length_hp.png}
     \caption{Durada i Pokémon restants a MCTS. \texttt{v20} acaba lleugerament abans (18,33 torns) i conserva 1,40 membres de mitjana, davant d'1,21--1,22 a UCB1.}
     \label{fig:mcts_length_hp}
 \end{figure}
@@ -481,7 +482,7 @@ El patró de \texttt{v20} no és el d'una política més defensiva que simplemen
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.94\linewidth]{../src/p00_core/reporting/agents/mcts_v18_v20/mcts_switching_box.png}
+    \includegraphics[width=0.94\linewidth]{images/mcts/mcts_switching_box.png}
     \caption{Distribució dels canvis a MCTS. PUCT augmenta la fracció de decisions de cerca que acaben en canvi i amplia la distribució de canvis voluntaris.}
     \label{fig:mcts_switching}
 \end{figure}
@@ -490,28 +491,28 @@ El patró de \texttt{v20} no és el d'una política més defensiva que simplemen
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{mcts_fingerprint_bars.png}
+    \includegraphics[width=0.92\linewidth]{images/mcts/mcts_fingerprint_bars.png}
     \caption{Empremta MCTS. Cerca 16--18\% dels torns; KO $\sim$14/partida. \texttt{v20} busca menys i acaba amb més HP. $n=1.000$ per oponent.}
     \label{fig:mcts_fp}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{mcts_key_matchups.png}
+    \includegraphics[width=0.92\linewidth]{images/mcts/mcts_key_matchups.png}
     \caption{Enfrontaments discriminants d'MCTS. Les files representen l'agent avaluat i totes les cel·les tenen $n=1.000$. \texttt{v20} s'acosta a Abyssal (49\%) i no supera \texttt{v12} (42,7\%).}
     \label{fig:mcts_key}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{mcts_winrate_grouped.png}
+    \includegraphics[width=0.92\linewidth]{images/mcts/mcts_winrate_grouped.png}
     \caption{Taxa de victòries agrupada d'MCTS. \texttt{v18} i \texttt{v19} se superposen; \texttt{v20} queda per sobre. Aquesta mitjana de 28.000 partides no té la mateixa ponderació que les files de 253.000.}
     \label{fig:mcts_grouped}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{mcts_wr_by_paradigm.png}
+    \includegraphics[width=0.92\linewidth]{images/mcts/mcts_wr_by_paradigm.png}
     \caption{Taxa de victòries d'MCTS per paradigma d'oponent ($n=1.000$ a cada cel·la). PUCT millora principalment contra heurístiques i minimax.}
     \label{fig:mcts_paradigm}
 \end{figure}
@@ -528,7 +529,7 @@ Les dues variants comparteixen el classificador XGBoost i el llindar $\tau=0{,}5
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{il_fingerprint_bars.png}
+    \includegraphics[width=0.92\linewidth]{images/il/il_fingerprint_bars.png}
     \caption{Empremta dels agents d'imitació. \texttt{v21} registra aproximadament 14 proteccions de debilitament per partida i consulta XGBoost en el 15\% dels torns. \texttt{v22} no té aquestes proteccions, consulta XGBoost en el 80\% dels torns i activa la protecció de bucle en el 97\% de les partides.}
     \label{fig:il_fp}
 \end{figure}
@@ -571,7 +572,7 @@ La comparació mostra que la decisió d'alt nivell es pot integrar de manera út
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{il_policy_firing.png}
+    \includegraphics[width=0.92\linewidth]{images/il/il_policy_firing.png}
     \caption{Freqüència d'ús de la política apresa. XGBoost intervé en el 15\% dels torns de \texttt{v21} i en el 80\% dels de \texttt{v22}.}
     \label{fig:il_fire}
 \end{figure}
@@ -592,7 +593,7 @@ El contrast entre \texttt{v21} i \texttt{v22} no compara únicament dos models d
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.94\linewidth]{../src/p00_core/reporting/agents/il_v21_v22/il_length_hp.png}
+    \includegraphics[width=0.94\linewidth]{images/il/il_length_hp.png}
     \caption{Durada i Pokémon restants dels agents d'imitació. \texttt{v22} juga partides més llargues (20,07 torns) però acaba amb només 0,70 membres, davant d'1,33 a \texttt{v21}.}
     \label{fig:il_length_hp}
 \end{figure}
@@ -601,7 +602,7 @@ La durada més alta de \texttt{v22} no és senyal de control. Combinada amb meny
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.94\linewidth]{../src/p00_core/reporting/agents/il_v21_v22/il_switching_box.png}
+    \includegraphics[width=0.94\linewidth]{images/il/il_switching_box.png}
     \caption{Distribució dels canvis a imitació. \texttt{v22} fa aproximadament el doble de canvis voluntaris i rep moltes més ordres de canvi del classificador.}
     \label{fig:il_switching}
 \end{figure}
@@ -610,28 +611,28 @@ Els canvis forçats són semblants perquè depenen sobretot del nombre de debili
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{il_tactical_proxies.png}
+    \includegraphics[width=0.92\linewidth]{images/il/il_tactical_proxies.png}
     \caption{Indicadors tàctics. \texttt{v22} i \texttt{v12} utilitzen la Teracristal·lització amb freqüències similars, però obtenen resultats molt diferents; la freqüència no mesura la qualitat de la decisió.}
     \label{fig:il_tac}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{il_winrate_grouped.png}
+    \includegraphics[width=0.92\linewidth]{images/il/il_winrate_grouped.png}
     \caption{Taxa de victòries agrupada de les dues arquitectures d'imitació. \texttt{v21} se situa prop de \texttt{v9}; \texttt{v22}, per sota de \texttt{v1}.}
     \label{fig:il_grouped}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{il_wr_by_paradigm.png}
+    \includegraphics[width=0.92\linewidth]{images/il/il_wr_by_paradigm.png}
     \caption{Taxa de victòries dels agents d'imitació per família d'oponent. \texttt{v21} supera \texttt{v22} en els sis blocs, amb diferències d'aproximadament 20--26~pp.}
     \label{fig:il_paradigm}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\linewidth]{il_wr_scatter.png}
+    \includegraphics[width=0.85\linewidth]{images/il/il_wr_scatter.png}
     \caption{Taxa de victòries de \texttt{v21} i \texttt{v22} per oponent. Tots els punts queden sobre la diagonal: \texttt{v21} obté el valor superior en 28 de 28 enfrontaments. La diferència màxima és de 32,6~pp contra \texttt{safe\_one\_step}.}
     \label{fig:il_scatter}
 \end{figure}
@@ -650,7 +651,7 @@ La Taula~\ref{tab:paradigm_summary} utilitza \texttt{v12} com a comparador comú
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth]{gen9_winrate_heatmap.png}
+    \includegraphics[width=\linewidth]{images/results/gen9_winrate_heatmap.png}
     \caption{Mapa de calor de la taxa de victòries a \texttt{gen9randombattle}. La fila és l'agent analitzat i la columna, l'oponent. Prefixos: (H) heurística, (MM) minimax, (MCT) MCTS, (IL) imitació i (B) agent de referència. Les cel·les amb MCTS tenen $n=1.000$; la resta, $n=10.000$.}
     \label{fig:heatmap}
 \end{figure}
@@ -665,7 +666,7 @@ Fins a \texttt{v12}, cap heurística interna supera el 50\% contra Abyssal. \tex
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{gen9_elo_bars.png}
+    \includegraphics[width=0.92\linewidth]{images/results/gen9_elo_bars.png}
     \caption{Escala Bradley--Terry ancorada a \texttt{random}${}=1000$, amb les dues orientacions. \texttt{v12} i \texttt{v13} obtenen les puntuacions més altes. \texttt{v14}, Abyssal i Simple Heuristic comparteixen el mateix valor arrodonit. Les files MCTS aporten menys partides al model.}
     \label{fig:elo_bars}
 \end{figure}
@@ -678,21 +679,21 @@ Fins a \texttt{v12}, cap heurística interna supera el 50\% contra Abyssal. \tex
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{ladder_wr_elo.png}
+    \includegraphics[width=0.92\linewidth]{images/results/ladder_wr_elo.png}
     \caption{Taxa de victòries i Elo de \texttt{v14} a la classificació pública: 431 partides entre el 9 i el 10 de juny de 2026, 39,44\% $\pm 4,6$~pp i Elo de 1085 a 1038 (màxim 1263).}
     \label{fig:ladder_wr}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{live_ladder_evolution.png}
+    \includegraphics[width=0.92\linewidth]{images/results/live_ladder_evolution.png}
     \caption{Evolució de l'Elo al llarg de les 431 partides. Una mostra prefixa de 98 partides, presa prop del màxim, no representa el resultat final.}
     \label{fig:ladder_evo}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{ladder_win_vs_loss.png}
+    \includegraphics[width=0.92\linewidth]{images/results/ladder_win_vs_loss.png}
     \caption{Victòries i derrotes segons la durada. El subconjunt de partides amb almenys 10 torns és descriptiu; la taxa principal utilitza les 431 partides sense filtrar.}
     \label{fig:ladder_wl}
 \end{figure}

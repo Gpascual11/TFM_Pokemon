@@ -14,8 +14,11 @@
     "${workspaceFolder}/.venv/bin/ty"
   ],
   "python.languageServer": "None",
-  "latex-workshop.latex.rootFile": "report/main.tex",
-  "latex-workshop.latex.autoBuild.run": "onFileChange",
+  "latex-workshop.formatting.latex": "latexindent",
+  "latex-workshop.latex.search.rootFiles.exclude": [
+    "**/tapa_oficial.tex"
+  ],
+  "latex-workshop.latex.autoBuild.run": "onSave",
   "latex-workshop.latex.recipes": [
     {
       "name": "latexmk (pdflatex)",
@@ -31,8 +34,8 @@
         "-interaction=nonstopmode",
         "-file-line-error",
         "-pdf",
-        "-outdir=%OUTDIR%",
-        "%DOC%"
+        "-f",
+        "%DOCFILE%"
       ],
       "env": {}
     }

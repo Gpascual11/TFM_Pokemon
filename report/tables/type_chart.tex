@@ -31,37 +31,37 @@
 % Comanda per capçaleres de tipus amb color
 \newcommand{\ty}[2]{\colorbox{#1}{\strut\textcolor{white}{\textbf{#2}}}}
 
-\begin{table}[H]
-\centering
-\caption{Matriu de tipus (generacions VI--IX). Les files representen el tipus de l'atac i les columnes, el tipus del defensor. \colorbox{green!40}{\scriptsize\textbf{2}} = supereficaç ($\times 2$), \colorbox{red!20}{\scriptsize\textonehalf} = poc eficaç ($\times 0{,}5$), \colorbox{gray!70}{\scriptsize\textcolor{white}{\textbf{0}}} = immunitat, buit = efectivitat neutra.}
-\label{tab:type_chart}
-\vspace{2pt}
-\begin{adjustbox}{max width=\textwidth}
-\tiny
-\setlength{\tabcolsep}{2.5pt}
-\renewcommand{\arraystretch}{1.2}
-\begin{tabular}{>{\bfseries}l|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
-\cline{2-19}
-& \ty{typNormal}{NOR} & \ty{typFoc}{FOC} & \ty{typAigua}{AIG} & \ty{typPlanta}{PLA} & \ty{typElectric}{ELE} & \ty{typGel}{GEL} & \ty{typLluita}{LLU} & \ty{typVeri}{VER} & \ty{typTerra}{TER} & \ty{typVolador}{VOL} & \ty{typPsiquic}{PSI} & \ty{typInsecte}{INS} & \ty{typRoca}{ROC} & \ty{typFantasma}{FAN} & \ty{typDrac}{DRA} & \ty{typFosc}{FOS} & \ty{typAcer}{ACE} & \ty{typFada}{FAD} \\
-\hline
-\ty{typNormal}{NOR}   & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NV & \IM & \NE & \NE & \NV & \NE \\ \hline
-\ty{typFoc}{FOC}      & \NE & \NV & \NV & \SE & \NE & \SE & \NE & \NE & \NE & \NE & \NE & \SE & \NV & \NE & \NV & \NE & \SE & \NE \\ \hline
-\ty{typAigua}{AIG}    & \NE & \SE & \NV & \NV & \NE & \NE & \NE & \NE & \SE & \NE & \NE & \NE & \SE & \NE & \NV & \NE & \NE & \NE \\ \hline
-\ty{typPlanta}{PLA}   & \NE & \NV & \SE & \NV & \NE & \NE & \NE & \NV & \SE & \NV & \NE & \NV & \SE & \NE & \NV & \NE & \NV & \NE \\ \hline
-\ty{typElectric}{ELE} & \NE & \NE & \SE & \NV & \NV & \NE & \NE & \NE & \IM & \SE & \NE & \NE & \NE & \NE & \NV & \NE & \NE & \NE \\ \hline
-\ty{typGel}{GEL}      & \NE & \NV & \NV & \SE & \NE & \NV & \NE & \NE & \SE & \SE & \NE & \NE & \NE & \NE & \SE & \NE & \NV & \NE \\ \hline
-\ty{typLluita}{LLU}   & \SE & \NE & \NE & \NE & \NE & \SE & \NE & \NV & \NE & \NV & \NV & \NV & \SE & \IM & \NE & \SE & \SE & \NV \\ \hline
-\ty{typVeri}{VER}     & \NE & \NE & \NE & \SE & \NE & \NE & \NE & \NV & \NV & \NE & \NE & \NE & \NV & \NV & \NE & \NE & \IM & \SE \\ \hline
-\ty{typTerra}{TER}    & \NE & \SE & \NE & \NV & \SE & \NE & \NE & \SE & \NE & \IM & \NE & \NV & \SE & \NE & \NE & \NE & \SE & \NE \\ \hline
-\ty{typVolador}{VOL}  & \NE & \NE & \NE & \SE & \NV & \NE & \SE & \NE & \NE & \NE & \NE & \SE & \NV & \NE & \NE & \NE & \NV & \NE \\ \hline
-\ty{typPsiquic}{PSI}  & \NE & \NE & \NE & \NE & \NE & \NE & \SE & \SE & \NE & \NE & \NV & \NE & \NE & \NE & \NE & \IM & \NV & \NE \\ \hline
-\ty{typInsecte}{INS}  & \NE & \NV & \NE & \SE & \NE & \NE & \NV & \NV & \NE & \NV & \SE & \NE & \NE & \NV & \NE & \SE & \NV & \NV \\ \hline
-\ty{typRoca}{ROC}     & \NE & \SE & \NE & \NE & \NE & \SE & \NV & \NE & \NV & \SE & \NE & \SE & \NE & \NE & \NE & \NE & \NV & \NE \\ \hline
-\ty{typFantasma}{FAN} & \IM & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \SE & \NE & \NE & \SE & \NE & \NV & \NE & \NE \\ \hline
-\ty{typDrac}{DRA}     & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \NE & \SE & \NE & \NV & \IM \\ \hline
-\ty{typFosc}{FOS}     & \NE & \NE & \NE & \NE & \NE & \NE & \NV & \NE & \NE & \NE & \SE & \NE & \NE & \SE & \NE & \NV & \NE & \NV \\ \hline
-\ty{typAcer}{ACE}     & \NE & \NV & \NV & \NE & \NV & \SE & \NE & \NE & \NE & \NE & \NE & \NE & \SE & \NE & \NE & \NE & \NV & \SE \\ \hline
-\ty{typFada}{FAD}     & \NE & \NV & \NE & \NE & \NE & \NE & \SE & \NV & \NE & \NE & \NE & \NE & \NE & \NE & \SE & \SE & \NV & \NE \\ \hline
-\end{tabular}
-\end{adjustbox}
+\begin{table}[htbp]
+    \centering
+    \caption[Matriu d'efectivitat de tipus]{Matriu d'efectivitat elemental en combat. Les files representen el tipus de l'atac executat i les columnes, el tipus del Pokémon defensor.}
+    \label{tab:type_chart}
+    \vspace{2pt}
+    \begin{adjustbox}{max width=\textwidth}
+        \tiny
+        \setlength{\tabcolsep}{2.5pt}
+        \renewcommand{\arraystretch}{1.2}
+        \begin{tabular}{>{\bfseries}l|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
+            \cline{2-19}
+                                  & \ty{typNormal}{NOR} & \ty{typFoc}{FOC} & \ty{typAigua}{AIG} & \ty{typPlanta}{PLA} & \ty{typElectric}{ELE} & \ty{typGel}{GEL} & \ty{typLluita}{LLU} & \ty{typVeri}{VER} & \ty{typTerra}{TER} & \ty{typVolador}{VOL} & \ty{typPsiquic}{PSI} & \ty{typInsecte}{INS} & \ty{typRoca}{ROC} & \ty{typFantasma}{FAN} & \ty{typDrac}{DRA} & \ty{typFosc}{FOS} & \ty{typAcer}{ACE} & \ty{typFada}{FAD} \\
+            \hline
+            \ty{typNormal}{NOR}   & \NE                 & \NE              & \NE                & \NE                 & \NE                   & \NE              & \NE                 & \NE               & \NE                & \NE                  & \NE                  & \NE                  & \NV               & \IM                   & \NE               & \NE               & \NV               & \NE               \\ \hline
+            \ty{typFoc}{FOC}      & \NE                 & \NV              & \NV                & \SE                 & \NE                   & \SE              & \NE                 & \NE               & \NE                & \NE                  & \NE                  & \SE                  & \NV               & \NE                   & \NV               & \NE               & \SE               & \NE               \\ \hline
+            \ty{typAigua}{AIG}    & \NE                 & \SE              & \NV                & \NV                 & \NE                   & \NE              & \NE                 & \NE               & \SE                & \NE                  & \NE                  & \NE                  & \SE               & \NE                   & \NV               & \NE               & \NE               & \NE               \\ \hline
+            \ty{typPlanta}{PLA}   & \NE                 & \NV              & \SE                & \NV                 & \NE                   & \NE              & \NE                 & \NV               & \SE                & \NV                  & \NE                  & \NV                  & \SE               & \NE                   & \NV               & \NE               & \NV               & \NE               \\ \hline
+            \ty{typElectric}{ELE} & \NE                 & \NE              & \SE                & \NV                 & \NV                   & \NE              & \NE                 & \NE               & \IM                & \SE                  & \NE                  & \NE                  & \NE               & \NE                   & \NV               & \NE               & \NE               & \NE               \\ \hline
+            \ty{typGel}{GEL}      & \NE                 & \NV              & \NV                & \SE                 & \NE                   & \NV              & \NE                 & \NE               & \SE                & \SE                  & \NE                  & \NE                  & \NE               & \NE                   & \SE               & \NE               & \NV               & \NE               \\ \hline
+            \ty{typLluita}{LLU}   & \SE                 & \NE              & \NE                & \NE                 & \NE                   & \SE              & \NE                 & \NV               & \NE                & \NV                  & \NV                  & \NV                  & \SE               & \IM                   & \NE               & \SE               & \SE               & \NV               \\ \hline
+            \ty{typVeri}{VER}     & \NE                 & \NE              & \NE                & \SE                 & \NE                   & \NE              & \NE                 & \NV               & \NV                & \NE                  & \NE                  & \NE                  & \NV               & \NV                   & \NE               & \NE               & \IM               & \SE               \\ \hline
+            \ty{typTerra}{TER}    & \NE                 & \SE              & \NE                & \NV                 & \SE                   & \NE              & \NE                 & \SE               & \NE                & \IM                  & \NE                  & \NV                  & \SE               & \NE                   & \NE               & \NE               & \SE               & \NE               \\ \hline
+            \ty{typVolador}{VOL}  & \NE                 & \NE              & \NE                & \SE                 & \NV                   & \NE              & \SE                 & \NE               & \NE                & \NE                  & \NE                  & \SE                  & \NV               & \NE                   & \NE               & \NE               & \NV               & \NE               \\ \hline
+            \ty{typPsiquic}{PSI}  & \NE                 & \NE              & \NE                & \NE                 & \NE                   & \NE              & \SE                 & \SE               & \NE                & \NE                  & \NV                  & \NE                  & \NE               & \NE                   & \NE               & \IM               & \NV               & \NE               \\ \hline
+            \ty{typInsecte}{INS}  & \NE                 & \NV              & \NE                & \SE                 & \NE                   & \NE              & \NV                 & \NV               & \NE                & \NV                  & \SE                  & \NE                  & \NE               & \NV                   & \NE               & \SE               & \NV               & \NV               \\ \hline
+            \ty{typRoca}{ROC}     & \NE                 & \SE              & \NE                & \NE                 & \NE                   & \SE              & \NV                 & \NE               & \NV                & \SE                  & \NE                  & \SE                  & \NE               & \NE                   & \NE               & \NE               & \NV               & \NE               \\ \hline
+            \ty{typFantasma}{FAN} & \IM                 & \NE              & \NE                & \NE                 & \NE                   & \NE              & \NE                 & \NE               & \NE                & \NE                  & \SE                  & \NE                  & \NE               & \SE                   & \NE               & \NV               & \NE               & \NE               \\ \hline
+            \ty{typDrac}{DRA}     & \NE                 & \NE              & \NE                & \NE                 & \NE                   & \NE              & \NE                 & \NE               & \NE                & \NE                  & \NE                  & \NE                  & \NE               & \NE                   & \SE               & \NE               & \NV               & \IM               \\ \hline
+            \ty{typFosc}{FOS}     & \NE                 & \NE              & \NE                & \NE                 & \NE                   & \NE              & \NV                 & \NE               & \NE                & \NE                  & \SE                  & \NE                  & \NE               & \SE                   & \NE               & \NV               & \NE               & \NV               \\ \hline
+            \ty{typAcer}{ACE}     & \NE                 & \NV              & \NV                & \NE                 & \NV                   & \SE              & \NE                 & \NE               & \NE                & \NE                  & \NE                  & \NE                  & \SE               & \NE                   & \NE               & \NE               & \NV               & \SE               \\ \hline
+            \ty{typFada}{FAD}     & \NE                 & \NV              & \NE                & \NE                 & \NE                   & \NE              & \SE                 & \NV               & \NE                & \NE                  & \NE                  & \NE                  & \NE               & \NE                   & \SE               & \SE               & \NV               & \NE               \\ \hline
+        \end{tabular}
+    \end{adjustbox}
 \end{table}

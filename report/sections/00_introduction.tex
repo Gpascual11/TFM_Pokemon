@@ -1,70 +1,53 @@
+% !TEX root = ../main.tex
 \chapter{Introducció}
 \label{chap:introduccio}
 
+\section{Contextualització i motivació}
+
 Pokémon és un joc d'estratègia per torns caracteritzat per la informació parcial, les accions simultànies i les transicions estocàstiques. A cada torn, els jugadors han de decidir entre executar un moviment o substituir el Pokémon actiu sense conèixer amb certesa la configuració de l'equip rival, mentre que factors com la precisió dels atacs, els cops crítics i els efectes secundaris introdueixen aleatorietat inherent al combat.
 
-En aquest context, un \textbf{agent} és un sistema autònom que percep l'estat observable de la batalla i selecciona una acció per maximitzar la seva esperança de victòria~\cite{russell_norvig,wooldridge_mas}. Una \textbf{política} $\pi$ formalitza aquesta presa de decisions assignant una distribució sobre les accions legals a partir de l'observació disponible. Els diferents enfocaments d'Intel·ligència Artificial aborden aquesta política des de perspectives diverses: mitjançant regles heurístiques dissenyades per experts, planificació en línia mitjançant cerca adversària o simulació en arbre (MCTS), o bé aprenentatge de patrons a partir de dades humanes i recompenses per reforç.
+En aquest context, un \textbf{agent} és un sistema autònom que percep l'estat observable de la batalla i selecciona una acció per maximitzar la seva esperança de victòria~\cite{russell_norvig,wooldridge_mas}. Una \textbf{política $\boldsymbol{\pi}$} formalitza aquesta presa de decisions assignant una distribució sobre les accions legals a partir de l'observació disponible. Els diferents enfocaments d'Intel·ligència Artificial aborden aquesta política des de perspectives diverses: mitjançant regles heurístiques dissenyades per experts, planificació en línia mitjançant cerca adversària o simulació en arbre (MCTS), o bé aprenentatge de patrons a partir de dades humanes i recompenses per reforç.
 
 Aquest Treball de Final de Màster estudia i compara com cinc paradigmes d'agents afronten aquest problema de decisió sota condicions d'incertesa. L'objectiu no és construir un agent infal·lible, sinó avaluar empíricament implementacions concretes sota pressupostos computacionals explícits, en un entorn reproduïble i amb una escala mostral que permeti quantificar amb rigor la precisió dels resultats.
 
-Per a l'experimentació s'utilitza el simulador \textbf{Pokémon Showdown}~\cite{pokemon_showdown} i la llibreria \textit{poke-env}~\cite{poke_env}, focalitzant la recerca en el format individual \textbf{Random Battle de la Generació~IX} (\texttt{gen9randombattle}), on la generació procedural d'equips permet aïllar exclusivament la qualitat de la presa de decisions durant el combat.
+Per a l'experimentació s'utilitza el simulador \textbf{Pokémon Showdown}~\cite{pokemon_showdown} i la llibreria \textit{poke-env}~\cite{poke_env}, focalitzant la recerca en el format individual \textbf{Random Battle de la Generació~IX} (\texttt{gen9randombattle}). Tot i que la generació procedural d'equips introdueix una forta variabilitat inicial on la composició pot determinar l'avantatge d'una partida, l'execució d'un volum massiu de batalles per enfrontament permet diluir aquest soroll estocàstic i aïllar exclusivament la qualitat de la presa de decisions durant el combat.
 
-\section{Pregunta de recerca}
-
-\begin{quote}
-\textit{Quin rendiment relatiu obtenen les heurístiques, el minimax d'un torn, l'MCTS ras, l'aprenentatge per imitació i PPO en batalles \texttt{gen9randombattle}, sota els pressupostos de còmput i el protocol experimental d'aquest treball?}
-\end{quote}
-
-La pregunta general es concreta en quatre preguntes:
-
+Concretament, s'implementen i avaluen cinc formes de decidir sobre el mateix simulador i format:
 \begin{enumerate}
-    \item Quines incorporacions de coneixement expliquen els canvis de rendiment entre les catorze heurístiques?
-    \item La cerca adversària d'un torn o les simulacions Monte Carlo de cinc torns milloren l'heurística que utilitzen com a punt de partida?
-    \item Què aporta imitar la decisió humana d'atacar o canviar, i fins a quin punt el resultat depèn del mòdul que executa l'acció concreta?
-    \item Un agent MaskablePPO inicialitzat per clonatge conductual pot assolir el rendiment de l'heurística \texttt{v12}?
+    \item \textbf{Heurístiques expertes} (\texttt{v1}--\texttt{v14}): Aquest enfocament es basa en regles de domini dissenyades manualment que assignen una puntuació a cada acció legal segons l'estat del combat. Constitueixen la línia de base determinista i s'estudien mitjançant una seqüència d'ablacions estructurades, on les versions incorporen gradualment càlcul de dany, efectivitat de tipus, perills d'entrada (\emph{hazards}), moviments de preparació (\emph{setup}), gestió d'estats alterats i Teracristal·lització, destacant \texttt{v12} com la variant experta principal.
+    \item \textbf{Cerca adversària Minimax d'un torn} (\texttt{v15}--\texttt{v17}): Aquest paradigma construeix una matriu de pagaments d'accions simultànies d'un torn i avalua l'estat resultat amb funcions heurístiques a les fulles. Es comparen tres variants: \texttt{v15} (avaluació basada purament en HP), \texttt{v16} (afegeix bonificacions posicionals per preparació, perills d'entrada i estats) i \texttt{v17} (suma un prior de $+0{,}15$ a l'acció recomanada per \texttt{v14}, reduint la discrepància respecte a l'heurística).
+    \item \textbf{Cerca en arbre de Monte Carlo rasa} (\emph{shallow} MCTS \texttt{v18}--\texttt{v20}): Aquest mètode de planificació en línia executa 100 simulacions d'una profunditat rasa de cinc torns mitjançant un simulador local en memòria (\texttt{LocalSim}). Es comparen tres variants: \texttt{v18} (selecció UCB1 i avaluació bàsica d'HP/estats), \texttt{v19} (UCB1 amb fulla millorada per rols i dreceres tàctiques de \texttt{v14}) i \texttt{v20} (selecció \textbf{PUCT} guiada per priors de probabilitat extrets de l'heurística \texttt{v14}).
+    \item \textbf{Aprenentatge per imitació} (\texttt{v21}--\texttt{v22}): Aquest enfocament aprèn directament del comportament humà d'alt nivell (Elo~$1800+$) entrenant classificadors XGBoost sobre 1,12 milions de torns. Es comparen dues piles: \texttt{v21} és una versió \textbf{híbrida} (XGBoost decideix la decisió macro d'atacar o canviar, i \texttt{v14} executa l'acció micro concreta) i \texttt{v22} és un model d'\textbf{imitació pura dual} (executa dos caps XGBoost: un per a la decisió macro i un segon model per avaluar atributs de moviments, sense dependre de \texttt{v14}).
+    \item \textbf{Aprenentatge per reforç profund} (\emph{MaskablePPO}): Aquest paradigma optimitza automàticament una política de xarxa neuronal mitjançant la interacció i la cerca de recompenses en un entorn amb accions emmascarades. L'entrenament segueix un currículum progressiu que comença contra oponents bàsics (\texttt{random} i \texttt{MaxBasePower}), s'inicialitza per clonatge conductual de l'heurística \texttt{v8} per superar el problema de l'exploració inicial (\emph{cold start}), i finalment s'entrena amb MaskablePPO contra l'heurística experta \texttt{v12}.
 \end{enumerate}
 
-La comparació és principalment agent-contra-agent. L'avaluació de \texttt{v14} a la classificació pública de Showdown és una mostra externa i separada; no s'utilitza per reordenar la matriu experimental.
+Les quatre primeres famílies, juntament amb sis agents de referència, formen una matriu dirigida de \textbf{28 agents}. El PPO no forma part d'aquesta matriu principal: s'avalua en un experiment separat contra \texttt{v12}, l'agent amb millor resultat observat a la lliga. A més, models de llenguatge com \textit{PokéChamp} i \textit{PokéLLMon} s'integren de manera exploratòria.
 
-\section{Paradigmes estudiats}
+\section{Objectius del treball}
 
-S'implementen cinc formes de decidir sobre el mateix simulador i format:
+L'objectiu principal d'aquest treball és avaluar i comparar empíricament el rendiment relatiu de les heurístiques expertes, la cerca adversària d'un torn, l'MCTS ras, l'aprenentatge per imitació i PPO en batalles \texttt{gen9randombattle}, sota pressupostos computacionals explícits i un protocol experimental rigorós.
 
+Aquest objectiu general es concreta en els següents objectius específics:
 \begin{enumerate}
-    \item \textbf{Heurístiques} (\texttt{v1}--\texttt{v14}). Cada agent assigna una puntuació fixa a les accions legals. Les versions incorporen gradualment càlcul de dany, selecció per enfrontament, perills d'entrada, moviments de preparació i Teracristal·lització.
-    \item \textbf{Minimax d'un torn} (\texttt{v15}--\texttt{v17}). S'avalua una matriu maximin d'accions pròpies i respostes rivals estimades, amb una funció heurística a la fulla.
-    \item \textbf{Cerca Monte Carlo rasa} (\texttt{v18}--\texttt{v20}). S'aplica UCB o PUCT als fills de l'arrel i s'executen 100 simulacions de cinc torns amb \texttt{LocalSim}.
-    \item \textbf{Aprenentatge per imitació} (\texttt{v21}--\texttt{v22}). Un classificador XGBoost, entrenat amb repeticions de jugadors d'Elo~$1800+$, estima quan convé atacar o canviar. \texttt{v21} delega l'acció concreta a \texttt{v14}; \texttt{v22} utilitza un segon model basat en atributs dels moviments.
-    \item \textbf{Aprenentatge per reforç} (MaskablePPO). La política s'inicialitza mitjançant clonatge de \texttt{v8} i continua l'entrenament contra \texttt{v12}, amb emmascarament de les accions il·legals.
+    \item \textbf{Formalització teòrica:} Formalitzar el combat Pokémon com un procés de decisió estocàstic d'observació parcial (POMDP/POSG) i definir un marc d'avaluació amb incertesa quantificada.
+    \item \textbf{Ablacions heurístiques:} Desenvolupar la seqüència d'agents \texttt{v1}--\texttt{v14} com una ablació estructurada de coneixement de domini per determinar quines funcions expliquen els salts de rendiment.
+    \item \textbf{Cerca adversària i MCTS:} Implementar i instrumentar variants de minimax d'un torn (\texttt{v15}--\texttt{v17}) i MCTS ras de 5 torns (\texttt{v18}--\texttt{v20}) per analitzar si la cerca en línia millora l'heurística de partida.
+    \item \textbf{Aprenentatge per imitació:} Entrenar models XGBoost (\texttt{v21}--\texttt{v22}) sobre repeticions humanes d'alt nivell (Elo~$1800+$) per avaluar el valor d'imitar la decisió macro d'atacar o canviar.
+    \item \textbf{Aprenentatge per reforç profund:} Entrenar MaskablePPO amb inicialització per clonatge conductual sobre \texttt{v8} i avaluar si el model après pot assolir el rendiment de l'heurística \texttt{v12}.
+    \item \textbf{Infraestructura i avaluació massiva:} Construir una infraestructura paral·lela i recuperable per avaluar la matriu de 28 agents (més de 6,4 milions de batalles), instrumentant telemetria per decisió i rànquings Bradley-Terry.
+    \item \textbf{Integració de models de llenguatge (LLM):} Integrar i avaluar de manera exploratòria agents basats en LLM, en concret \textit{PokéChamp} (reconegut per assolir el Top~3 d'Elo mundial a la lliga pública de Showdown) i \textit{PokéLLMon}, analitzant-ne la viabilitat i el cost d'inferència en temps real.
+    \item \textbf{Avaluació externa al ladder públic:} Desplegar l'agent \texttt{v14} a la classificació pública oficial (\emph{ladder}) de Pokémon Showdown per obtenir una mostra externa de rendiment contra jugadors humans reals.
+    \item \textbf{Telemetria per torn i explicabilitat:} Dissenyar un marc de telemetria per torn que permeti quantificar mètriques explicatives del comportament (predicció de canvis, control del ritme o \emph{tempo}, gestió del risc i ús de la Teracristal·lització) entre els diferents paradigmes.
 \end{enumerate}
-
-Les quatre primeres famílies, juntament amb sis agents de referència, formen una matriu dirigida de \textbf{28 agents}. El PPO no forma part d'aquesta matriu: s'avalua en un experiment separat contra \texttt{v12}, l'agent amb millor resultat observat a la lliga. Aquesta asimetria es manté explícita en tota la memòria.
-
-\section{Objectius}
-
-\begin{itemize}
-    \item Formalitzar el combat com un joc estocàstic d'observació parcial i definir una mètrica amb incertesa quantificada.
-    \item Construir una infraestructura de simulació paral·lela amb instàncies locals de Showdown i processos aïllats.
-    \item Desenvolupar \texttt{v1}--\texttt{v14} com una seqüència d'ablacions de coneixement, tot reconeixent que algunes versions introdueixen més d'un canvi.
-    \item Implementar i instrumentar minimax d'un torn i MCTS ras sobre \texttt{v14}, inclosa la taxa de discrepància respecte de l'acció heurística.
-    \item Entrenar un model d'imitació amb dades del mateix format i comparar una execució híbrida amb una execució principalment apresa.
-    \item Entrenar MaskablePPO amb clonatge inicial i avaluar el model final contra \texttt{v12}.
-    \item Analitzar la matriu $28\times 28$ amb 10.000 partides per cel·la, excepte les cel·les amb MCTS, que en contenen 1.000.
-\end{itemize}
-
-\section{Contribucions i abast}
-
-Les contribucions principals són una infraestructura d'avaluació recuperable i paral·lela; una matriu experimental amb telemetria per decisió; una seqüència de catorze agents heurístics; tres variants de minimax, tres d'MCTS i dues d'imitació; i una avaluació específica de PPO. PokéChamp i PokéLLMon s'han integrat de manera exploratòria, però no formen part de la comparació quantitativa perquè el temps d'inferència observat no permetia completar el mateix volum de partides.
-
-Els resultats descriuen aquestes implementacions, aquest format i aquests pressupostos. No demostren la superioritat general d'un paradigma, ni equivalen a rendiment contra jugadors humans.
 
 \section{Estructura de la memòria}
 
+La resta d'aquesta memòria s'organitza de la següent manera:
 \begin{itemize}
-    \item El \textbf{Capítol~\ref{chap:marc_teoric}} presenta el domini, la formalització i els cinc paradigmes.
-    \item El \textbf{Capítol~\ref{chap:metodologia}} defineix el protocol experimental, les mètriques i les amenaces a la validesa.
-    \item El \textbf{Capítol~\ref{chap:infraestructura}} documenta l'entorn de còmput i les dependències.
-    \item El \textbf{Capítol~\ref{chap:implementacio}} descriu el coordinador, els processos de treball i les implementacions dels agents.
-    \item El \textbf{Capítol~\ref{chap:resultats}} analitza la matriu, l'avaluació pública de \texttt{v14} i l'experiment PPO.
-    \item El \textbf{Capítol~\ref{chap:conclusions}} sintetitza els resultats, les limitacions i les línies de continuació.
+    \item El \textbf{Capítol~\ref{chap:marc_teoric}} presenta la formalització del domini (POMDP/POSG), el marc teòric de la IA en jocs i l'estat de l'art en Pokémon competitiu.
+    \item El \textbf{Capítol~\ref{chap:metodologia}} defineix el protocol experimental, les mètriques d'avaluació i l'anàlisi d'amenaces a la validesa.
+    \item El \textbf{Capítol~\ref{chap:infraestructura}} documenta la infraestructura computacional, el simulador Pokémon Showdown i les eines d'execució paral·lela.
+    \item El \textbf{Capítol~\ref{chap:implementacio}} descriu el disseny concret, els algorismes i les implementacions dels cinc paradigmes d'agents.
+    \item El \textbf{Capítol~\ref{chap:resultats}} analitza els resultats empírics de la matriu competitiva de 28 agents, l'avaluació pública de \texttt{v14} i l'experiment DRL amb PPO.
+    \item El \textbf{Capítol~\ref{chap:conclusions}} sintetitza les conclusions principals, les limitacions observades i les línies de treball futur.
 \end{itemize}
