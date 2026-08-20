@@ -2,20 +2,22 @@
 \chapter{Implementació dels cinc paradigmes}
 \label{chap:implementacio}
 
-Aquest capítol tradueix la metodologia a programari: el coordinador que permet executar milers de partides, les implementacions de cada paradigma i el flux d'entrenament de MaskablePPO.
+Aquest capítol descriu la \textbf{implementació} del disseny experimental del Capítol~\ref{chap:metodologia}. Com s'ha fixat allà, l'estudi compara cinc paradigmes sota un contracte d'observació i acció comú (Secció~\ref{sec:pila_tecnologica}), amb un gestor d'enfrontaments coordinador/treballadors (Secció~\ref{sec:arquitectura_avaluacio}) i les famílies d'agents de la Secció~\ref{sec:disseny_agents}. Aquí es mostra com s'han construït aquestes peces: el motor de batalles, les classes de cada família i el flux d'entrenament de MaskablePPO. L'organització del repositori segueix el mateix mapa ---un nucli compartit i un mòdul per paradigma--- perquè una política nova no hagi de conèixer ports, CSV ni recuperació d'errors.
 
+% ============================================================
 \section{Mapa del programari}
+
+El nucli \texttt{p00\_core} materialitza el gestor conceptual de la Secció~\ref{sec:disseny_general} i l'arquitectura coordinador/treballadors de la Secció~\ref{sec:arquitectura_avaluacio}. Els directoris \texttt{p01}--\texttt{p05} afegeixen només la política de cada família (Figura~\ref{fig:module_map}), d'acord amb el desacoblament entre coordinació i lògica interna:
 
 \begin{itemize}
     \item \texttt{src/p00\_core/engine/}: \texttt{benchmark.py} (coordinador) i \texttt{worker.py} (procés de treball).
-    \item \texttt{src/p00\_core/core/}: \texttt{BaseHeuristic1v1}, \texttt{AgentFactory}, matemàtica compartida.
+    \item \texttt{src/p00\_core/core/}: \texttt{BaseHeuristic1v1}, \texttt{AgentFactory} i l'estimador de dany compartit.
     \item \texttt{src/p01\_heuristics/agents/internal/}: \texttt{v1.py} \ldots \texttt{v14.py}.
     \item \texttt{src/p03\_minmax/}: \texttt{v15}--\texttt{v17}.
-    \item \texttt{src/p04\_mcts/}: \texttt{v18}--\texttt{v20}, \texttt{LocalSim} via fork Pokechamp.
-    \item \texttt{src/p02\_imitation\_learning/}: dataset $\rightarrow$ features $\rightarrow$ XGBoost $\rightarrow$ \texttt{v21}/\texttt{v22}.
-    \item \texttt{src/p05\_ppo\_drl/}: Gymnasium, vectorització, clonatge conductual i MaskablePPO.
+    \item \texttt{src/p04\_mcts/}: \texttt{v18}--\texttt{v20} i \texttt{LocalSim} via el fork Pokechamp.
+    \item \texttt{src/p02\_imitation\_learning/}: dataset $\rightarrow$ característiques $\rightarrow$ XGBoost $\rightarrow$ \texttt{v21}/\texttt{v22}.
+    \item \texttt{src/p05\_ppo\_drl/}: entorn Gymnasium, vectorització, clonatge i MaskablePPO.
     \item \texttt{src/p00\_core/online\_bot/}: connector amb la classificació pública.
-    \item \texttt{src/p00\_core/scripts/}: llançament de benchmarks, \texttt{seguretat\_tfm.sh} (Telegram) i avisos \texttt{avis\_telegram} als scripts de \texttt{runs\_benchmark/}.
 \end{itemize}
 
 \begin{figure}[htbp]
@@ -42,146 +44,65 @@ Aquest capítol tradueix la metodologia a programari: el coordinador que permet 
             \draw[arr] (p01) -- (p02);
         \end{tikzpicture}%
     }
-    \caption{Mapa de mòduls. \texttt{p00} aïlla simulació i persistència; \texttt{p01}--\texttt{p05} només afegeixen la política. Minimax, MCTS i imitació reutilitzen coneixement de \texttt{p01}; PPO té entorn, checkpoints i avaluació propis.}
+    \caption{Mapa de mòduls. \texttt{p00} concentra simulació i persistència; \texttt{p01}--\texttt{p05} afegeixen la política. Minimax, MCTS i imitació reutilitzen \texttt{p01}; PPO té entorn, checkpoints i avaluació propis.}
     \label{fig:module_map}
 \end{figure}
 
-\subsection{Com es reparteixen les responsabilitats}
+\texttt{p01} és el nucli de coneixement explícit i el que reutilitzen les famílies posteriors, d'acord amb el paper de \texttt{v14} com a servei (Secció~\ref{sec:disseny_agents}). \texttt{p02} és un flux de dades complet. \texttt{p03} i \texttt{p04} encapsulen les dues cerques. \texttt{p05} es manté separat perquè l'entrenament PPO té entorn Gymnasium, checkpoints i un protocol d'avaluació propi, fora de la matriu de 28 agents.
 
-\texttt{p00\_core} conté tot allò que ha de ser independent del paradigma: interfície base, fàbrica, instrumentació de la batalla, coordinació, escriptura i informes. Els directoris \texttt{p01}--\texttt{p05} només contenen la lògica específica de cada família. Aquesta separació evita que una nova versió hagi de conèixer ports, noms de fitxers o recuperació d'errors.
-
-\texttt{p01\_heuristics} és el nucli de coneixement explícit i també proporciona operacions reutilitzades per les famílies posteriors. \texttt{p02\_imitation\_learning} és un flux de dades complet: descàrrega, exploració, extracció de característiques, entrenament i adaptador de l'agent. \texttt{p03\_minmax} i \texttt{p04\_mcts} encapsulen les dues cerques. \texttt{p05\_ppo\_drl} es manté separat perquè utilitza un entorn d'aprenentatge, checkpoints i un protocol d'avaluació propi.
-
+% ============================================================
 \section{Motor de batalla i capa d'integració}
 \label{sec:showdown_impl}
 
+El contracte de la Secció~\ref{sec:pila_tecnologica} ---l'agent només veu l'observació estructurada i retorna una acció legal--- es concreta en versions i arrencada.
+
 \subsection{Servidor local de Pokémon Showdown}
 
-Pokémon Showdown~\cite{pokemon_showdown} s'executa com un procés Node.js local. Cada instància escolta en un port diferent i manté les sales de batalla en memòria. El llançament bàsic és:
+Cada instància s'inicia com un procés Node.js independent en un port dedicat:
 
 \begin{verbatim}
 node pokemon-showdown start --port 8000 --no-security
 \end{verbatim}
 
-L'opció \texttt{--no-security} elimina l'autenticació en el servidor local. Els clients intercanvien missatges de text per WebSocket. Un missatge \texttt{|request|} conté les accions legals i la part observable de l'estat; l'agent respon amb una ordre \texttt{/choose}. Showdown resol prioritat, velocitat, dany i efectes aleatoris, i retorna el registre del torn.
+L'opció \texttt{--no-security} elimina l'autenticació en el servidor local. El llançador de la matriu obre vuit instàncies consecutives (ports 8000--8007), una per treballador del model de la Figura~\ref{fig:master_worker_full}.
 
-\begin{figure}[htbp]
-    \centering
-    \begin{tikzpicture}[
-            node distance=1.0cm, auto, font=\footnotesize,
-            block/.style={rectangle, draw, fill=blue!5, text width=4.6cm, align=center, minimum height=0.7cm},
-            msg/.style={->, thick, >=stealth},
-            lbl/.style={font=\scriptsize, midway}
-        ]
-        \node[font=\small\bfseries] (agent_title) at (0,0) {Agent Python};
-        \node[font=\small\bfseries] (server_title) at (7,0) {Showdown Node.js};
-        \draw[dashed, gray] (0,-0.5) -- (0,-8.8);
-        \draw[dashed, gray] (7,-0.5) -- (7,-8.8);
-        \draw[msg] (0,-1) -- node[above, lbl]{connexió WebSocket} (7,-1);
-        \draw[msg] (0,-2) -- node[above, lbl]{repte \texttt{gen9randombattle}} (7,-2);
-        \draw[msg, <-] (0,-3) -- node[above, lbl]{\texttt{|request|} amb observació i legalitat} (7,-3);
-        \node[block, fill=green!8] at (3.5,-4.1) {Bucle de decisions};
-        \draw[msg] (0,-5.2) -- node[above, lbl]{\texttt{/choose move} o \texttt{/choose switch}} (7,-5.2);
-        \draw[msg, <-] (0,-6.2) -- node[above, lbl]{moviments, dany i nou torn} (7,-6.2);
-        \draw[msg, <-] (0,-7.5) -- node[above, lbl]{\texttt{|win|} i tancament} (7,-7.5);
-    \end{tikzpicture}
-    \caption{Intercanvi simplificat entre un agent i una instància local de Showdown.}
-    \label{fig:cicle_batalla}
-\end{figure}
+\subsection{Versions i forks de \textit{poke-env}}
 
-\subsection{Adaptació amb \textit{poke-env}}
-
-\textit{poke-env}~\cite{poke_env} converteix el protocol textual en objectes \texttt{Battle}, \texttt{Pokemon} i \texttt{Move}. L'únic contracte que ha d'implementar una política és una funció de decisió sobre l'objecte \texttt{Battle}. La biblioteca torna a convertir l'acció en una ordre vàlida de Showdown.
-
-\begin{figure}[htbp]
-    \centering
-    \begin{tikzpicture}[
-            node distance=0.7cm, font=\footnotesize,
-            box/.style={rectangle, draw, text width=2.7cm, align=center, minimum height=0.9cm},
-            arr/.style={->, thick, >=stealth}
-        ]
-        \node[box, fill=red!8] (ws) {Missatge WebSocket};
-        \node[box, fill=yellow!10, right=of ws] (parser) {Parser};
-        \node[box, fill=blue!8, right=of parser] (battle) {Objecte \texttt{Battle}};
-        \node[box, fill=green!8, below=of battle] (agent) {Política de l'agent};
-        \node[box, fill=purple!8, left=of agent] (order) {\texttt{BattleOrder}};
-        \node[box, fill=red!8, left=of order] (ws2) {Ordre \texttt{/choose}};
-        \draw[arr] (ws) -- (parser);
-        \draw[arr] (parser) -- (battle);
-        \draw[arr] (battle) -- (agent);
-        \draw[arr] (agent) -- (order);
-        \draw[arr] (order) -- (ws2);
-    \end{tikzpicture}
-    \caption{Flux d'adaptació entre el protocol de Showdown i una política Python.}
-    \label{fig:pokeenv_arch}
-\end{figure}
-
-El projecte fixa \textit{poke-env} a la sèrie 0.11.x perquè tota la matriu es va executar amb aquesta API. El fork \texttt{pokechamp/} s'afegeix només als processos que necessiten Abyssal, agents de llenguatge o \texttt{LocalSim}. L'estat real de la partida continua vivint al servidor Showdown; \texttt{LocalSim} només s'utilitza dins de les simulacions de l'MCTS.
+El projecte fixa \textit{poke-env} a la sèrie 0.11.x: tota la matriu es va executar amb aquesta API. El fork \texttt{pokechamp/} s'afegeix només als processos que necessiten Abyssal, agents de llenguatge o \texttt{LocalSim}. L'estat real de la partida continua vivint al servidor Showdown; \texttt{LocalSim} només s'utilitza dins de les simulacions de l'MCTS, tal com preveu el disseny de determinització de la Secció~\ref{sec:disseny_agents}.
 
 % ============================================================
 \section{Arquitectura coordinador--processos de treball}
 \label{sec:master_worker}
 
+Les sis responsabilitats del gestor (Secció~\ref{sec:disseny_general}) i el model coordinador/treballadors (Secció~\ref{sec:arquitectura_avaluacio}) es materialitzen en dos estadis: un prototip d'un sol procés i el motor de la matriu.
+
 \subsection{Del \texttt{BattleManager} inicial al motor de la matriu}
 
-La primera materialització del gestor conceptual és \texttt{core/battle\_manager.py}. \texttt{BattleManager} rep una versió, un oponent, un servidor, el nombre de partides i la concurrència. Crea els dos jugadors, executa lots amb \texttt{battle\_against}, extreu victòria, torns, equips, HP i comptadors, i afegeix les files a un CSV. Aquest component va permetre validar el cicle complet amb un únic procés i continua sent útil per a execucions petites.
+La primera materialització és \texttt{core/battle\_manager.py}. \texttt{BattleManager} rep una versió, un oponent, un servidor, el nombre de partides i la concurrència. Crea els dos jugadors, executa lots amb \texttt{battle\_against}, extreu victòria, torns, equips, HP i comptadors, i afegeix les files a un CSV. Aquest component va validar el cicle de la Figura~\ref{fig:cicle_batalla} amb un únic procés i continua sent útil per a execucions petites.
 
-L'escala final en va mostrar tres límits: un sol intèrpret acumulava memòria, el nom de sortida estava lligat a una execució concreta i la coordinació no construïa ni reprenia tota la matriu. \texttt{benchmark.py} i \texttt{worker.py} conserven les responsabilitats del \texttt{BattleManager}, però les separen: el primer calcula treball pendent i administra recursos; el segon executa un lot aïllat i desapareix. Aquesta evolució explica per què el repositori conté totes dues vies i evita presentar el motor final com una arquitectura decidida sense prototipatge.
+L'escala de 784 cel·les en va mostrar tres límits: un sol intèrpret acumulava memòria, el nom de sortida estava lligat a una execució concreta i la coordinació no construïa ni reprenia tota la matriu. \texttt{benchmark.py} i \texttt{worker.py} conserven les mateixes responsabilitats, però les separen: el primer calcula treball pendent i administra recursos; el segon executa un lot aïllat i desapareix.
 
 \subsection{Per què subprocessos}
 
-Les execucions llargues en un únic procés Python acumulaven objectes \texttt{Battle}, estructures de cerca i recursos asíncrons. Per aïllar l'estat i obtenir paral·lelisme de CPU, s'utilitza \texttt{multiprocessing} amb el context \texttt{spawn}; així s'evita heretar bucles d'esdeveniments i connexions obertes. Cada procés de treball inicia un intèrpret nou, utilitza un port exclusiu de Showdown i escriu un CSV temporal. Quan finalitza, el sistema operatiu recupera els recursos del procés.
-
-\begin{figure}[H]
-    \centering
-    \resizebox{\textwidth}{!}{%
-        \begin{tikzpicture}[
-                node distance=1cm, font=\footnotesize,
-                master/.style={rectangle, draw, fill=blue!10, text width=3.8cm, align=center, minimum height=1.2cm, rounded corners},
-                worker/.style={rectangle, draw, fill=green!8, text width=3cm, align=center, minimum height=1cm},
-                server/.style={rectangle, draw, fill=orange!10, text width=2.8cm, align=center, minimum height=0.9cm},
-                disk/.style={cylinder, draw, fill=gray!15, shape border rotate=90, aspect=0.25, minimum height=0.9cm, minimum width=2cm, align=center, font=\scriptsize}
-            ]
-            \node[master] (master) {\textbf{COORDINADOR}\\\texttt{benchmark.py}};
-            \node[worker, below left=2cm and 1.5cm of master] (w1) {Procés 1};
-            \node[worker, below=2cm of master] (w2) {Procés 2};
-            \node[worker, below right=2cm and 1.5cm of master] (wn) {Procés N};
-            \node[server, below=1cm of w1] (s1) {Showdown :8000};
-            \node[server, below=1cm of w2] (s2) {Showdown :8001};
-            \node[server, below=1cm of wn] (sn) {Showdown :800N};
-            \node[disk, right=2.5cm of wn] (tmp) {\_tmp\_*.csv};
-            \node[disk, below=0.8cm of tmp] (final) {agent\_vs\_opp.csv};
-            \draw[->, thick] (master) -- (w1);
-            \draw[->, thick] (master) -- (w2);
-            \draw[->, thick] (master) -- (wn);
-            \draw[<->, thick] (w1) -- (s1);
-            \draw[<->, thick] (w2) -- (s2);
-            \draw[<->, thick] (wn) -- (sn);
-            \draw[->, dashed, gray] (wn.east) -- (tmp.west);
-            \draw[->, thick, dotted] (master.east) -| (final.north);
-        \end{tikzpicture}
-    }
-    \caption{Arquitectura de la matriu experimental, sense memòria compartida entre processos de treball.}
-    \label{fig:master_worker_full}
-\end{figure}
+Les execucions llargues en un únic procés Python acumulaven objectes \texttt{Battle}, estructures de cerca i recursos asíncrons. S'utilitza \texttt{multiprocessing} amb el context \texttt{spawn}, de manera que no s'hereten bucles d'esdeveniments ni connexions obertes. Cada procés inicia un intèrpret nou, utilitza un port exclusiu de Showdown i escriu un CSV temporal. Quan finalitza, el sistema operatiu recupera els recursos, tal com exigeix l'aïllament de la Secció~\ref{sec:arquitectura_avaluacio}.
 
 \subsection{Coordinador, cua de ports i processos efímers}
 
-\texttt{benchmark.py} materialitza el gestor conceptual del Capítol~\ref{chap:metodologia}. Primer resol les etiquetes d'agent i oponent, construeix el producte d'enfrontaments i consulta quantes files ja existeixen a cada CSV. Després inicia les instàncies de Showdown i crea una cua asíncrona amb els ports lliures. Cada lot consumeix un port, executa \texttt{worker.py} com un procés nou i retorna el port a la cua quan acaba.
+\texttt{benchmark.py} resol les etiquetes d'agent i oponent, construeix el producte d'enfrontaments i consulta quantes files ja existeixen a cada CSV. Després inicia les instàncies de Showdown i crea una cua asíncrona amb els ports lliures. Cada lot consumeix un port, executa \texttt{worker.py} com un procés nou i retorna el port a la cua quan acaba.
 
-\texttt{worker.py} instancia els dos agents, juga les batalles asíncrones i converteix cada \texttt{Battle} acabada en una fila de telemetria. El procés escriu primer en un fitxer temporal exclusiu del port. El coordinador només fusiona lots acabats; així dos processos no escriuen simultàniament sobre el mateix CSV final.
+\texttt{worker.py} instancia els dos agents via \texttt{AgentFactory}, juga les batalles asíncrones i converteix cada \texttt{Battle} acabada en una fila de telemetria. El procés escriu primer en un fitxer temporal exclusiu del port. El coordinador només fusiona lots acabats; així dos processos no escriuen simultàniament sobre el mateix CSV final.
 
-La matriu final utilitza vuit ports. La concurrència és de 25 batalles per procés per als agents ràpids i de 15 quan intervé minimax o MCTS. Això produeix aproximadament entre 120 i 200 batalles simultànies, però manté separats els espais de memòria Python i les instàncies Node.js.
+La matriu final utilitza vuit ports. La concurrència és de 25 batalles per procés per als agents ràpids i de 15 quan intervé minimax o MCTS. Això produeix aproximadament entre 120 i 200 batalles simultànies, amb espais de memòria Python i instàncies Node.js separats.
 
 \subsection{Represa i escriptura per blocs}
 
-Si \texttt{v12\_vs\_abyssal.csv} ja té 4.320 files, el coordinador calcula $n_{\mathrm{to\_run}}=10.000-4.320$ i només executa les partides pendents. El CSV és la font de l'estat de progrés. Cada procés treballa en blocs de 25 batalles, escriu els resultats i executa \texttt{reset\_battles()} i \texttt{gc.collect()} abans de continuar.
+La font d'estat de progrés del disseny és el CSV. Si \texttt{v12\_vs\_abyssal.csv} ja té 4.320 files, el coordinador calcula $n_{\mathrm{to\_run}}=10.000-4.320$ i només executa les partides pendents. Cada procés treballa en blocs de 25 batalles, escriu els resultats i executa \texttt{reset\_battles()} i \texttt{gc.collect()} abans de continuar.
 
-El cost varia notablement segons el paradigma: les notes de desenvolupament situen les heurístiques al voltant de $0{,}01$--$0{,}1$~s per partida i l'MCTS al voltant de 2--6~s. El temps d'espera d'un lot és $\max(7200, 40\cdot n_{\mathrm{batch}})$ segons, prou ampli per no interrompre una cerca activa i finit per detectar un procés bloquejat.
+El temps d'espera d'un lot és $\max(7200, 40\cdot n_{\mathrm{batch}})$ segons, prou ampli per no interrompre una cerca activa i finit per detectar un procés bloquejat. Les notes de desenvolupament situen les heurístiques al voltant de $0{,}01$--$0{,}1$~s per partida i l'MCTS al voltant de 2--6~s, d'acord amb el pressupost asimètric de la Secció~\ref{sec:n_10k}.
 
 \subsection{Reinici de Showdown}
 
-En execucions llargues es va observar creixement de memòria al procés V8 de Node.js. El coordinador reinicia les instàncies de Showdown cada $N$ enfrontaments actius, configurable amb \texttt{--restart-every}. El motor té un valor per defecte de 3, mentre que el llançador de la matriu final utilitza \textbf{20}. El reinici sacrifica uns segons de disponibilitat a canvi de limitar l'acumulació de memòria.
+En execucions llargues es va observar creixement de memòria al procés V8 de Node.js. El coordinador reinicia les instàncies cada $N$ enfrontaments actius, configurable amb \texttt{--restart-every}. El motor té un valor per defecte de 3; el llançador de la matriu final utilitza \textbf{20}.
 
 \begin{figure}[htbp]
     \centering
@@ -192,172 +113,135 @@ En execucions llargues es va observar creixement de memòria al procés V8 de No
 
 \subsection{Esquema CSV i telemetria emmagatzemada}
 
-Cada fila del fitxer de resultats representa l'execució d'una batalla completa. L'esquema final consta de \textbf{73 columnes} estandarditzades organitzades en sis blocs funcionals de dades:
+La telemetria de la Secció~\ref{sec:metriques} es materialitza en \textbf{73 columnes} estandarditzades. \texttt{worker.py} genera aquesta estructura per a \textbf{tots} els agents: si un camp no aplica, s'inicialitza a \texttt{0}. Així \texttt{pandas} i \texttt{polars} poden concatenar els 784 CSV sense discrepància d'esquema.
 
 \begin{enumerate}
-    \item \textbf{Identificadors i metadades:} \texttt{battle\_id}, \texttt{format}, \texttt{heuristic} (agent avaluat com a jugadors principals \emph{us}), \texttt{opponent} (oponent \emph{opp}), \texttt{won} (1 si guanya \emph{us}, 0 si guanya \emph{opp}) i \texttt{turns} (durada total en torns).
-    \item \textbf{Resultats i estat final dels equips:} HP residual propi i del rival (\texttt{total\_hp\_us}, \texttt{total\_hp\_opp}), nombre de Pokémon debilitats a cada equip (\texttt{self\_fainted\_count}, \texttt{opp\_fainted\_count}) i integrants restants (\texttt{remaining\_pokemon\_us/opp}).
-    \item \textbf{Accions i control d'execució:} comptadors de canvis voluntaris (\texttt{voluntary\_switches\_us/opp}), canvis forçats per debilitament (\texttt{forced\_switches\_us/opp}), ús de la Teracristal·lització (\texttt{terastallized\_us/opp}), així com gestió d'excepcions i accions de reserva (\texttt{error\_moves\_us/opp}, \texttt{fallback\_moves\_us/opp}).
-    \item \textbf{Estocasticitat i esdeveniments aleatoris:} comptadors de cops crítics rebuts i infligits (\texttt{crits\_dealt}, \texttt{crits\_received}), fallades de precisió (\texttt{misses}), efectivitat de tipus aplicada (\texttt{supereffective}) i condicions d'estat imposades (\texttt{status\_applied}). El mòdul \texttt{StatsBattle} intercepta missatges bruts del protocol de Showdown, com ara \texttt{|-crit|}, abans que la capa d'alt nivell els descarti.
-    \item \textbf{Mètriques conductuals i de ritme (\emph{tempo}):} comptadors de col·locació i neteja de perills d'entrada (\texttt{hazard\_sets}, \texttt{hazard\_removals}), ús de moviments de preparació (\texttt{setup\_uses}) i comprovacions de debilitament segur (\texttt{ko\_checks}, \texttt{ko\_guards}).
-    \item \textbf{Telemetria específica dels paradigmes:} camps especialitzats segons la família d'agent (\texttt{search\_diff}, \texttt{xgb\_switches}, \texttt{xgb\_stays}, \texttt{endgame\_solves}).
+    \item \textbf{Identificadors:} \texttt{battle\_id}, \texttt{format}, \texttt{heuristic} (agent \emph{us}), \texttt{opponent} (\emph{opp}), \texttt{won} i \texttt{turns}.
+    \item \textbf{Estat final:} HP residual (\texttt{total\_hp\_us/opp}), debilitats i membres restants.
+    \item \textbf{Accions:} canvis voluntaris i forçats, Teracristal·lització, excepcions i reserves (\texttt{error\_moves}, \texttt{fallback\_moves}).
+    \item \textbf{Estocasticitat:} crítics, fallades, super-efectius i condicions d'estat. \texttt{StatsBattle} intercepta missatges bruts del protocol (\texttt{|-crit|}) abans que la capa d'alt nivell els descarti.
+    \item \textbf{Tempo:} \texttt{hazard\_sets}, \texttt{hazard\_removals}, \texttt{setup\_uses}, \texttt{ko\_checks}, \texttt{ko\_guards}.
+    \item \textbf{Paradigma:} \texttt{search\_diff}, \texttt{search\_switches}, \texttt{endgame\_solves}, \texttt{xgb\_switches}, \texttt{xgb\_stays}, \texttt{xgb\_prob\_sum}.
 \end{enumerate}
 
-\subsubsection{Gestió de columnes opcionals i especificitat per paradigma}
-
-Per tal d'evitar la proliferació de fitxers heterogenis o errors d'esquema en posterioritat, el procés de treball (\texttt{worker.py}) genera una estructura de diccionari unificada de 73 columnes per a \textbf{tots} els agents. Si un camp és específic d'un paradigma concret i no s'aplica a l'agent avaluat, el sistema l'inicialitza per defecte a \texttt{0} (o valor buit de seguretat). Aquesta decisió de disseny garanteix que les llibreries d'anàlisi de dades (\texttt{pandas} i \texttt{polars}) puguin concatenar i analitzar qualsevol dels 784 fitxers CSV de la matriu sense cap excepcions per discrepància de columnes (\emph{schema mismatch}) ni errors de clau absent (\emph{KeyError}):
-
-\begin{itemize}
-    \item \textbf{Heurístiques expertes (\texttt{v1}--\texttt{v14}):} Omplen tots els camps generals de nucli (HP, KOs, canvis, Teracristal·lització, crítics, fallades, \texttt{fallback\_moves}, \texttt{error\_moves}). Els camps de cerca (\texttt{search\_diff}) i d'XGBoost (\texttt{xgb\_stays}) romanen a \texttt{0}.
-    \item \textbf{Cerca adversària Minimax (\texttt{v15}--\texttt{v17}) i MCTS ras (\texttt{v18}--\texttt{v20}):} A més de les columnes de nucli, enregistren activament \texttt{search\_diff\_us/opp} (nombre de torns on la cerca en línia discrepa de l'heurística de base i sobreescriu la seva recomanació), \texttt{search\_switches\_us/opp} (canvis determinats per la cerca) i \texttt{endgame\_solves\_us/opp} (resolucions exactes fins al final de la partida).
-    \item \textbf{Aprenentatge per imitació XGBoost (\texttt{v21}--\texttt{v22} / \texttt{ml\_advanced}):} A més de les columnes de nucli, enregistren activament \texttt{xgb\_switches\_us/opp} (canvis ordenats pel cap macro d'XGBoost), \texttt{xgb\_stays\_us/opp} (torns on el model avalua el tauler i decideix romandre actiu) i \texttt{xgb\_prob\_sum\_us/opp} (suma acumulada de confiança probabilística).
-    \item \textbf{Extracció de la Teracristal·lització (\texttt{\_is\_tera}):} Per mantenir la compatibilitat entre diferents forks de \textit{poke-env} i agents personalitzats, \texttt{worker.py} utilitza una funció d'extracció d'atributs universals (\texttt{getattr(mon, "terastallized", getattr(mon, "\_terastallized", False))}) que evita fallades d'atributs si un agent utilitza una implementació interna diferent.
-\end{itemize}
+La Teracristal·lització s'extreu amb una cadena de \texttt{getattr} compatible amb els forks (\texttt{terastallized} o \texttt{\_terastallized}), per no fallar si un agent utilitza un atribut intern diferent.
 
 \subsection{Automatització de la matriu}
 
-\texttt{run\_paradigm\_comparison\_10k.sh} defineix les etiquetes de files i columnes i invoca el coordinador per a cada parella. El mateix script adapta el pressupost: 10.000 partides i concurrència 25 per a les famílies ràpides; concurrència 15 per a minimax; i 1.000 partides amb concurrència 15 quan intervé MCTS. També aplica fins a 100 reintents davant d'un lot fallit, reinicia Showdown cada 20 enfrontaments actius i envia avisos de progrés. Aquesta capa és la que converteix el motor genèric en l'experiment concret de 784 cel·les.
+\texttt{run\_paradigm\_comparison\_10k.sh} defineix les etiquetes de files i columnes ---les 28 de la Taula~\ref{tab:taxonomy_design}--- i invoca el coordinador per a cada parella. El mateix script adapta el pressupost de la Secció~\ref{sec:n_10k}: 10.000 partides i concurrència 25 per a les famílies ràpides; concurrència 15 per a minimax; i 1.000 partides amb concurrència 15 quan intervé MCTS. Aplica fins a 100 reintents davant d'un lot fallit, reinicia Showdown cada 20 enfrontaments actius i envia avisos de progrés.
 
-\subsection{Contracte \texttt{BaseHeuristic1v1}}
+\subsection{Contracte \texttt{BaseHeuristic1v1} i \texttt{AgentFactory}}
 
-S'aplica el patró \textit{Template Method}: \texttt{choose\_move} crida \texttt{\_pre\_move\_hook} per a sortides prioritàries, \texttt{\_select\_action} per a la lògica principal i, si cal, \texttt{choose\_random\_move} com a recurs de reserva. Una excepció incrementa \texttt{error\_moves} i produeix una acció legal aleatòria, de manera que no bloqueja la batalla.
+La instanciació homogènia del gestor s'aplica amb el patró \textit{Template Method}: \texttt{choose\_move} crida \texttt{\_pre\_move\_hook} per a sortides prioritàries, \texttt{\_select\_action} per a la lògica principal i, si cal, \texttt{choose\_random\_move} com a reserva. Una excepció incrementa \texttt{error\_moves} i produeix una acció legal aleatòria, de manera que no bloqueja la batalla.
 
-\texttt{AgentFactory.create("v20")} és l'únic punt d'instanciació. La fàbrica també resol àlies històrics: per exemple, \texttt{ml\_advanced}, \texttt{v21} i \texttt{v21\_xgboost} apunten al mateix agent. Els agents de referència són adaptadors locals de \texttt{random}, \texttt{max\_power}, \texttt{simple\_heuristic}, \texttt{safe\_one\_step} i \texttt{abyssal}. Centralitzar els noms evita que els scripts antics obliguin a duplicar implementacions.
+\texttt{AgentFactory.create("v20")} és l'únic punt d'instanciació. La fàbrica resol àlies històrics: \texttt{ml\_advanced}, \texttt{v21} i \texttt{v21\_xgboost} apunten al mateix agent; \texttt{one\_step} i \texttt{safe\_one\_step} instancien la mateixa classe. Els agents de referència són adaptadors de \texttt{random}, \texttt{max\_power}, \texttt{simple\_heuristic}, \texttt{safe\_one\_step} i \texttt{abyssal}.
 
 % ============================================================
 \section{Heurístiques \texttt{v1}--\texttt{v14}: incorporació de coneixement}
 \label{sec:heur_impl}
 
-La seqüència estudia quins blocs de coneixement s'associen amb canvis de rendiment a Random Battle. La genealogia de codi té branques: \texttt{v1}$\to$\texttt{v2}$\to$\texttt{v3}$\to$\texttt{v6}; \texttt{v4}/\texttt{v5} formen variants laterals; \texttt{v7} reescriu l'estratègia, i \texttt{v8}--\texttt{v14} parteixen d'aquest nucli. Aquesta genealogia no pressuposa una millora monotònica. El diagrama de disseny és la Figura~\ref{fig:heur_genealogy} del Capítol~\ref{chap:metodologia}.
+La genealogia d'ablació, les ramificacions i el paper de \texttt{v14} com a servei són els de la Secció~\ref{sec:disseny_agents} (Figura~\ref{fig:heur_genealogy}, Taula~\ref{tab:heuristic_design}). Aquí es recull com es tradueixen en classes i operacions compartides.
 
-\subsection{Flux de decisió compartit}
+\subsection{Estructura de classes i operacions compartides}
 
-\texttt{BaseHeuristic1v1} proporciona el cicle de vida i els comptadors; \texttt{common.py} concentra operacions reutilitzables de tipus, velocitat i estimació de dany. Les versions avançades no copien tot el mètode de decisió: especialitzen els punts d'extensió necessaris.
+\texttt{BaseHeuristic1v1} proporciona el cicle de vida, els comptadors i el recorregut de reserva. \texttt{common.py} concentra \texttt{calculate\_base\_damage}, \texttt{get\_speed} i la càrrega singleton de dades de Showdown, de manera que \texttt{v2}, \texttt{v3}, \texttt{v4} i \texttt{v6} comparteixen la mateixa matemàtica de dany.
 
-El flux habitual és:
+La genealogia de disseny no coincideix amb una cadena d'herència única. \texttt{v3} hereta de \texttt{v2} i \texttt{v6} de \texttt{v3}; \texttt{v1}, \texttt{v4}, \texttt{v5} i totes les versions a partir de \texttt{v7} hereten directament de \texttt{BaseHeuristic1v1}. Cada fitxer \texttt{vN.py} especialitza \texttt{\_select\_action} i, a partir de \texttt{v7}, afegeix ajudants propis (\texttt{\_estimate\_matchup}, \texttt{\_get\_best\_switch}, \texttt{\_should\_terastallize}).
+
+El flux, comú a les versions avançades, és:
 
 \begin{enumerate}
-    \item detectar un canvi forçat o una batalla en un estat incomplet;
-    \item executar dreceres prioritàries, especialment un debilitament segur;
+    \item detectar un canvi forçat o una batalla incompleta;
+    \item executar dreceres prioritàries (debilitament segur, i més endavant final i reaccions tàctiques);
     \item construir els candidats de moviment i canvi;
-    \item assignar una puntuació ofensiva, defensiva i estratègica a cada candidat;
+    \item assignar una puntuació ofensiva, defensiva i estratègica;
     \item decidir si la Teracristal·lització modifica el millor moviment;
-    \item validar l'ordre i, només si la política no pot retornar-ne cap, utilitzar una acció legal de reserva.
+    \item validar l'ordre i, només si la política no en retorna cap, utilitzar una acció legal de reserva.
 \end{enumerate}
-
-Cada versió afegeix informació a un d'aquests passos. Aquest punt és important: \texttt{v12} no és només una fórmula amb més termes, perquè modifica la selecció del substitut i l'ús d'un recurs d’una vegada per partida; \texttt{v14} tampoc és simplement \texttt{v13} amb un pes diferent, perquè manté estat sobre el comportament rival.
 
 \begin{table}[htbp]
     \centering
-    \caption{Correspondència entre les fases heurístiques i els components implementats.}
+    \caption{Correspondència entre els blocs de disseny de la Taula~\ref{tab:heuristic_design} i els components implementats.}
     \label{tab:heuristic_implementation}
     \small
     \begin{tabularx}{\textwidth}{lX}
         \toprule
-        \textbf{Versions}         & \textbf{Component principal implementat}                                                 \\
+        \textbf{Versions}         & \textbf{Component principal implementat}                                                                                          \\
         \midrule
-        \texttt{v1}--\texttt{v6}  & Estimadors successius de dany, seguiment lleuger de moviments, camp i prioritat.         \\
-        \texttt{v7}--\texttt{v8}  & Nova puntuació de l'enfrontament, canvis voluntaris i immunitats conegudes.              \\
-        \texttt{v9}--\texttt{v11} & Regles de torn lliure, preparació, perills d'entrada, estats, sacrificis i pivots.       \\
-        \texttt{v12}              & Teracristal·lització ofensiva/defensiva i selecció del substitut per puntuació.          \\
-        \texttt{v13}              & Inferència amb moviments revelats, bloqueig Choice, recuperació i política conservadora. \\
-        \texttt{v14}              & Perfil persistent del rival, sondeig inicial, rang de dany i resolució de finals.        \\
+        \texttt{v1}               & \texttt{\_score}: potència $\times$ efectivitat $\times$ STAB; sense canvis.                                                      \\
+        \texttt{v2}--\texttt{v3}  & \texttt{calculate\_base\_damage}; pivots TOX i «feble i outsped»; \texttt{v3} activa \texttt{tracks\_moves}.                       \\
+        \texttt{v4}--\texttt{v6}  & Modificadors de clima/terreny i prioritat; \texttt{v4}/\texttt{v5} trien el substitut per tipus; \texttt{v6} conserva el slot~0. \\
+        \texttt{v7}--\texttt{v8}  & Nova \texttt{\_estimate\_matchup}; \texttt{v8} afegeix KO de prioritat conservador i \texttt{ABILITY\_IMMUNITIES}.               \\
+        \texttt{v9}--\texttt{v11} & Hazards/setup només en torn lliure; estats, sacrifici $\le 20\%$ HP i pivots; \texttt{v11} els fusiona.                           \\
+        \texttt{v12}              & Tera ofensiva/defensiva i substitut forçat per puntuació d'enfrontament.                                                          \\
+        \texttt{v13}              & Matchup amb moviments revelats, recuperació, Choice lock i Tera conservadora.                                                     \\
+        \texttt{v14}              & Perfil \texttt{PREDICTIVE}/\texttt{CONSERVATIVE}, sondeig T1--3, interval de dany $(0{,}85,1)$ i solver d'un torn.                \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-\subsection{Evolució de les versions}
+\subsection{Decisions que no es desprenen de la genealogia}
 
+Tres decisions canvien el comportament d'una manera que la taula de disseny no detalla.
 
-\paragraph{\texttt{v8} / \texttt{v10}.}
-\texttt{v8} incorpora objectes, habilitats, pantalles i \textit{Trick Room}. \texttt{v10} incorpora condicions d'estat, sacrificis amb pocs HP i moviments de pivot.
+\texttt{v7} no amplia \texttt{v6}: és una classe nova. El canvi voluntari deixa de ser «si el dany és $<20$ i som més lents, slot~0» i passa a comparar la puntuació d'enfrontament de l'actiu amb la del millor company, amb llindar $-2$. Aquesta funció és la que reutilitzen minimax, MCTS i \texttt{v21}.
 
-\paragraph{\texttt{v9} / \texttt{v11} (control del ritme).}
-Els perills d'entrada i els moviments de preparació només es valoren en un torn considerat lliure. \texttt{v11} combina \texttt{v9} i \texttt{v10}.
+\texttt{v12} afegeix dues mecàniques alhora (Tera i substitut forçat per matchup). L'experiment no les abla per separat; el Capítol~\ref{chap:resultats} ho tracta com una limitació d'interpretació.
 
-\paragraph{\texttt{v12} (Gen~9 al camp).}
-Dues peces natives del format:
+\texttt{v14} manté estat persistent per batalla (historial d'actius, taxa de canvis, rols Win-Con / Vital Wall). L'interval de dany $(0{,}85\times\mathrm{score},\mathrm{score})$ existeix perquè l'HP rival a \textit{poke-env} és sovint un percentatge, no un enter. El solver de finals només s'activa amb $\le 2$ Pokémon per bàndol i no substitueix la política completa. Aquestes peces estan orientades a rivals humans; contra polítiques deterministes poden cedir ritme.
 
-\begin{enumerate}
-    \item Teracristal·lització ofensiva i defensiva.
-    \item Selecció del substitut segons l'enfrontament després d'un debilitament, en lloc d'escollir sempre la primera posició.
-\end{enumerate}
-
-\texttt{v12} conserva les regles anteriors i afegeix dues mecàniques específiques de la Generació~IX. És l'agent amb la taxa de victòries observada més alta de la matriu, però l'experiment no separa l'efecte de les dues incorporacions.
-
-\paragraph{\texttt{v13}.}
-Valora l'enfrontament amb els \textbf{moviments ja revelats} del rival, i no només amb els tipus. També incorpora bloqueig per objectes Choice, expulsió de rivals amb modificadors, recuperació i una política de Teracristal·lització més conservadora.
-
-\paragraph{\texttt{v14} (orientat a humans).}
-Classifica el rival com a \texttt{PREDICTIVE} o \texttt{CONSERVATIVE} segons la seva taxa de canvis, i fa sondeig als torns inicials amb moviments com \textit{Protect}, \textit{U-turn} o \textit{Knock Off}. Aproxima el dany amb l'interval $(0{,}85\times\mathrm{score},\mathrm{score})$ i aplica una resolució d'un torn quan queden com a màxim dos Pokémon per bàndol. Aquestes decisions estan orientades a rivals humans i poden cedir ritme contra polítiques deterministes.
-
-Totes les versions registren comptadors. A \texttt{v14}, \texttt{ko\_checks} arriba aproximadament a 15 per partida perquè l'interval de dany s'avalua sovint.
+Totes les versions registren comptadors. A \texttt{v14}, \texttt{ko\_checks} arriba a l'ordre de 15 per partida perquè l'interval de dany s'avalua sovint.
 
 % ============================================================
 \section{Minimax d'un torn \texttt{v15}--\texttt{v17}}
 \label{sec:mm_impl}
 
-Els tres agents hereten \texttt{HeuristicV14}. Abans de construir la matriu, apliquen dreceres com un debilitament garantit; \texttt{v16}/\texttt{v17} també tracten moviments de preparació rivals, absorció d'estats i pivots inicials. Si no hi ha drecera, enumeren les accions pròpies contra moviments rivals revelats i un canvi hipotètic. La velocitat i la prioritat es resolen analíticament; \texttt{LocalSim} no intervé.
+Les tres variants hereten \texttt{HeuristicV14}, d'acord amb el paper de \texttt{v14} com a fulla. El disseny ---maximin pur, tres fulles, dreceres abans de la matriu--- és el de la Secció~\ref{sec:disseny_agents}. Aquí es detalla com es construeix $M$.
 
-\subsection{Construcció de la matriu d'un torn}
+Abans de buscar, s'executen les dreceres de \texttt{v14} (debilitament garantit; a \texttt{v16}/\texttt{v17} també preparació rival, absorció d'estats i pivots inicials). Si cap drecera aplica, s'enumeren les accions pròpies legals contra els moviments rivals \emph{revelats} i, si el rival té banqueta, un símbol genèric \texttt{"switch"}. La velocitat i la prioritat es resolen analíticament; \texttt{LocalSim} no intervé.
 
-La implementació crea una fila per cada acció pròpia legal i una columna per cada resposta rival considerada. Les respostes no provenen de l'estat complet de Showdown, que és ocult, sinó dels moviments ja revelats i d'una opció genèrica de canvi quan l'enfrontament és desfavorable. Per a cada parella s'estima:
+\subsection{Construcció de la matriu}
 
-\begin{itemize}
-    \item quin participant actua primer segons prioritat i velocitat;
-    \item si l'acció ràpida debilita el rival i anul·la la segona;
-    \item els HP esperats després de l'intercanvi;
-    \item bonificacions o penalitzacions de posició.
-\end{itemize}
+Una fila per acció pròpia, una columna per resposta considerada. Per a cada parella s'estima qui actua primer, si l'acció ràpida debilita i anul·la la segona, els HP esperats després de l'intercanvi i les bonificacions de posició de la fulla corresponent. El valor d'una acció pròpia és el mínim de la seva fila; l'agent escull la fila amb el màxim d'aquests mínims, és a dir, el criteri de l'Equació~\ref{eq:minimax_pure}.
 
-El valor d'una acció pròpia és el mínim de la seva fila; l'agent escull la fila amb el màxim d'aquests mínims. Aquest càlcul és barat perquè no crea una batalla simulada per cas. També és deliberadament limitat: no veu què succeeix dos torns després d'un canvi o d'un moviment de preparació.
+Aquest càlcul és barat perquè no crea una batalla simulada per cas. També és deliberadament limitat: no veu què succeeix dos torns després d'un canvi o d'un moviment de preparació. No hi ha resolució en estratègies mixtes ni cap crida a un solucionador de programació lineal, d'acord amb l'elecció de maximin pur del disseny.
 
-La fulla de \texttt{v15} combina HP i qualitat de l'enfrontament, amb una penalització multiplicada per 1,5 per al dany rival. \texttt{v16} afegeix bonificacions de 0,25--0,35 per preparació, perills d'entrada, recuperació i estats. \texttt{v17} suma 0,15 al pitjor cas de l'acció proposada per \texttt{v14}. Tots tres mantenen un horitzó d'un torn.
+La fulla de \texttt{v15} combina HP i qualitat de l'enfrontament, amb penalització $\times 1{,}5$ al dany rival. \texttt{v16} afegeix bonificacions de $0{,}25$--$0{,}35$ per preparació, perills, recuperació i estats. \texttt{v17} hereta aquesta fulla i suma $0{,}15$ al pitjor cas de l'acció que retornaria \texttt{v14.\_select\_action}, restaurant després l'historial intern perquè la consulta del prior no contamini els comptadors.
 
-Per saber què aporta realment el mòdul, abans de la cerca es demana també l'acció que hauria triat \texttt{v14}. \texttt{search\_diff} augmenta quan el maximin la substitueix; \texttt{search\_moves} i \texttt{search\_switches} descriuen el tipus d'acció resultant. Com que les dreceres s'executen abans, la matriu intervé en el 16--18\% dels torns i no defineix tota la política.
+Per saber què aporta el mòdul, abans de la cerca es demana també l'acció de \texttt{v14}. \texttt{search\_diff} augmenta quan el maximin la substitueix; \texttt{search\_moves} i \texttt{search\_switches} descriuen el tipus d'acció resultant. La taxa d'intervenció mesurada es reporta al Capítol~\ref{chap:resultats}.
 
 % ============================================================
 \section{MCTS ras \texttt{v18}--\texttt{v20}}
 \label{sec:mcts_impl}
 
-Mateix professor \texttt{v14}, mateix pressupost:
+El pressupost és el del disseny: 100 simulacions, $C=1{,}4$, rollout de 5 torns, decisió per visites, i el mateix professor \texttt{v14}. La materialització afegeix el simulador local que el minimax no necessita.
 
-\begin{itemize}
-    \item 100 simulacions per torn de cerca, $C=1{,}4$.
-    \item UCB \textbf{a l'arrel}: cada iteració tria un fill, executa una simulació de cinc torns amb \texttt{LocalSim} i actualitza el valor del fill.
-    \item La determinització copia els moviments \emph{revelats} del rival.
-    \item Fills arrel: moviments \emph{i} canvis; es juga l'argmax de visites.
-\end{itemize}
+Cada procés MCTS injecta el fork \texttt{pokechamp/} al \texttt{sys.path} i desallotja els mòduls \texttt{poke\_env} de PyPI, perquè \texttt{LocalSim} visqui a l'API del fork. Per a cada decisió, l'agent copia l'estat observable, crea un fill per moviment i per canvi legal, i inicialitza visites i valor. Cada iteració selecciona un fill amb UCB1 o PUCT, aplica l'acció i continua amb una política de simulació durant cinc torns. Una funció de fulla resumeix HP, debilitats, modificadors, estats i camp; aquest valor s'acumula al fill de l'arrel.
 
-\subsection{Simulació local i actualització de l'arrel}
+No es conserva un arbre profund entre iteracions ni entre torns reals. El cost i la interpretació són els d'un bandit a l'arrel amb simulacions, coherent amb l'MCTS ras de la Secció~\ref{subsec:teoria_mcts}.
 
-Per a cada decisió, l'agent copia l'estat observable a \texttt{LocalSim}, crea un fill per acció legal i inicialitza-ne visites i valor acumulat. Cada iteració selecciona un fill amb UCB1 o PUCT, aplica l'acció i continua amb una política de simulació durant cinc torns. En acabar, una funció de fulla resumeix HP, membres debilitats, modificadors, estats i camp; aquest valor s'acumula al fill de l'arrel.
+\texttt{v18} utilitza UCB1, una fulla d'HP/estats/perills i només la drecera de debilitament. \texttt{v19} enriqueix la fulla amb rols (Win-Con $\times 1{,}45$, Vital Wall $\times 1{,}25$) i amenaça de KO, i aplica les dreceres de \texttt{v14} abans de l'arbre. \texttt{v20} substitueix UCB1 per PUCT amb prior $0{,}70$ sobre l'acció \texttt{v14}; la fulla roman la de \texttt{v19}.
 
-No es conserva un arbre profund entre iteracions ni entre torns reals. Per això el cost i la interpretació són els d'un bandit a l'arrel amb simulacions, encara que el mòdul es presenti dins de la família MCTS. La decisió final és l'acció amb més visites, no necessàriament la de valor mitjà més alt.
-
-\texttt{v18}: UCB1, fulla basada en HP, modificadors, estats i perills d'entrada, amb només la drecera de debilitament abans de l'arrel. \texttt{v19}: UCB1, fulla amb rols i amenaça de debilitament d'un cop, i les dreceres tàctiques de \texttt{v14} \emph{abans} de l'arbre. \texttt{v20}: \texttt{v19} + \textbf{PUCT} amb prior $0{,}70$ sobre l'acció \texttt{v14}.
-
-La determinització només pot copiar moviments rivals revelats. A més, \texttt{LocalSim} i el procés Node.js de Showdown no són el mateix motor. Un objecte o efecte no reproduït exactament pot introduir soroll en els valors. El minimax d'un torn no té aquesta font d'error, perquè només utilitza l'estimador analític compartit.
+La determinització només copia moviments rivals revelats. \texttt{LocalSim} i el procés Node.js de Showdown no són el mateix motor: un objecte o un efecte no reproduït exactament introdueix soroll als valors. El minimax d'un torn no té aquesta font d'error, perquè només utilitza l'estimador analític compartit. Aquesta és l'amenaça de validesa ja identificada a la Secció~\ref{sec:validesa}.
 
 % ============================================================
 \section{Imitació \texttt{v21}--\texttt{v22}}
 \label{sec:il_impl}
 
-\subsection{Flux de dades}
-
-La implementació es divideix en quatre directoris que corresponen a etapes reproduïbles:
+L'arquitectura macro/micro, el llindar d'experts Elo $\geq 1800$ i el contrast híbrid versus pur són els de la Secció~\ref{sec:disseny_agents}. La implementació es divideix en quatre directoris reproduïbles:
 
 \begin{enumerate}
     \item \texttt{s01\_download/} descarrega repeticions i conserva metadades de format i Elo;
     \item \texttt{s02\_eda/} valida distribucions, proporció atacar/canviar i composició del metajoc;
     \item \texttt{s03\_training/} transforma els torns en una matriu tabular, separa per batalla i entrena XGBoost;
-    \item \texttt{s04\_agent/} carrega els models i converteix-ne la predicció en una acció legal de Showdown.
+    \item \texttt{s04\_agent/} carrega els models i converteix la predicció en una acció legal.
 \end{enumerate}
-La separació és necessària perquè una repetició no conté directament el mateix objecte que rep l'agent en línia. El procés d'extracció reconstrueix, torn a torn, HP, camp, ús de Tera, identitat dels actius i acció observada. La llista de característiques desada amb el model garanteix que l'agent en producció generi les columnes en el mateix ordre que durant l'entrenament.
 
-\subsection{Dades}
+Una repetició no conté l'objecte \texttt{Battle} que l'agent veu en línia (Figura~\ref{fig:pokeenv_arch}). L'extractor reconstrueix, torn a torn, HP, camp, Tera, identitat dels actius i acció observada. La llista de característiques desada amb el model garanteix que l'agent en producció generi les columnes en el mateix ordre que durant l'entrenament.
 
-Les dades són repeticions de \texttt{gen9randombattle} de jugadors amb Elo $\ge 1800$.
+\subsection{Dades i entrenament}
+
+El conjunt avançat té de l'ordre d'\textbf{1,1 milions} de torns. L'entrenament macro ---script \path{train_ml_advanced.py}--- fa un \texttt{GroupShuffleSplit} per \texttt{battle\_id} per no filtrar informació intra-partida, aplica \texttt{scale\_pos\_weight} al desequilibri atacar/canviar i calibra el llindar de decisió sobre la corba precisió-record del conjunt de test. El model resultant té aproximadament \textbf{1.150} columnes després del one-hot d'espècies. El fitxer \path{xgboost_advanced_threshold.json} desa el llindar (de l'ordre de $0{,}55$--$0{,}58$); l'agent el carrega en temps d'inferència.
 
 \begin{figure}[htbp]
     \centering
@@ -375,55 +259,44 @@ La classe «canviar» representa aproximadament el 25,8\% dels torns. La taxa é
     \label{fig:il_switch_profiles}
 \end{figure}
 
-\subsection{Decisió d'alt nivell}
+\subsection{Adaptadors en línia}
 
-Hereta només de \texttt{BaseHeuristic1v1}. Si el model decideix canviar, avalua cada candidat com si fos l'actiu i selecciona el que minimitza $p(\mathrm{canvi})$. Si decideix atacar, un segon model (\texttt{xgboost\_move\_evaluator.json}) puntua atributs com potència, STAB, efectivitat, estat i prioritat. Aquest segon model s'entrena amb candidats sintetitzats, no amb la identitat dels moviments de les repeticions; per tant, \texttt{v22} no és un clonatge complet de l'acció humana.
+\texttt{v21} (\texttt{HeuristicV21XGBoost}) hereta \texttt{HeuristicV14}. L'ordre d'execució és el del disseny híbrid: KO garantit, solver de finals, reacció a sweepers i absorció d'estats \emph{abans} del classificador. El vector en viu replica les 1.150 columnes, amb normalització alfanumèrica dels noms d'espècie per no perdre formes regionals. Un guard de bucle força «atacar» si el model ha demanat canviar dos torns seguits. Si la macro-decisió és canviar i existeix un pivot legal i segur, s'executa \emph{U-turn}/\emph{Volt Switch} en lloc d'un canvi sec; si no, \texttt{\_get\_best\_switch} de \texttt{v14}. L'atac el puntua el mateix \texttt{\_score\_move} heurístic.
 
-\texttt{v21} és l'híbrid (macro de dades, micro de \texttt{v14}); \texttt{v22} executa els dos caps XGBoost.
-
-% ============================================================
-\section{Baselines}
-
-\texttt{random} i \texttt{max\_power} provenen de \textit{poke-env}; \texttt{simple\_heuristic} és una còpia local adaptada a la Teracristal·lització, i \texttt{abyssal} prové de PokéChamp. \texttt{one\_step} i \texttt{safe\_one\_step} instancien la mateixa classe, \texttt{SafeOneStepPlayer}; es mantenen com a etiquetes separades per traçabilitat, però no constitueixen dos algoritmes diferents.
-
-\subsection{Integració exploratòria d'agents de llenguatge}
-
-\texttt{src/p01\_heuristics/agents/llm/} adapta PokéChamp i PokéLLMon a la mateixa fàbrica. El fork \texttt{pokechamp/} prepara el context textual de la batalla i envia la consulta a un backend local d'Ollama~\cite{ollama_2023}; la prova es va fer amb un model de la família Qwen~\cite{qwen_2024}. El temps observat, de l'ordre de 40 minuts per partida, impedia executar la matriu. Aquesta integració es conserva perquè va permetre validar la compatibilitat i reutilitzar Abyssal i \texttt{LocalSim}, però no produeix un resultat comparatiu de tesi.
+\texttt{v22} (\texttt{HeuristicV22PureIL}) hereta només \texttt{BaseHeuristic1v1}. Reutilitza el classificador macro i afegeix \texttt{xgboost\_move\_evaluator.json}, entrenat amb candidats sintetitzats (potència, STAB, efectivitat, prioritat, HP, torn), no amb identitats de moviment de les repeticions. El substitut es tria per contrafactual: per a cada candidat de banqueta es regenera el vector com si fos l'actiu i es queda el de menor $p(\mathrm{canvi})$. No hi ha dreceres de \texttt{v14}.
 
 % ============================================================
-\section{Bot en línia}
+\section{Baselines i agents de llenguatge}
 
-\texttt{run\_online\_bot.py} connecta qualsevol etiqueta d'\texttt{AgentFactory} al servidor públic, en mode de classificació (\texttt{ladder}) o d'acceptació de reptes (\texttt{accept}). La mostra analitzada correspon a \texttt{v14}, usuari \texttt{SirPThesis}, els dies 9 i 10 de juny de 2026, amb 431 partides. Aquesta avaluació no és una fila de la matriu local.
+Els sis controls de la Secció~\ref{sec:disseny_agents} s'instancien així. \texttt{random} i \texttt{max\_power} provenen de \textit{poke-env}; \texttt{simple\_heuristic} és una còpia local adaptada a la Teracristal·lització, i \texttt{abyssal} prové de PokéChamp. \texttt{one\_step} i \texttt{safe\_one\_step} instancien \texttt{SafeOneStepPlayer}: un lookahead d'un pas que puntua \texttt{base\_power $\times$ STAB $\times$ efectivitat $\times$ precisió} i no crida \texttt{LocalSim}. L'adaptador existeix perquè l'\texttt{OneStepPlayer} original del fork es bloquejava sense les dades JSON esperades.
+
+\texttt{src/p01\_heuristics/agents/llm/} adapta PokéChamp i PokéLLMon a la mateixa fàbrica. El fork prepara el context textual i consulta un backend local d'Ollama~\cite{ollama_2023} (prova amb un model de la família Qwen~\cite{qwen_2024}). El temps observat, de l'ordre de 40 minuts per partida, confirma el criteri d'exclusió de la Secció~\ref{sec:disseny_experiments}. La integració es conserva perquè va validar la compatibilitat i va permetre reutilitzar Abyssal i \texttt{LocalSim}.
 
 % ============================================================
 \section{PPO: MaskablePPO sobre Showdown}
 \label{sec:ppo_impl}
 
-\texttt{src/p05\_ppo\_drl/} és el cinquè paradigma, avaluat contra \texttt{v12} (Capítol~\ref{chap:resultats}).
+\texttt{src/p05\_ppo\_drl/} materialitza el cinquè paradigma i l'experiment separat contra \texttt{v12} (Secció~\ref{subsec:disseny_curriculum_ppo}). Els resultats numèrics es llegeixen al Capítol~\ref{chap:resultats}; aquí es documenta l'entorn, el clonatge i com s'han executat les fases.
 
 \subsection{Organització del mòdul i dels artefactes}
 
-El mòdul separa tres responsabilitats:
-
 \begin{itemize}
-    \item \texttt{s01\_env/}: vectorització de l'observació, correspondència entre índexs i ordres, màscara d'accions i recompensa;
-    \item \texttt{s02\_training/}: bucle comú, scripts de cada fase, clonatge conductual, callbacks, checkpoints i gràfiques;
-    \item \texttt{s03\_evaluation/}: càrrega d'un model congelat i avaluació contra un oponent fix amb una o dues orientacions.
+    \item \texttt{s01\_env/}: vectorització, correspondència índex--ordre, màscara i recompensa;
+    \item \texttt{s02\_training/}: bucle comú, scripts de cada fase, clonatge, callbacks, checkpoints i gràfiques;
+    \item \texttt{s03\_evaluation/}: càrrega d'un model congelat i avaluació contra un oponent fix.
 \end{itemize}
 
-Els pesos no s'emmagatzemen al codi font, sinó a \texttt{data/models/ppo/}. Cada fase té un directori propi (\texttt{p1\_random}, \texttt{p15\_maxbp}, \texttt{p2\_v8}, \texttt{p3\_v12}); \texttt{plots/} conserva hiperparàmetres i corbes, i \texttt{eval/} conserva els JSON de les avaluacions. Aquesta separació evita confondre una corba d'entrenament amb el resultat obtingut per un checkpoint congelat.
+Els pesos viuen a \texttt{data/models/ppo/}, un directori per fase (\texttt{p1\_random}, \texttt{p15\_maxbp}, \texttt{p2\_v8}, \texttt{p3\_v12}). \texttt{plots/} conserva hiperparàmetres i corbes; \texttt{eval/}, els JSON de les avaluacions. Aquesta separació evita confondre una corba d'entrenament amb el resultat d'un checkpoint congelat.
 
 \subsection{Entorn}
 
-\texttt{PokemonMasked\-Env} encapsula \texttt{SinglesEnv} de \textit{poke-env} en el format \texttt{gen9random\-battle}. L'observació és un vector normalitzat que codifica HP, tipus, estat i modificadors de l'actiu; quatre moviments; l'equip propi; part de l'equip rival revelat; clima, terreny i perills d'entrada; disponibilitat de la Teracristal·lització; velocitat; \texttt{force\_switch} i \texttt{trapped}. El model de l'avaluació final té \textbf{328} dimensions. Una extensió posterior n'afegeix 18, però correspon a un experiment interromput i no al resultat principal.
+\texttt{PokemonMaskedEnv} encapsula \texttt{SinglesEnv} de \textit{poke-env} sota el mateix contracte de la Secció~\ref{sec:pila_tecnologica}. L'observació és el vector de \textbf{328} dimensions de la Taula~\ref{tab:ppo_obs_layout}, la representació congelada del disseny. Les fases 1 i 1.5 n'utilitzaven 318; una extensió posterior n'afegeix 18 (fase 4), però correspon a un experiment interromput i no al resultat principal.
 
 \input{tables/ppo_obs_layout}
 
-L'acció és \texttt{Discrete(14)}:
+L'acció és \texttt{Discrete(14)}, amb la legalitat de la Taula~\ref{tab:ppo_actions}. A cada pas es calcula una màscara que exclou moviments sense PP, una Tera ja consumida i canvis a posicions no disponibles ---l'emmascarament de l'Equació~\ref{eq:masked_softmax_sec24}. \texttt{PPOPlayer} tradueix l'índex a \texttt{/choose}, també durant un canvi forçat.
 
 \input{tables/ppo_actions}
-
-A cada pas es calcula una màscara de legalitat que exclou moviments sense PP, una Teracristal·lització ja consumida i canvis a posicions no disponibles. \texttt{PPOPlayer} tradueix l'índex a \texttt{/choose}, també durant un canvi forçat.
 
 \begin{figure}[htbp]
     \centering
@@ -445,13 +318,13 @@ A cada pas es calcula una màscara de legalitat que exclou moviments sense PP, u
         \draw[arr] (ch) -- (sd);
         \draw[arr] (sd) -- (obs);
     \end{tikzpicture}
-    \caption{Pas d'inferència de MaskablePPO. La màscara s'aplica abans de mostrejar; l'índex no s'envia mai directament al servidor, sinó com a ordre de Showdown.}
+    \caption{Pas d'inferència de MaskablePPO. La màscara s'aplica abans de mostrejar; l'índex s'envia com a ordre de Showdown, no com a enter cru.}
     \label{fig:ppo_infer}
 \end{figure}
 
 \subsection{Clonatge, arquitectura i recompensa}
 
-Abans de l'entrenament per reforç, \texttt{bc.py} genera tuples $(o,m,a)$ d'observació, màscara i acció a partir d'un professor heurístic. L'ajust aplica entropia creuada emmascarada només a l'actor, amb un optimitzador Adam propi de taxa $10^{-3}$ durant 15 èpoques; no reutilitza la taxa molt menor de PPO. A la fase 2 es recullen 400 partides de \texttt{v8}, que produeixen 8.849 decisions. L'acord amb el professor passa del 43\% al 88\%, i la freqüència de canvi predita s'apropa a la del professor (21\% davant del 23\%). El clonatge no pretén ser el resultat final: situa la xarxa en una regió que ja produeix accions semblants a una política competent abans d'aplicar PPO.
+El warm-start de la fase~2 es materialitza a \texttt{bc.py}: tuples $(o,m,a)$ d'observació, màscara i acció a partir del professor \texttt{v8}. L'ajust aplica entropia creuada emmascarada només a l'actor, amb Adam a $10^{-3}$ durant 15 èpoques; no reutilitza la taxa de PPO. Es recullen 400 partides de \texttt{v8} (8.849 decisions). L'acord amb el professor passa del 43\% al 88\%, i la freqüència de canvi predita s'apropa a la del professor (21\% davant del 23\%). El clonatge no és el resultat final: situa la xarxa en una regió que ja produeix accions semblants a una política competent.
 
 \begin{figure}[htbp]
     \centering
@@ -472,25 +345,14 @@ Abans de l'entrenament per reforç, \texttt{bc.py} genera tuples $(o,m,a)$ d'obs
     \label{fig:bc_then_ppo}
 \end{figure}
 
-MaskablePPO~\cite{sb3_contrib,ppo,raffin_sb3_jmlr} s'executa sobre PyTorch~\cite{pytorch}. La política i la funció de valor utilitzen una xarxa de dues capes de 256 unitats. Els scripts registren \texttt{n\_steps}=2048, $\gamma=0{,}99$ i quatre èpoques d'actualització; el lot és de 256 amb quatre entorns i de 512 amb vuit o més. La taxa d'aprenentatge i l'entropia canvien entre fases. El model A publicat utilitza observació de 328 dimensions, vuit entorns i taxa $5\times10^{-5}$.
+MaskablePPO~\cite{sb3_contrib,ppo,raffin_sb3_jmlr} s'executa sobre PyTorch~\cite{pytorch}. Política i valor utilitzen dues capes de 256 unitats. Els scripts registren \texttt{n\_steps}=2048, $\gamma=0{,}99$ i quatre èpoques d'actualització; el lot és de 256 amb quatre entorns i de 512 amb vuit o més. El model A publicat utilitza observació de 328 dimensions, vuit entorns i taxa $5\times 10^{-5}$.
 
-La recompensa d'entrenament combina:
-
-\begin{itemize}
-    \item 30 punts per victòria;
-    \item 2 punts per diferència de Pokémon debilitats;
-    \item 1 punt per diferència d'HP;
-    \item increments per modificadors ofensius, condicions d'estat i perills al camp rival;
-    \item penalització pels perills al camp propi;
-    \item un cost de 0,02 per pas per desincentivar episodis innecessàriament llargs.
-\end{itemize}
-
-El codi desa el valor potencial anterior i només afegeix la diferència de la part tàctica, per no tornar a premiar indefinidament el mateix estat. Tot i així, la recompensa modelada defineix l'objectiu d'entrenament i pot introduir preferències diferents de la victòria terminal. Per aquest motiu, l'avaluació final només utilitza victòries i derrotes.
+La recompensa d'entrenament combina 30 punts per victòria, 2 per diferència de debilitats, 1 per diferència d'HP, increments per modificadors ofensius, estats i perills al camp rival, penalització pels perills propis, i un cost de 0,02 per pas. El codi desa el valor potencial anterior i només afegeix la diferència de la part tàctica, per no premiar indefinidament el mateix estat. L'avaluació final ignora aquesta funció i només compta victòries, com estableix el disseny.
 
 \subsection{Execució de les fases 1, 1.5, 2 i 3}
 \label{subsec:ppo_phases_impl}
 
-La Taula~\ref{tab:ppo_curriculum_impl} diferencia el criteri dissenyat, l'avaluació congelada i la decisió presa. Les taxes de les corbes d'entrenament no substitueixen la columna de validació.
+La Taula~\ref{tab:ppo_curriculum_impl} registra com s'ha operacionalitzat cada porta de la Taula~\ref{tab:ppo_curriculum_design}. Les taxes de les corbes d'entrenament no substitueixen la columna de validació; la interpretació és al Capítol~\ref{chap:resultats}.
 
 \begin{table}[htbp]
     \centering
@@ -509,17 +371,9 @@ La Taula~\ref{tab:ppo_curriculum_impl} diferencia el criteri dissenyat, l'avalua
     \end{tabularx}
 \end{table}
 
-\paragraph{Fase 1: Random.}
-La política comença sense coneixement estratègic. L'objectiu és verificar que aprèn la legalitat, redueix la durada dels episodis i domina una política aleatòria. L'avaluació de 1.000 partides obté 91,8\%, per sobre del 90\%, i el checkpoint passa a la fase 1.5.
+La fase~1 verifica legalitat i domini sobre Random. La fase~1.5 reprèn sense aturada prematura després d'una primera avaluació al 64,1\%; el checkpoint posterior supera el llindar per estimació puntual ($n=1.000$, interval ample). La fase~2 amplia l'observació de 318 a 328 dimensions. Les primeres passades només amb PPO es van mantenir al voltant del 29--30\%; un primer clonatge reutilitzava l'optimitzador de PPO a $5\times 10^{-5}$ i gairebé no ajustava l'actor. La versió final separa els optimitzadors, clona 400 partides i continua 100.000 passos de PPO. La validació queda en 40,6\%, per sota del 55\%. D'acord amb el disseny ---continuar cap a \texttt{v12} encara que una porta falli--- el currículum no s'atura.
 
-\paragraph{Fase 1.5: MaxBasePower.}
-El següent oponent sempre busca potència base alta. Exigeix més que Random, però continua sent previsible. Una primera avaluació va quedar en 64,1\% i no va superar la porta. L'entrenament es va reprendre sense aturada prematura i el checkpoint posterior va obtenir 70,5\%, lleugerament per sobre del llindar. Com que $n=1.000$ implica un interval ample, aquesta «graduació» s'ha d'entendre com una regla operativa basada en l'estimació puntual, no com evidència d'un marge sòlid.
-
-\paragraph{Fase 2: \texttt{v8}.}
-També s'amplia l'observació de 318 a 328 dimensions per representar millor els enfrontaments de l'equip. Les primeres passades només amb PPO es van mantenir al voltant del 29--30\%. Un primer clonatge reutilitzava l'optimitzador de PPO a $5\times10^{-5}$ i gairebé no ajustava l'actor. La versió final separa els optimitzadors, clona 400 partides de \texttt{v8} amb Adam a $10^{-3}$ i continua 100.000 passos amb PPO. La taxa d'entrenament puja, però la validació és 40,6\%, lluny del 55\% previst. Per tant, el currículum \textbf{no supera formalment aquesta fase}.
-
-\paragraph{Fase 3: \texttt{v12}.}
-Tot i el resultat anterior, es continua contra \texttt{v12} per mesurar si l'entrenament directe redueix la distància respecte del millor agent de la matriu. Es proven dues configuracions. El resultat de tesi és el model A, \texttt{p3\_v12\_lr5e5\_flat.zip}, amb taxa $5\times10^{-5}$ i vuit entorns. Una passada secundària amb taxa $1{,}5\times10^{-4}$ i setze entorns produeix la corba guardada al directori de fase 3, però no és el punt de control de la xifra de 10.000 partides.
+La fase~3 prova dues configuracions. El resultat de tesi és el model A, \texttt{p3\_v12\_lr5e5\_flat.zip}, amb taxa $5\times 10^{-5}$ i vuit entorns. Una passada secundària amb taxa $1{,}5\times 10^{-4}$ i setze entorns produeix la corba guardada al directori de fase~3, però no és el punt de control de les 10.000 partides.
 
 \begin{figure}[htbp]
     \centering
@@ -546,37 +400,36 @@ Tot i el resultat anterior, es continua contra \texttt{v12} per mesurar si l'ent
     \label{fig:ppo_curriculum_curves}
 \end{figure}
 
+\texttt{eval\_checkpoint.py} carrega un checkpoint sense actualitzar-lo, l'associa a un \texttt{PPOPlayer} i juga en una o dues orientacions. El model A es prova contra \texttt{v12} en 10.000 partides ---el protocol de la Secció~\ref{sec:disseny_experiments}--- i contra Random en 1.000 com a control. El codi impedeix sobreescriure accidentalment el fitxer principal.
+
+Una extensió posterior amplia l'observació a 346 dimensions i clona \texttt{v14} contra \texttt{v12}. S'interromp al voltant de 340.000 passos i es presenta només com a diagnòstic. No substitueix el model A.
+
 % ============================================================
-\section{Desplegament i operativitat en entorn real (Deployment)}
+\section{Desplegament a la classificació pública}
 \label{sec:deployment}
 
-El desplegament de l'agent en entorns reals de producció exigeix operar fora de la xarxa local de simulació i interactuar directament amb els servidors oficials públics de Pokémon Showdown (\texttt{play.pokemonshowdown.com}). Aquest mòdul, organitzat a \texttt{src/p00\_core/online\_bot/run\_online\_bot.py}, implementa l'arquitectura de desplegament operatiu per al funcionament autònom.
+El protocol de validesa externa de la Secció~\ref{sec:disseny_experiments} es materialitza a \path{src/p00_core/online_bot/run_online_bot.py}. El bot connecta qualsevol etiqueta d'\texttt{AgentFactory} al servidor públic, en mode de classificació (\texttt{ladder}) o d'acceptació de reptes (\texttt{accept}). La mostra analitzada correspon a \texttt{v14}, usuari \texttt{SirPThesis}, els dies 9 i 10 de juny de 2026, amb 431 partides. Aquesta avaluació no és una fila de la matriu local.
 
-\subsection{Arquitectura del client WebSocket i autenticació}
+\subsection{Arquitectura del client i autenticació}
 
-El bot opera com un client asíncronic en Python basat en \texttt{websockets} i \texttt{asyncio}. El flux d'establiment de sessió segueix el protocol oficial de Showdown:
+El client és asíncron (\texttt{websockets} + \texttt{asyncio}) i segueix el protocol oficial:
 
 \begin{enumerate}
-    \item \textbf{Connexió al WebSocket públic:} establiment del canal bidireccional amb el servidor d'enfrontaments (\texttt{sim3.psim.us:80} / \texttt{showdown}).
-    \item \textbf{Recepció del desafiament del servidor (\emph{Challstr}):} obtenció del token d'identificació de sessió generat pel servidor Showdown.
-    \item \textbf{Autenticació HTTP POST:} enviament de les credencials de l'agent i del \emph{challstr} a l'API d'autenticació oficial (\texttt{play.pokemonshowdown.com/action.php}) per generar l'asserció d'identitat.
-    \item \textbf{Enviament del token d'asserció:} transmissió de l'asserció al WebSocket (\texttt{|/trn <username>,0,<assertion>}) per registrar l'usuari (\texttt{SirPThesis}).
+    \item Connexió al WebSocket públic (\texttt{sim3.psim.us} / \texttt{showdown}).
+    \item Recepció del desafiament del servidor (\emph{challstr}).
+    \item Autenticació HTTP POST a \texttt{play.pokemonshowdown.com/action.php}.
+    \item Enviament de l'asserció (\texttt{|/trn <username>,0,<assertion>}) per registrar \texttt{SirPThesis}.
 \end{enumerate}
 
-\subsection{Gestió d'estat, xarxa i tolerància a fallades}
-
-Per tal de garantir l'operativitat continuada en producció sense intervenció humana, el mòdul integra mecanismes de tolerància a fallades:
+\subsection{Tolerància a fallades}
 
 \begin{itemize}
-    \item \textbf{Reconnexió automàtica i recuperació de sessió:} en cas de pèrdua de socket o tall de xarxa, el bot reintenta la connexió mitjançant un algorisme de reescalat exponencial d'espera (\emph{exponential backoff}).
-    \item \textbf{Gestió de temps de resposta (\emph{timer}):} la presa de decisions està acotada temporalment per evitar la pèrdua per exhauriment de temps (\emph{timer loss}). Si l'agent no respon en menys de 10 segons, el connector aplica una acció de reserva legal de manera immediata.
-    \item \textbf{Control de freqüència (\emph{Rate Limiting}):} aplicació d'esperes entre comandes per complir les polítiques del servidor públic i evitar el bloqueig d'IP (\emph{spam throttle}).
+    \item \textbf{Reconnexió:} reintent amb espera exponencial davant de pèrdua de socket.
+    \item \textbf{Timer:} si l'agent no respon en menys de 10 segons, s'envia una acció legal de reserva per evitar la derrota per temps.
+    \item \textbf{Limitació de freqüència:} esperes entre comandes per no activar el \emph{spam throttle} del servidor.
 \end{itemize}
 
-L'agent principal desplaçat al \emph{ladder} oficial va ser \texttt{v14}, acumulant 431 batalles reals contra jugadors humans. Aquest entorn de desplegament demostra la capacitat del programari per operar com un servei autònom i de producció.
+% ============================================================
+\section{Síntesi i continuïtat}
 
-\subsection{Avaluació i preservació del model principal}
-
-\texttt{eval\_checkpoint.py} carrega un checkpoint sense actualitzar-lo, l'associa a un \texttt{PPOPlayer} i juga en una o dues orientacions. El model A es prova contra \texttt{v12} en 10.000 partides i contra Random en 1.000 com a control. El codi impedeix sobreescriure accidentalment el fitxer principal. Els JSON d'avaluació documenten victòries, orientació, durada i interval; algunes validacions intermèdies antigues només es conserven a les notes perquè els noms de JSON es van reutilitzar.
-
-Una extensió posterior amplia l'observació a 346 dimensions i clona \texttt{v14} contra \texttt{v12}. S'interromp al voltant de 340.000 passos i es presenta només com a diagnòstic. No substitueix el model A ni la seva avaluació final.
+El Capítol~\ref{chap:metodologia} ha tancat el disseny; aquest capítol n'ha recollit la construcció. El nucli \texttt{p00\_core} implementa el gestor i el contracte Showdown/\textit{poke-env}; \texttt{p01}--\texttt{p04} i \texttt{p02} materialitzen les famílies de la matriu $28\times 28$; \texttt{p05} executa el currículum MaskablePPO fora d'aquesta matriu; i \texttt{online\_bot} connecta \texttt{v14} a la classificació pública. El Capítol~\ref{chap:resultats} llegeix els CSV, les validacions congelades de PPO i la mostra del \emph{ladder} sota aquestes mateixes etiquetes.

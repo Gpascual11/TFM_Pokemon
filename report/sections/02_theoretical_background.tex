@@ -752,11 +752,13 @@ En estratègies pures, la formulació Maximin ve donada per:
     a_1^* = \arg\max_{a_1 \in A_1} \min_{a_2 \in A_2} M(a_1, a_2)
     \label{eq:minimax_pure}
 \end{equation}
-Tanmateix, per evitar ser previsible i explotable davant d'un adversari intel·ligent, la matriu de recompenses $M \in \mathbb{R}^{|A_1| \times |A_2|}$ es resol en \textbf{estratègies mixtes} $\pi_1^* \in \Delta(A_1)$ mitjançant \textbf{Programació Lineal (LP)}, trobant l'Equilibri de Nash de la matriu local (vegeu Equació~\ref{eq:nash_equilibrium}):
+Tanmateix, per evitar ser previsible i explotable davant d'un adversari intel·ligent, la matriu completa es podria resoldre en \textbf{estratègies mixtes} $\pi_1^* \in \Delta(A_1)$ mitjançant \textbf{Programació Lineal (LP)}, trobant l'Equilibri de Nash local (vegeu Equació~\ref{eq:nash_equilibrium}):
 \begin{equation}
     \max_{\pi_1 \in \Delta(A_1)} v \quad \text{subjecte a} \quad \sum_{i=1}^{|A_1|} \pi_1(i) M_{ij} \ge v, \quad \forall j \in \{1, \dots, |A_2|\}, \quad \sum_{i} \pi_1(i) = 1, \quad \pi_1(i) \ge 0
     \label{eq:minimax_lp}
 \end{equation}
+Aquesta formulació assumeix que $A_2$ és conegut. En combat amb observació parcial només es veuen els moviments ja revelats, de manera que el disseny experimental (Capítol~\ref{chap:metodologia}) adopta el maximin pur de l'Equació~\ref{eq:minimax_pure} i reserva l'LP com a referent teòric, no com a variant implementada.
+
 La funció d'avaluació d'estat $V(s')$ combina el balanç de punts de salut normalitzats $hp_k \in [0, 1]$ de tots dos bàndols amb bonificacions posicionals:
 \begin{equation}
     V(s') = \sum_{k \in \text{propi}} hp_k - w_{\mathrm{opp}} \sum_{m \in \text{rival}} hp_m + B(s')
