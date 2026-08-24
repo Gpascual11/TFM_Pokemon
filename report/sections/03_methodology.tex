@@ -2,13 +2,13 @@
 \chapter{Metodologia i disseny experimental}
 \label{chap:metodologia}
 
-Aquest capítol presenta el \textbf{disseny experimental} de l'estudi. El Capítol~\ref{chap:marc_teoric} ha fixat el domini ---el format \texttt{gen9randombattle} (Secció~\ref{sec:format}), la formalització POSG/POMDP (Secció~\ref{subsec:formalitzacio_posg}) i el marc d'inferència estadística (Secció~\ref{subsec:marc_estadistic})--- i els algorismes dels cinc paradigmes (Secció~\ref{sec:ia_tecniques}). Aquí es decideix com s'apliquen aquests fonaments: quin contracte d'entorn fa comparables totes les polítiques, quina arquitectura ha de suportar milions de batalles independents, quines variants d'agent es posen a prova i amb quin protocol mostral. El Capítol~\ref{chap:infraestructura} documenta el maquinari i les dependències; el Capítol~\ref{chap:implementacio} recull la implementació d'aquest disseny.
+Aquest capítol presenta el \textbf{disseny experimental} de l'estudi. El Capítol~\ref{chap:marc_teoric} ha fixat el domini ---el format \texttt{gen9randombattle} (Secció~\ref{sec:format}), la formalització POSG/POMDP (Secció~\ref{subsec:formalitzacio_posg}) i el marc d'inferència estadística (Secció~\ref{subsec:marc_estadistic})--- i els algorismes dels cinc paradigmes (Secció~\ref{sec:ia_tecniques}). Aquí es decideix com s'apliquen: quin contracte d'entorn fa comparables totes les polítiques, quina arquitectura ha de suportar milions de batalles independents, quines variants es posen a prova i amb quin protocol mostral. El Capítol~\ref{chap:infraestructura} documenta el maquinari, la xarxa i el monitoratge que executen aquest disseny; el Capítol~\ref{chap:implementacio} en recull la implementació.
 
 % ============================================================
 \section{Disseny general de l'estudi}
 \label{sec:disseny_general}
 
-Com s'ha argumentat a la Secció~\ref{sec:format}, l'estudi treballa en \texttt{gen9randombattle} per aïllar la tàctica de la construcció d'equips: el simulador assigna els sis Pokémon de cada bàndol, i el que es mesura és la política, no un equip predissenyat. Sense aquest desacoblament, una taxa de victòria es podria deure tant a una bona decisió com a un equip més fort, i els cinc paradigmes deixarien de ser comparables.
+Com s'ha argumentat a la Secció~\ref{sec:format}, l'estudi treballa en \texttt{gen9randombattle} per aïllar la tàctica de la construcció d'equips. Sense aquest desacoblament, una taxa de victòria es podria deure tant a una bona decisió com a un equip més fort, i els cinc paradigmes deixarien de ser comparables.
 
 Sobre aquest marc, el disseny experimental fixa tres peces. La \textbf{unitat d'anàlisi} defineix què es mesura i amb quina incertesa. El \textbf{gestor conceptual d'enfrontaments} existeix perquè comparar 28 polítiques no és un únic combat, sinó una matriu de centenars de cel·les que ha de ser reproduïble. El \textbf{contracte d'observació i acció} existeix perquè, com s'ha formalitzat a la Secció~\ref{subsec:formalitzacio_posg}, tots els agents han de veure la mateixa $o_i$ i actuar sobre el mateix $A$; si cada paradigma parlés amb el simulador a la seva manera, les diferències de rendiment es barrejarien amb diferències d'informació.
 
@@ -67,12 +67,10 @@ Es vol que tots els paradigmes competeixin sota la mateixa funció d'emissió $O
 \subsection{Showdown i \textit{poke-env}: àrbitre, protocol i objecte de batalla}
 \label{subsec:showdown_pokeenv}
 
-Pokémon Showdown~\cite{pokemon_showdown} no és una llibreria que l'agent importi per consultar l'estat real. És un \textbf{servidor de combat} en Node.js/TypeScript que manté l'estat omniscient $S$ ---equips complets, objectes, moviments no revelats, IVs i tipus Tera--- i n'és l'únic autoritzat a aplicar la transició $T$ descrita a la Secció~\ref{sec:pokemon_joc}: prioritat, velocitat, tirada de dany, precisió i efectes secundaris. Els clients no executen el combat: hi \emph{participen}.
-
-La comunicació és un protocol textual sobre WebSocket. El servidor obre una sala per batalla i emet línies prefixades amb \texttt{|}. Dues classes de missatge vertebran el torn:
+El contracte reutilitza l'àrbitre de la Figura~\ref{fig:mdp_pomdp}d: Showdown~\cite{pokemon_showdown} manté $S$, aplica $T$ (Secció~\ref{sec:pokemon_joc}) i emet $o_i$ (Taula~\ref{tab:pomdp_pokemon}). Els clients hi participen; no executen el combat. La comunicació és un protocol textual sobre WebSocket, amb línies prefixades amb \texttt{|}. Dues classes de missatge vertebran el torn:
 
 \begin{itemize}
-    \item \textbf{Petició d'acció (\texttt{|request|}).} Un JSON privat per a cada jugador. Conté el bàndol propi (HP, moviments amb PP, canvis legals), la llista d'accions permeses i, si s'escau, un canvi forçat. Del rival, només hi figura el que el protocol ja ha revelat: espècie activa, percentatge d'HP, moviments ja usats i condicions visibles. Aquest paquet \emph{és} l'observació $o_i$ de la Taula~\ref{tab:pomdp_pokemon}: el filtre $O$ no el fa l'agent, el fa Showdown abans d'enviar el missatge (vegeu l'exemple de la Figura~\ref{fig:json_request_example}).
+    \item \textbf{Petició d'acció (\texttt{|request|}).} JSON privat per jugador: bàndol propi, accions legals i, del rival, només el que el protocol ja ha revelat. Aquest paquet \emph{és} $o_i$: el filtre $O$ el fa Showdown abans d'enviar el missatge (Figura~\ref{fig:json_request_example}).
 
           \begin{figure}[H]
               \centering
@@ -108,7 +106,7 @@ La comunicació és un protocol textual sobre WebSocket. El servidor obre una sa
     \item \textbf{Registre de resolució.} Un cop \emph{tots dos} jugadors han enviat una ordre, el motor desbloqueja el torn ---accions simultànies, no per torns com als escacs--- i emet el log (\texttt{|move|}, \texttt{|switch|}, \texttt{|-damage|}, \texttt{|-crit|}, \texttt{|win|}, \ldots). Fins que no arriben les dues ordres, l'estat no avança. Aquest \emph{lock} simultani és la raó per la qual Minimax es formula com a matriu d'un pas (Secció~\ref{subsec:teoria_minimax}) i no com a arbre d'alternança.
 \end{itemize}
 
-L'agent, doncs, mai llegeix $S$. Si un paradigma «mirés» l'equip ocult del rival, deixaria de ser un POSG i la comparació amb humans o amb altres bots seria invàlida. El disseny localitza instàncies \emph{headless} del mateix servidor ---no el \emph{ladder} públic--- perquè la matriu pugui córrer sense cua, sense autenticació competitiva i amb reproducció controlada; el protocol, però, és el mateix.
+L'agent mai no llegeix $S$: si un paradigma «mirés» l'equip ocult, deixaria de ser un POSG. Les instàncies són \emph{headless} i locals ---no el \emph{ladder} públic--- perquè la matriu pugui córrer sense cua; el protocol és el mateix.
 
 \textit{poke-env}~\cite{poke_env} és la capa que tradueix aquest protocol a Python. Internament fa tres feines que l'estudi no vol duplicar a cada agent:
 
@@ -353,7 +351,7 @@ La família d'agents heurístics constitueix el nucli de coneixement de domini e
 
 \subsubsection*{Decisions de disseny}
 
-Una sola heurística «completa» respondria qui guanya, no què aporta cada bloc de coneixement. La Secció~\ref{subsec:teoria_heuristiques} formalitza l'heurística com a suma ponderada i l'ablació incremental $H^{(m)}(s,a) = \sum_{f_k \in \mathcal{F}^{(m)}} w_k \cdot f_k(s,a)$ (Equació~\ref{eq:heuristic_ablation}). El disseny concreta $M = 14$ punts d'aquesta ablació \emph{perquè} es vol mesurar el valor marginal de cada mecànica ---i detectar si n'hi ha que perjudiquen--- abans d'usar l'heurística terminal com a fulla de cerca. No són catorze provatures aïllades: cada versió afegeix un bloc concret, amb ramificacions quan dues hipòtesis són ortogonals (Figura~\ref{fig:heur_genealogy}).
+Una sola heurística «completa» respondria qui guanya, no què aporta cada bloc de coneixement. La Secció~\ref{subsec:teoria_heuristiques} formalitza l'heurística com a suma ponderada i l'ablació incremental $H^{(m)}(s,a) = \sum_{f_k \in \mathcal{F}^{(m)}} w_k \cdot f_k(s,a)$ (Equació~\ref{eq:heuristic_ablation}). El disseny concreta $M = 14$ punts d'aquesta ablació \emph{perquè} es vol mesurar el valor marginal de cada mecànica ---i detectar si n'hi ha que perjudiquen--- abans d'usar \texttt{v14} com a fulla de cerca. No són catorze provatures aïllades: cada versió afegeix un bloc concret, amb ramificacions quan dues hipòtesis són ortogonals (Figura~\ref{fig:heur_genealogy}).
 
 La seqüència no és una cadena estricta. Les versions primerenques exploren estimadors de dany i pivots simples; \texttt{v7} reescriu el nucli d'avaluació de l'enfrontament ---es fa així perquè una cascada de condicionals no és reutilitzable com a fulla---; \texttt{v9} i \texttt{v10} afegeixen tempo i tàctica com a blocs separats que \texttt{v11} fusiona abans d'introduir les mecàniques de Generació~IX. Es ramifica abans de fusionar per no atribuir a «més regles» un efecte que en realitat ve d'un sol dels dos blocs.
 
@@ -481,14 +479,14 @@ Tres decisions estructurals vertebren la resta de l'estudi, i es prenen \emph{ab
 \begin{itemize}
     \item \textbf{Ramificacions \texttt{v4}/\texttt{v5} i \texttt{v9}/\texttt{v10}:} aïllen camp i modificadors, d'una banda, i tempo i tàctica, de l'altra, abans de fusionar-los. Es vol poder atribuir un canvi de taxa a un bloc, no a un paquet indivisible.
     \item \textbf{Punt d'inflexió \texttt{v7}:} el nucli passa d'una cascada de condicionals a una suma ponderada de l'enfrontament. Es fa així perquè Minimax i MCTS necessiten una fulla numèrica, no una llista de \texttt{if}.
-    \item \textbf{\texttt{v14} com a servei:} l'heurística més completa es dissenya per servir de \emph{fulla} a Minimax i MCTS, de \emph{prior} a PUCT i d'\emph{executor tàctic} a la imitació híbrida. Sense aquest paper, cada paradigma reimplementaria el coneixement de domini i les diferències deixarien de ser aïllables.
+    \item \textbf{\texttt{v14} com a servei:} l'heurística més completa es dissenya com a \emph{fulla} de Minimax i MCTS, \emph{prior} de PUCT i \emph{executor tàctic} de la imitació híbrida. No és el sostre empíric de la família: el rendiment de cada versió es mesura al Capítol~\ref{chap:resultats}. \texttt{v12} serà el comparador de PPO i el líder observat de la lliga. Sense aquest paper de servei, cada paradigma reimplementaria el coneixement de domini i les diferències deixarien de ser aïllables.
 \end{itemize}
 
-En resum, l'ablació \texttt{v1}--\texttt{v14} aïlla el valor marginal de cada bloc de regles fins a consolidar \texttt{v14}. Aquesta versió final actua com a sostre de la família basada en regles i es converteix en la funció d'avaluació, prior o executor utilitzat per les famílies de cerca i aprenentatge posteriors.
+En resum, l'ablació \texttt{v1}--\texttt{v14} aïlla el valor marginal de cada bloc de regles. \texttt{v14} és l'heurística terminal de \emph{servei}; \texttt{v12} n'és el referent de rendiment. La cerca i l'aprenentatge reutilitzen \texttt{v14} com a fulla, prior o executor.
 
 \subsection{Família Minimax: tres variants de resolució de la matriu d'un torn}
 
-La família Minimax aporta la consideració explícita de la millor resposta de l'adversari en el moment de prendre una decisió. Com que en els combats Pokémon els dos jugadors escullen la seva acció simultàniament, una política ingènua (\textit{greedy}) pot cometre l'error de suposar que el rival es quedarà passiu. Minimax resol aquesta feblesa avaluant una matriu de recompenses d'un sol torn.
+La família Minimax aporta la consideració explícita de la millor resposta adversària. Com que les accions són simultànies, una política \textit{greedy} pot assumir que el rival es queda passiu. El disseny instancia el maximin d'un pas de la Secció~\ref{subsec:teoria_minimax} (Equació~\ref{eq:minimax_pure}): la Figura~\ref{fig:minimax_diagram} en mostra la matriu operativa.
 
 \subsubsection*{Pregunta de recerca}
 
@@ -496,7 +494,7 @@ La família Minimax aporta la consideració explícita de la millor resposta de 
 
 \subsubsection*{Decisions de disseny i funcionament}
 
-Com es mostra a la Figura~\ref{fig:minimax_diagram}, per a cada torn l'agent construeix una matriu de recompenses $M$ on les files corresponen a les nostres accions legals ($a_1, \dots, a_k$) i les columnes a les accions possibles de l'adversari ($b_1, \dots, b_m$). Cada cel·la $M_{ij}$ s'avalua amb el nucli heurístic \texttt{v14}. A continuació, per a cada acció pròpia es determina el pitjor escenari possible ($\min_j M_{ij}$) i es selecciona l'acció que maximitza aquest valor mínim ($\max_i \min_j M_{ij}$).
+Cada cel·la $M_{ij}$ s'avalua amb el nucli \texttt{v14}; es tria $\max_i \min_j M_{ij}$ (Figura~\ref{fig:minimax_diagram}).
 
 \begin{figure}[htbp]
     \centering
@@ -641,7 +639,7 @@ Es defineixen tres variants principals per aïllar la selecció de la funció d'
 \begin{itemize}
     \item \textbf{\texttt{v18} --- UCB1 sense prior:} Selecció pura per UCB1 ($C=1{,}4$) i avaluació de fulla basada en HP, modificadors, estats i perills. Avalua si la simulació estocàstica cap a endavant per si sola, sense guiatge expert, pot corregir els biaixos heurístics. Actua com a línia de base agnòstica amb cerca uniforme.
     \item \textbf{\texttt{v19} --- UCB1 amb fulla enriquida:} Manté la selecció UCB1, però incorpora a la fulla la ponderació per rols (Win-Con i Vital Wall), l'amenaça de KO i les dreceres tàctiques de \texttt{v14}. Mesura el guany de qualitat en el \textit{rollout} quan l'estat final es valora amb coneixement de domini avançat.
-    \item \textbf{\texttt{v20} --- PUCT amb prior heurístic:} Substitueix UCB1 per selecció PUCT esbiaixada assignant una massa de probabilitat a priori de $P(a_{\text{v14}}) = 0{,}70$ a l'acció recomanada pel nucli \texttt{v14}, i redistribuint el $0{,}30$ restant de forma uniforme entre les $K-1$ accions legals alternatives ($P(a_{\text{alt}}) = \frac{0{,}30}{K-1}$). Amb un pressupost compost per només 100 iteracions per decisió (imposat pels requeriments de temps real de Showdown), la cerca uniforme d'UCB1 patia un alt soroll de simulació que provocava canvis injustificats en el 71,1\% dels torns. El prior de $0{,}70$ obliga la cerca a concentrar les primeres simulacions a validar la proposta de l'heurística d'expertesa, conservant alhora un 30\% de capacitat exploratòria per redescobrir alternatives tàctiques superiors quan les simulacions ho confirmin. Això redueix la taxa de discrepància al 18,7\% i maximitza el rendiment d'aquesta família.
+    \item \textbf{\texttt{v20} --- PUCT amb prior heurístic:} Substitueix UCB1 per PUCT amb massa a priori $P(a_{\text{v14}}) = 0{,}70$ a l'acció de \texttt{v14} i $P(a_{\text{alt}}) = 0{,}30/(K-1)$ a la resta. Amb un pressupost de 100 visites per decisió (temps real de Showdown), UCB1 uniforme explora massa poc cada fill; el prior concentra simulacions a validar l'heurística i deixa un 30\% per alternatives. La taxa de discrepància i el rendiment es reporten al Capítol~\ref{chap:resultats}.
 \end{itemize}
 
 Com en la família Minimax, les simulacions s'executen en un simulador local en memòria alimentat només amb la informació revelada (respectant la naturalesa POSG del joc) i es mesura la \textbf{mètrica de discrepància} respecte a \texttt{v14}.
@@ -672,7 +670,7 @@ Aquest conjunt de dades enregistra la seqüència completa per torns de les bata
 
 El procés de construcció i entrenament del classificador XGBoost es sintetitza en tres aspectes de disseny:
 \begin{enumerate}
-    \item \textbf{Construcció del vector de característiques:} Es processen aproximadament $1{,}12$ milions de torns per generar una matriu tabular d'unes $1.150$ columnes (incloent la codificació \textit{one-hot} d'espècies i formes regionals). La variable objectiu es redueix a la decisió macro binary $y \in \{0: \text{atacar}, 1: \text{canviar}\}$.
+    \item \textbf{Construcció del vector de característiques:} Es processen aproximadament $1{,}12$ milions de torns per generar una matriu tabular d'unes $1.150$ columnes (incloent la codificació \textit{one-hot} d'espècies i formes regionals). La variable objectiu es redueix a la decisió macro binària $y \in \{0: \text{atacar}, 1: \text{canviar}\}$.
     \item \textbf{Partició agrupada per batalla:} Per evitar la filtració d'informació entre torns consecutius d'un mateix combat, es realitza un desglossament train/test agrupat per identificador de combat (\textit{GroupShuffleSplit} per \texttt{battle\_id}).
     \item \textbf{Tractament del desequilibri i calibratge de llindar:} Atès que l'acció d'atacar és molt més freqüent que la de canviar, s'aplica una ponderació de classe (\texttt{scale\_pos\_weight}) i es calibra un llindar de decisió $\tau$ sobre la corba precisió-record en validació. Durant la inferència, l'agent executa un canvi si $p(\text{canvi}) \ge \tau$, i un atac en cas contrari.
 \end{enumerate}
@@ -816,7 +814,7 @@ Quatre mecanismes completen el disseny, cadascun per una fallada típica de l'RL
     \item \textbf{Emmascarament:} el softmax emmascarat de la Secció~\ref{subsec:teoria_drl}. L'espai es congela en 14 slots (4 moviments, 4 amb Tera, 6 canvis), dels quals la màscara n'activa només els legals ---la mateixa $A$ de la Taula~\ref{tab:pomdp_pokemon}, discretitzada. Es vol que l'agent no aprengui a «provar» ordres que el protocol rebutja.
     \item \textbf{Observació vectorial congelada:} l'estat es projecta a un vector en $[0,1]$ (HP, tipus, estats, moviments, banc, camp, Tera i restriccions). Es congela abans de la fase competitiva per no invalidar els checkpoints: canviar $\Omega$ a mig currículum faria incomparables les fases.
     \item \textbf{Inicialització guiada:} abans de la fase~2, clonatge conductual sobre un professor de dificultat intermèdia (\texttt{v8}, no \texttt{v12}). Un expert massa fort fa més difícil tant el clonatge com el reforç posterior; \texttt{v8} ja sap canviar sense ser encara el sostre heurístic.
-    \item \textbf{Avaluació fora de la matriu:} l'agent s'avalua contra \texttt{v12} en un experiment separat. Entrena contra oponents del currículum; incloure'l a la matriu de 28 agents distorsionaria les comparacions entre paradigmes no especialitzats contra un rival concret, i barrejaria un entrenament on-policy amb una avaluació off-policy.
+    \item \textbf{Avaluació fora de la matriu:} l'agent s'avalua contra \texttt{v12} ---l'heurística de millor rendiment observat, no \texttt{v14}--- en un experiment separat. Entrena contra oponents del currículum; incloure'l a la matriu de 28 agents distorsionaria les comparacions entre paradigmes no especialitzats contra un rival concret, i barrejaria un entrenament on-policy amb una avaluació off-policy.
 \end{itemize}
 
 La recompensa d'entrenament combina un premi de partida amb senyals densos (debilitaments, HP, modificadors, estats, perills i un cost per pas), d'acord amb el \emph{reward shaping} esmentat a la Taula~\ref{tab:pomdp_pokemon}: sense senyal intermedi, el crèdit d'una victòria després de 40 torns és massa espars. L'avaluació final ignora aquesta funció i només compta victòries, per no confondre l'objectiu intern amb la mètrica de l'estudi.
@@ -867,7 +865,7 @@ La mera taxa de victòries permet establir una jerarquia de rendiment, però no 
 
 \subsection{Mètrica primària: taxa de victòries i model Bradley--Terry}
 
-La mètrica primària d'avaluació és la taxa de victòries ($WR$) obtinguda en cada cel·la de la matriu d'avaluació, acompanyada del seu interval de confiança de Wilson al $95\%$ (Equació~\ref{eq:wilson_ci}). Atès que el valor d'una taxa de victòries depèn fortament de la dificultat del rival (p. ex., un $98\%$ contra l'agent aleatori no permet diferenciar polítiques avançades, mentre que un $58\%$ contra l'heurística terminal representa un domini rellevant), les taxes es sintetitzen mitjançant el model de preferències parelles de Bradley--Terry (Secció~\ref{subsec:marc_estadistic}), col·lapsant la matriu en una escala de força unidimensional ancorada a $\text{Random} = 1000$.
+La mètrica primària d'avaluació és la taxa de victòries ($WR$) obtinguda en cada cel·la de la matriu d'avaluació, acompanyada del seu interval de confiança de Wilson al $95\%$ (Equació~\ref{eq:wilson_ci}). Atès que el valor d'una taxa de victòries depèn fortament de la dificultat del rival (p. ex., un $98\%$ contra l'agent aleatori no permet diferenciar polítiques avançades, mentre que un $58\%$ contra \texttt{v12} representa un domini rellevant), les taxes es sintetitzen mitjançant el model de preferències parelles de Bradley--Terry (Secció~\ref{subsec:marc_estadistic}), col·lapsant la matriu en una escala de força unidimensional ancorada a $\text{Random} = 1000$.
 
 \subsection{Mètriques secundàries i capa d'intercepció de telemetria (\texttt{StatsBattle})}
 
@@ -884,7 +882,7 @@ Aquesta capa de telemetria permet caçar i estructurar automàticament en el fit
 
     \item \textbf{Mobilitat i caracterització de canvis:}
           \begin{itemize}
-              \item \textit{Canvis voluntaris vs forçats}: El mòdul intercep els missatges de protocol per diferenciar quan un agent realitza un canvi estratègic voluntari de quan es veu obligat a canviar per debilitament del seu Pokémon o per efectes de moviments de \textit{phazing} (com \textit{Roar}, \textit{Whirlwind} o \textit{Dragon Tail}, detectats via la línia de protocol \texttt{drag}). Aquesta distinció és clau per separar el pivot tàctic del canvi de pànic.
+              \item \textit{Canvis voluntaris vs forçats}: El mòdul intercepta els missatges de protocol per diferenciar quan un agent realitza un canvi estratègic voluntari de quan es veu obligat a canviar per debilitament del seu Pokémon o per efectes de moviments de \textit{phazing} (com \textit{Roar}, \textit{Whirlwind} o \textit{Dragon Tail}, detectats via la línia de protocol \texttt{drag}). Aquesta distinció és clau per separar el pivot tàctic del canvi de pànic.
           \end{itemize}
 
     \item \textbf{Freqüències de moviments i esdeveniments de combat:}
@@ -924,21 +922,17 @@ Des del punt de vista del disseny experimental, la integració dels LLM s'establ
     \item \textbf{Incompatibilitat de pressupost de volum:} Executar la matriu massiva ($n=10.000$ partides per cel·la) amb agents generatius és inabastable sota un pressupost de temps i còmput homogeni.
 \end{enumerate}
 
-Per tant, l'abast dels LLMs es restrringeix a validar la compatibilitat de l'arquitectura i analitzar el cost temporal per decisió, mentre que la comparació competitiva rigorosa del benchmark es reserva per a les 28 polítiques de les famílies anteriors.
+Per tant, l'abast dels LLMs es restringeix a validar la compatibilitat de l'arquitectura i analitzar el cost temporal per decisió, mentre que la comparació competitiva rigorosa del benchmark es reserva per a les 28 polítiques de les famílies anteriors.
 
 \subsection{Avaluació dedicada de MaskablePPO}
 
-L'agent MaskablePPO no s'inclou com una fila addicional de la matriu d'avaluació creuada, sinó que s'avalua mitjançant un experiment dedicat contra \texttt{v12} amb els pesos del xarxa congelats en finalitzar el currículum. Aquest disseny respon a dues raons metodològiques:
-\begin{enumerate}
-    \item \textbf{Alineació amb el currículum:} L'agent s'ha entrenat de forma progressiva per superar oponents de dificultat creixent fins a la fase final contra \texttt{v12} (Secció~\ref{subsec:disseny_curriculum_ppo}). Mesurar-lo contra l'oponent de referència valida la convergència de la darrera porta del currículum (Taula~\ref{tab:ppo_curriculum_design}).
-    \item \textbf{Aïllament del biaix d'entrenament:} Incloure PPO a la matriu general contra 27 polítiques no especialitzades barrejaria el rendiment sobre l'objectiu d'aprenentatge amb la generalització davant d'estats fora de la distribució d'entrenament.
-\end{enumerate}
+L'agent MaskablePPO no s'inclou com una fila addicional de la matriu d'avaluació creuada, sinó que s'avalua mitjançant un experiment dedicat contra \texttt{v12} amb els pesos de la xarxa congelats en finalitzar el currículum. Aquest disseny respon a l'alineació amb la darrera porta del currículum (Taula~\ref{tab:ppo_curriculum_design}) i a l'aïllament del biaix d'entrenament ja argumentats a la Secció~\ref{subsec:disseny_curriculum_ppo}.
 
 \subsection{Avaluació en la classificació pública i coordinació amb desenvolupadors}
 
-La matriu principal avalua els agents en un entorn controlat entre bots i equips aleatoris. Per aportar validesa externa, l'heurística terminal \texttt{v14} es desplega a la classificació pública oficial de Pokémon Showdown (\emph{ladder}) contra jugadors humans reals, oferint un contrast en condicions de competició oberta.
+La matriu principal avalua els agents en un entorn controlat entre bots i equips aleatoris. Per aportar validesa externa, l'heurística terminal de servei \texttt{v14} ---no \texttt{v12}--- es desplega a la classificació pública oficial de Pokémon Showdown (\emph{ladder}) contra jugadors humans: és la política amb el conjunt de regles més complet i ja instrumentada com a executor, i per tant la més adequada per a una prova oberta, independentment del rànquing intern de la lliga.
 
-A fi d'assegurar un desplegament ètic i conformat amb la normativa de la plataforma, es va establir contacte directe amb l'equip de desenvolupadors oficials de Pokémon Showdown i Smogon mitjançant els seus servidors de Discord (\emph{Showdown! Coding} i \emph{Smogon Development}). Les consultes amb l'equip tècnic (com ara el desenvolupador \texttt{\_iforgetwhyimhere}) van permetre confirmar aspectes clau de la infraestructura:
+A fi d'assegurar un desplegament ètic i conforme a la normativa de la plataforma, es va establir contacte directe amb l'equip de desenvolupadors oficials de Pokémon Showdown i Smogon mitjançant els seus servidors de Discord (\emph{Showdown! Coding} i \emph{Smogon Development}). Les consultes amb l'equip tècnic (com ara el desenvolupador \texttt{\_iforgetwhyimhere}) van permetre confirmar aspectes clau de la infraestructura:
 \begin{itemize}
     \item \textbf{Absència de registre formal per a bots de batalla:} El rang \emph{Global Bot} s'assigna exclusivament a xatbots de moderació amb permisos HTML, mentre que els agents de batalla operen sota el mateix protocol de connexió WebSocket que els usuaris estàndard.
     \item \textbf{Gestió de la taxa de connexió:} La plataforma aplica un control automàtic de freqüència (\emph{rate-limiting} de 12 partides cada 3 minuts) per evitar la saturació del servidor, sense aplicar restriccions permanents d'IP per activitat continuada de combat.
@@ -965,5 +959,5 @@ El disseny anterior introdueix compromisos que cal declarar, no amagar:
 \section{Síntesi i continuïtat}
 \label{sec:fases}
 
-El capítol ha fixat \emph{què} es mesura i \emph{per què} es mesura així: un sol àrbitre Showdown i una sola traducció \textit{poke-env}, perquè les polítiques siguin comparables; una arquitectura paral·lela de treballadors efímers, perquè el volum estadístic càpiga en memòria i en calendari; cinc famílies amb ablació interna, perquè es pugui atribuir el rendiment a un mecanisme i no a un identificador; una matriu $28\times 28$ amb $n$ adaptat al cost, perquè l'interval de Wilson sigui interpretable. El Capítol~\ref{chap:infraestructura} descriu el maquinari que fa viable aquesta execució. El Capítol~\ref{chap:implementacio} mostra com aquest disseny es converteix en mòduls, scripts d'entrenament i un connector amb la classificació pública. El Capítol~\ref{chap:resultats} n'analitza els resultats.
+El capítol ha fixat \emph{què} es mesura i \emph{per què} es mesura així: un sol àrbitre Showdown i una sola traducció \textit{poke-env}; una arquitectura paral·lela de treballadors efímers; cinc famílies amb ablació interna; una matriu $28\times 28$ amb $n$ adaptat al cost. El Capítol~\ref{chap:infraestructura} descriu l'entorn de còmput, xarxa i monitoratge que fa viable aquesta execució. El Capítol~\ref{chap:implementacio} mostra com aquest disseny es converteix en mòduls, scripts d'entrenament i un connector amb la classificació pública. El Capítol~\ref{chap:resultats} n'analitza els resultats.
 

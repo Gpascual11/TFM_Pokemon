@@ -12,7 +12,7 @@ Abans de formalitzar el problema des de la Teoria de Jocs, cal contextualitzar e
 
 \subsection{Què és Pokémon i com es desenvolupa una batalla}
 
-\textit{Pokémon} és una franquícia de videojocs creada l'any 1996 per Satoshi Tajiri i la companyia Game Freak per a la consola Game Boy de Nintendo~\cite{pokemon_official}. El nom \textbf{Pokémon} prové de la contracció de la denominació anglesa \textbf{\emph{Pocket Monsters}} (\emph{Poketto Monstā} en japonès), fent referència a les criatures que es capturen en esferes portàtils (Poké Balls), es col·leccionen, s'entrenen i participen en combats. Coincidint amb la celebració del seu \textbf{30è aniversari (1996--2026)}, la franquícia s'ha convertit en un fenomen cultural global que abasta videojocs, sèries d'animació, cartes col·leccionables (TCG) i entreteniment multimèdia, on l'estratègia de combat manté un paper central en l'àmbit competitiu.
+\textit{Pokémon} és una franquícia de videojocs creada l'any 1996 per Satoshi Tajiri i la companyia Game Freak per a la consola Game Boy de Nintendo~\cite{pokemon_official}. El nom \textbf{Pokémon} prové de la contracció de la denominació anglesa \textbf{\emph{Pocket Monsters}} (\emph{Poketto Monstā} en japonès), fent referència a les criatures que es capturen en esferes portàtils (Poké Balls), es col·leccionen, s'entrenen i participen en combats. El 2026 la franquícia celebra trenta anys (1996--2026); l'estratègia de combat en continua sent el nucli competitiu.
 
 \begin{figure}[htbp]
     \centering
@@ -26,8 +26,6 @@ En una batalla individual (\textit{Singles}), cada jugador disposa habitualment 
 En cada torn, un jugador pot escollir un dels moviments disponibles o canviar el Pokémon actiu per un membre no debilitat de l'equip. Un Pokémon pot conèixer com a màxim quatre moviments. Alguns causen dany; d'altres modifiquen estadístiques, imposen una condició d'estat, alteren el camp o permeten canviar conservant la iniciativa. Els dos jugadors envien l'acció sense conèixer la decisió actual de l'altre. El motor ordena les accions segons la prioritat i la velocitat, comprova la precisió i resol el dany i els efectes secundaris.
 
 Aquesta estructura fa que una acció no es pugui valorar de manera aïllada. Un atac molt potent pot ser inútil contra una immunitat de tipus; un canvi pot evitar un debilitament, però permetre que el rival col·loqui un perill d'entrada (\emph{hazards}); i un moviment de preparació (\emph{setup}) pot sacrificar el torn actual per augmentar la probabilitat de guanyar els següents.
-
-Aquesta explicació inicial ofereix una introducció general i conceptual a la dinàmica de la batalla. En les subseccions següents es desenvolupen amb més profunditat i detall cadascun dels seus components mecànics fonamentals: la formulació de les estadístiques de combat, la matriu d'efectivitat de tipus, les regles de velocitat i prioritat, les condicions d'estat i les fonts d'estocasticitat.
 
 \begin{figure}[htbp]
     \centering
@@ -170,12 +168,32 @@ El combat Pokémon és un entorn fortament estocàstic. Fins i tot quan un agent
     \item \textbf{Cop crític (\emph{Critical Hit}):} A la Generació~IX, la probabilitat base que un atac sigui crític és d'1 de cada 24 vegades ($p_{\mathrm{crit}} \approx 4{,}17\%$)~\cite{bulbapedia_stats,smogon_damage}. Un cop crític aplica un multiplicador de $\times 1{,}5$ al dany, ignora els augments defensius del rival i ignora les reduccions d'atac de l'usuari.
 \end{enumerate}
 
-Matemàticament, aquestes tres fonts d'estocasticitat es poden unificar en la formulació general del dany realitzat per un atac ofensiu:
+El terme determinista sobre el qual s'apliquen aquestes fonts és el dany brut $D_{\mathrm{base}}$, donat per la fórmula oficial de combat (Generació~V en endavant)~\cite{smogon_damage,bulbapedia_stats}:
+\begin{equation}
+    D_{\mathrm{base}} =
+    \left\lfloor
+    \left(
+    \left\lfloor
+    \frac{
+        \left\lfloor
+        (2L/5 + 2) \cdot P \cdot A / D
+        \right\rfloor
+    }{50}
+    \right\rfloor
+    + 2
+    \right)
+    \cdot M_{\mathrm{STAB}} \cdot M_{\mathrm{tipus}} \cdot M_{\mathrm{altres}}
+    \right\rfloor
+    \label{eq:base_damage}
+\end{equation}
+on $P$ és la potència del moviment, $A$ i $D$ són l'atac i la defensa efectius de la categoria corresponent (Equació~\ref{eq:stat_formula} i modificadors d'etapa), $M_{\mathrm{STAB}}\in\{1, 1{,}5, 2\}$ (Seccions~\ref{subsec:tipus} i~\ref{subsec:teracristallitzacio}), $M_{\mathrm{tipus}}$ és el multiplicador de la matriu d'efectivitat i $M_{\mathrm{altres}}$ agrupa clima, objectes i altres modificadors deterministes. El cop crític i la tirada $R$ no entren a $D_{\mathrm{base}}$.
+
+Les tres fonts aleatòries es composen sobre aquest terme:
 \begin{equation}
     \mathrm{Dany} = I_{\mathrm{hit}} \cdot \left\lfloor D_{\mathrm{base}} \cdot C_{\mathrm{crit}} \cdot R \right\rfloor
     \label{eq:stochastic_damage}
 \end{equation}
-on $D_{\mathrm{base}}$ és el dany determinista brut derivat de les estadístiques, potència del moviment, modificadors d'etapa i la matriu de tipus (Equació~\ref{eq:stat_formula} i Secció~\ref{subsec:tipus}), mentre que els tres components estocàstics es defineixen com:
+on:
 \begin{itemize}
     \item $I_{\mathrm{hit}} \sim \mathrm{Bernoulli}(P_{\mathrm{acc}})$ és l'indicador binari d'impacte, on $P_{\mathrm{acc}} \in (0, 1]$ representa la precisió efectiva de l'atac. Si l'atac falla ($I_{\mathrm{hit}}=0$), el dany resulta immediatament $0$.
     \item $C_{\mathrm{crit}}$ és la variable aleatòria del multiplicador de cop crític:
@@ -185,41 +203,41 @@ on $D_{\mathrm{base}}$ és el dany determinista brut derivat de les estadístiqu
                   1{,}0 & \text{amb probabilitat } 1 - p_{\mathrm{crit}}
               \end{cases}
           \end{equation}
-          el qual, a més d'amplificar el dany, anul·la els modificadors estatístics desfavorables per a l'atacant.
+          el qual, a més d'amplificar el dany, anul·la els modificadors estadístics desfavorables per a l'atacant.
     \item $R \sim \mathcal{U}(\{0{,}85, 0{,}86, \dots, 1{,}00\})$ és la tirada de dany extreta d'una distribució uniforme discreta de 16 valors, amb un valor esperat $\mathbb{E}[R] = 0{,}925$.
 \end{itemize}
 
-Així, l'esperança matemàtica del dany $\mathbb{E}[\mathrm{Dany}]$ que un agent d'IA ha d'avaluar abans de seleccionar una acció ve donada per:
+L'esperança matemàtica del dany que un agent ha d'avaluar abans de seleccionar una acció és:
 \begin{equation}
     \mathbb{E}[\mathrm{Dany}] = P_{\mathrm{acc}} \cdot \mathbb{E}[R] \cdot \left( (1 - p_{\mathrm{crit}}) \cdot D_{\mathrm{norm}} + p_{\mathrm{crit}} \cdot D_{\mathrm{crit}} \right)
     \label{eq:expected_damage}
 \end{equation}
-on $D_{\mathrm{norm}}$ i $D_{\mathrm{crit}}$ corresponen al dany base calculat sense i amb l'omissió de modificadors d'etapa respectivament. Cal destacar que, mentre que l'Equació~\ref{eq:expected_damage} defineix l'esperança teòrica exacta del simulador de joc, a la pràctica els agents heurístics d'aquest treball utilitzen una aproximació determinista eficient ($\mathbb{E}[\mathrm{Dany}] \approx P_{\mathrm{acc}} \cdot D_{\mathrm{base}}$), ometent la branca de cop crític ($p_{\mathrm{crit}} \approx 4{,}17\%$) durant la puntuació instantània de moviments per optimitzar el temps de computació per torn.
+on $D_{\mathrm{norm}}$ i $D_{\mathrm{crit}}$ corresponen al dany base sense i amb l'omissió de modificadors d'etapa desfavorables. L'Equació~\ref{eq:expected_damage} és l'esperança del simulador. Les heurístiques d'aquest treball no la calculen: ometen el crit ($p_{\mathrm{crit}} \approx 4{,}17\%$) i la tirada ($\mathbb{E}[R] = 0{,}925$) i puntuen $\mathbb{E}[\mathrm{Dany}] \approx P_{\mathrm{acc}} \cdot D_{\mathrm{base}}$. El biaix és deliberat (latència per torn); MCTS reintrodueix l'estocasticitat via rollouts.
 
-Aquestes tres fonts d'estocasticitat, sumades a la generació procedural d'equips i als empats de velocitat (Secció~\ref{subsec:velocitat}), impedeixen l'existència de trajectòries de decisió deterministes i fan imprescindible quantificar la incertesa mitjançant simulacions estocàstiques (com l'MCTS) o polítiques d'avaluació de risc~\cite{grigsby_metamon,pokemon_rl_huang}.
+Aquestes fonts, juntament amb la generació procedural d'equips, els empats de velocitat (Secció~\ref{subsec:velocitat}) i els efectes secundaris binaris del motor (paralització completa, flinch, descongelació), impedeixen trajectòries deterministes i obliguen a quantificar la incertesa mitjançant simulació o polítiques de risc~\cite{grigsby_metamon,pokemon_rl_huang}.
 
 \subsection{Complexitat combinatòria en la configuració d'equips}
 \label{subsec:complexitat_equips}
 
 Més enllà de la presa de decisions durant el combat, la fase prèvia de selecció i configuració d'un equip Pokémon presenta una explosió combinatòria extraordinària. Per a cada un dels \textbf{sis} membres de l'equip, cal triar l'espècie, un conjunt de \textbf{4} moviments d'entre el seu repositori disponible ($M$), la distribució de Punts d'Esforç (EVs) i Valors Individuals (IVs), la Naturalesa, l'Habilitat, l'Objecte equipat i el Tipus de Teracristal·lització (un dels \textbf{18} tipus possibles a la Generació~IX).
 
-Formalsment, el nombre de configuracions possibles per a una única posició o ranura de l'equip ($\mathcal{C}_{\mathrm{slot}}$) es pot quantificar com el producte del seu espai de paràmetres:
+Formalment, el nombre de configuracions possibles per a una única posició o ranura de l'equip ($\mathcal{C}_{\mathrm{slot}}$) es pot acotar com el producte del seu espai de paràmetres:
 \begin{equation}
-    \mathcal{C}_{\mathrm{slot}} = N_{\mathrm{espècies}} \times \binom{M}{4} \times N_{\mathrm{objectes}} \times N_{\mathrm{habilitats}} \times N_{\mathrm{naturaleses}} \times N_{\mathrm{tera}} \times N_{\mathrm{stats}} \approx \mathbf{10^{22} \text{--} 10^{23}}
+    \mathcal{C}_{\mathrm{slot}} = N_{\text{esp\`ecies}} \times \binom{M}{4} \times N_{\mathrm{objectes}} \times N_{\mathrm{habilitats}} \times N_{\mathrm{naturaleses}} \times N_{\mathrm{tera}} \times N_{\mathrm{stats}} \approx \mathbf{10^{22} \text{--} 10^{23}}
     \label{eq:slot_complexity}
 \end{equation}
-on $N_{\mathrm{espècies}} \approx \mathbf{10^3}$ (corresponent a les $1.025$ espècies de la Pokédex Nacional en formats lliures de construcció d'equips, o $\approx \mathbf{5 \times 10^2}$ espècies/formes competitives presents al repositori de \texttt{gen9randombattle}), la combinatòria de 4 moviments $\binom{M}{4} \approx \mathbf{10^4 \text{--} 10^5}$, $N_{\mathrm{objectes}} \approx \mathbf{10^2}$, $N_{\mathrm{naturaleses}} = \mathbf{25}$, $N_{\mathrm{tera}} = \mathbf{18}$ i les distribucions d'EVs/IVs $N_{\mathrm{stats}} \approx \mathbf{10^{10} \text{--} 10^{11}}$. Per a un equip de \textbf{sis} Pokémon no ordenats, el nombre total de composicions d'equips ($\mathcal{C}_{\mathrm{equip}}$) s'obté mitjançant:
+on $N_{\text{esp\`ecies}} \approx \mathbf{10^3}$ (corresponent a les $1.025$ espècies de la Pokédex Nacional en formats lliures de construcció d'equips, o $\approx \mathbf{5 \times 10^2}$ espècies/formes competitives presents al repositori de \texttt{gen9randombattle}), la combinatòria de 4 moviments $\binom{M}{4} \approx \mathbf{10^4 \text{--} 10^5}$, $N_{\mathrm{objectes}} \approx \mathbf{10^2}$, $N_{\mathrm{naturaleses}} = \mathbf{25}$, $N_{\mathrm{tera}} = \mathbf{18}$ i les distribucions d'EVs/IVs $N_{\mathrm{stats}} \approx \mathbf{10^{10} \text{--} 10^{11}}$. Per a un equip de \textbf{sis} Pokémon no ordenats, el nombre total de composicions d'equips ($\mathcal{C}_{\mathrm{equip}}$) s'obté mitjançant:
 \begin{equation}
     \mathcal{C}_{\mathrm{equip}} = \frac{(\mathcal{C}_{\mathrm{slot}})^6}{6!} \approx \frac{(10^{23})^6}{720} \approx \mathbf{10^{135} \text{--} 10^{139}} .
     \label{eq:team_complexity}
 \end{equation}
 
-Estudis recents sobre entorns de decisió complexos en Pokémon com Angliss et al.~\cite{angliss_vgcbench} xifren l'espai combinatori d'equips competitius en l'ordre de \textbf{$10^{139}$} configuracions possibles. Per posar aquesta magnitud en perspectiva, el nombre de combinacions (\textbf{$10^{139}$}) supera astronòmicament el nombre total d'àtoms de l'univers observable (estimat en l'ordre de \textbf{$10^{80}$}), així com l'espai d'estats de jocs clàssics de la IA com els escacs ($\approx \mathbf{10^{47}}$) o el Go ($\approx \mathbf{10^{170}}$), tal com s'il·lustra a la Figura~\ref{fig:state_space_complexity}.
+Estudis recents sobre entorns de decisió complexos en Pokémon com Angliss et al.~\cite{angliss_vgcbench} xifren l'espai combinatori d'equips competitius en l'ordre de $\mathbf{10^{139}}$ configuracions. Aquesta magnitud se situa entre l'espai d'estats dels escacs ($\approx 10^{47}$) i el del Go ($\approx 10^{170}$), tal com s'il·lustra a la Figura~\ref{fig:state_space_complexity}. El valor exacte del producte depèn del repositori d'espècies i de $N_{\mathrm{stats}}$; el que importa metodològicament no és la xifra, sinó que la construcció d'equips confon la mesura de la política.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.95\linewidth]{images/diagrams/state_space_complexity.png}
-    \caption{Comparativa en escala logarítmica ($\log_{10}$) de l'espai combinatori d'equips Pokémon ($\approx 10^{139}$) respecte a l'espai d'estats dels escacs ($\approx 10^{47}$), el nombre d'àtoms de l'univers observable ($\approx 10^{80}$) i el joc del Go ($\approx 10^{170}$).}
+    \caption{Comparativa en escala logarítmica ($\log_{10}$) de l'espai combinatori d'equips Pokémon ($\approx 10^{139}$) amb l'espai d'estats dels escacs ($\approx 10^{47}$) i el Go ($\approx 10^{170}$).}
     \label{fig:state_space_complexity}
 \end{figure}
 
@@ -232,7 +250,7 @@ Per aïllar la presa de decisions executives i eliminar els biaixos de construcc
 
 Aquesta generació procedural garanteix que els agents s'enfrontin de manera contínua a escenaris no vistos i variats. Mitjançant una avaluació basada en un volum significatiu de batalles, la variància associada a la generació d'equips es cancel·la estadísticament, garantint la significança dels resultats que es detallen en la metodologia (Capítol~\ref{chap:metodologia}) i en l'avaluació empírica (Capítol~\ref{chap:resultats}).
 
-Com a introducció conceptual a l'arquitectura d'execució, les simulacions es basen en \textbf{Pokémon Showdown}~\cite{pokemon_showdown}, el simulador de codi obert en Node.js/TypeScript que implementa amb exactitud les regles oficials del joc en un entorn \emph{headless} i local, i la llibreria en Python \textit{poke-env}~\cite{poke_env} (versió 0.11.x), que exposa la interfície de comunicació per a la connexió d'agents autònoms. Mentre que un jugador humà interactua habitualment a través de la interfície gràfica web (Figura~\ref{fig:pokemon_showdown_battle}), els agents d'intel·ligència artificial i els processos d'avaluació en línia de comandes (\emph{CLI}) operen sobre una representació estructurada de l'estat. A cada torn de combat, l'agent rep l'estat parcial del joc i ha de seleccionar una acció d'un espai discret format per fins a 4 moviments (amb l'opció addicional d'activar la Teracristal·lització) i fins a 5 canvis a companys d'equip no debilitats, tal com s'il·lustra a la Figura~\ref{fig:terminal_battle_example}. Aquesta breu introducció serveix de fonament teòric abans de desenvolupar en profunditat la infraestructura d'execució, el protocol de comunicació i el disseny detallat dels entorns al Capítol~\ref{chap:metodologia}.
+Pokémon Showdown~\cite{pokemon_showdown} és el simulador de codi obert (Node.js/TypeScript) que implementa les regles oficials; \textit{poke-env}~\cite{poke_env} n'exposa la interfície Python. El servidor manté l'estat omniscient $S$ i emet a cada agent només $o_i$ (Figura~\ref{fig:mdp_pomdp}d). L'espai d'accions discret per torn comprèn fins a 4 moviments (amb Teracristal·lització opcional) i fins a 5 canvis, com a la Figura~\ref{fig:terminal_battle_example}. El contracte experimental ---protocol, objecte \texttt{Battle} i ordre legal--- es tanca al Capítol~\ref{chap:metodologia}.
 
 \begin{figure}[htbp]
     \centering
@@ -266,9 +284,7 @@ Available switches:
 \subsection{Síntesi del domini: Pokémon com a entorn benchmark ideal per a la IA}
 \label{subsec:sintesi_domini}
 
-En resum, el combat Pokémon en el format \texttt{gen9randombattle} configura un entorn de decisió d'una complexitat extraordinària. Aquesta conceptualització sintetitzada i la taxonomia visual dels quatre reptes estratègics fonamentals (Figura~\ref{fig:statistical_reason}) s'inspiren i adapten directament de l'anàlisi de referència presentada per Aaron Traylor (investigador i doctor en ciències de la computació i ciències cognitives, a més de jugador d'elit de Pokémon competitiu VGC) en la seva obra divulgativa \emph{Competitive Pokémon may be Impossible to Explain}~\cite{traylor_competitive_pokemon}. La claredat pedagògica i el rigor amb què aquest treball desglossa les dimensions de decisió van resultar determinants com a marc introductori d'aquest capítol i van constituir l'espurna motivacional directa per iniciar aquest Treball de Final de Màster.
-
-A diferència dels jocs tradicionals de la IA que aïllen només una o dues dificultats, Pokémon és un dels pocs dominis en la literatura que encreua simultàniament quatre reptes centrals de la intel·ligència artificial (Figura~\ref{fig:statistical_reason}):
+En resum, el combat Pokémon en \texttt{gen9randombattle} encreua quatre reptes que altres bancs de proves de la IA solen aïllar (Figura~\ref{fig:statistical_reason}, adaptada de Traylor~\cite{traylor_competitive_pokemon}):
 
 \begin{enumerate}
     \item \textbf{Planificació a llarg termini (\emph{Long-Term Planning}):} Propi de jocs d'estratègia posicional pura com els \textbf{escacs} o el \textbf{Go}. A Pokémon, les decisions no es poden valorar aïlladament per al torn actual: cal gestionar un equip de sis criatures al llarg de desenes de torns, sacrificant Pokémon per conservar la iniciativa (\emph{tempo}), col·locant perills d'entrada (\emph{hazards}) o preparant condicionants de victòria (\emph{win conditions}) per al final del combat.
@@ -277,7 +293,7 @@ A diferència dels jocs tradicionals de la IA que aïllen només una o dues difi
     \item \textbf{Informació imperfecta i oculta (\emph{Imperfect Information}):} Propi de jocs de cartes com el \textbf{Pòquer} o \textbf{\textit{Magic: The Gathering}}. L'estat inicial del rival (moviments no revelats, objectes, habilitats, IVs/EVs i Tipus Tera) roman ocult fins que s'exposa en combat, exigint a l'agent mantenir i actualitzar una distribució de creença sobre les variables no observades.
 \end{enumerate}
 
-La convergència d'aquests quatre eixos (esquematitzada a la Figura~\ref{fig:statistical_reason}, extreta de l'anàlisi de Traylor~\cite{traylor_competitive_pokemon}) converteix el combat Pokémon en un entorn benchmark d'un interès excepcional per a la intel·ligència artificial. Cap d'aquests quatre reptes es pot abordar de manera aïllada, ja que la presa de decisions exigeix ponderar simultàniament la planificació temporal a llarg termini, l'estocasticitat del motor i la incertesa sobre les accions i l'estat del rival.
+La convergència d'aquests quatre eixos (Figura~\ref{fig:statistical_reason}) converteix el combat Pokémon en un banc de proves on planificació, simultaneïtat, estocasticitat i informació oculta s'han de tractar alhora. Cap agent d'aquest treball no manté la distribució de creença completa de l'ítem~4: condicionen a la història revelada $o_{i,t}$ (Secció~\ref{subsec:creenca_recompenses_reduccio}).
 
 \begin{figure}[htbp]
     \centering
@@ -286,7 +302,7 @@ La convergència d'aquests quatre eixos (esquematitzada a la Figura~\ref{fig:sta
     \label{fig:statistical_reason}
 \end{figure}
 
-Aquesta combinació única de propietats fa imprescindible formalitzar el problema des de la teoria de jocs i el marc dels processos de decisió sota incertesa. En la secció següent (Secció~\ref{sec:ia_jocs}), es tradueixen aquestes mecàniques al modelat matemàtic rigorós mitjançant Processos de Decisió de Markov Parcialment Observables (POMDP) i Jocs Estocàstics d'Observació Parcial (POSG).
+Aquesta combinació fa imprescindible el modelat com a POSG. La Secció~\ref{sec:ia_jocs} tradueix les mecàniques a POMDP i POSG.
 
 % ============================================================
 \section{Formalització matemàtica i marc d'inferència estadística}
@@ -475,7 +491,7 @@ Una vegada definit el marc formal del POSG, sorgeix la qüestió de com un agent
 \begin{enumerate}
     \item \textbf{La informació oculta:} Requereix introduir l'\textbf{estat de creença} (\emph{Belief State}) per inferir probabilísticament les variables no visibles del rival (moviments, objectes o Tipus Tera) a partir de la història del combat.
     \item \textbf{La simultaneïtat de les accions:} Requereix utilitzar la \textbf{matriu de recompenses} de la Teoria de Jocs per calcular l'\textbf{Equilibri de Nash}, evitant que l'agent sigui explotable per polítiques deterministes de l'adversari.
-    \item \textbf{La intractabilitat computacional ($NEXP$-hard):} Fa impossible resoldre el joc de manera exacta i força a aplicar \textbf{reduccions d'enginyeria} (com reduir el POSG a un POMDP d'un sol decisor o acotar la cerca a arbres locals) per prendre decisions en pocs mil·lilisegons.
+    \item \textbf{La intractabilitat computacional (NEXP-complet):} Fa impossible resoldre el joc de manera exacta i força a aplicar \textbf{reduccions d'enginyeria} (POMDP d'un sol decisor o arbres locals) per decidir en mil·lisegons.
 \end{enumerate}
 En els següents apartats es desenvolupen formalment cadascuna d'aquestes tres solucions.
 
@@ -486,7 +502,7 @@ Per gestionar la inaccessibilitat de l'estat real $s$ provocada per la informaci
     b_{i,t}(s) = P(S_t = s \mid h_{i,t})
     \label{eq:belief_state}
 \end{equation}
-A cada torn, l'agent actualitza $b_{i,t}$ mitjançant la regla de Bayes~\cite{bayes_essay_1763} en rebre la nova observació $o_{i,t+1}$. Això li permet ponderar probabilísticament les dades no visibles del rival (com ara atacs de cobertura o objectes d'augment de velocitat) abans de triar una acció.
+A cada torn, l'agent actualitza $b_{i,t}$ mitjançant la regla de Bayes~\cite{bayes_essay_1763} en rebre la nova observació $o_{i,t+1}$. Això li permetria ponderar atacs de cobertura o objectes no revelats. En aquest treball, però, cap paradigma no manté $b_{i,t}$ com a posterior sobre $S$: les polítiques condicionen a la filtració d'informació \emph{ja revelada} ($o_{i,t}$). L'MCTS, a més, determiniza cada rollout de manera consistent amb $o_t$, no pren l'esperança sobre $b(s)$.
 
 \subsubsection{La matriu de recompenses i l'Equilibri de Nash}
 
@@ -527,11 +543,9 @@ Matemàticament, el parell d'estratègies $(\pi_1^*, \pi_2^*)$ constitueix un \t
 \end{equation}
 En aquest punt d'equilibri, l'agent es garanteix el màxim retorn esperat possible sense que el rival pugui aprofitar-se de cap biaix en les seves decisions.
 
-\subsubsection{Justificació de les reduccions d'enginyeria i complexitat $NEXP$-hard}
+\subsubsection{Justificació de les reduccions d'enginyeria i complexitat NEXP}
 
-La cerca d'un Equilibri de Nash o de la política òptima conjunta en un POSG d'horitzó finit és un problema demostrat formalment com a \textbf{$NEXP$-hard} (\emph{Nondeterministic Exponential Time})~\cite{bernstein_nexp_2002}. Aquesta classe de complexitat implica que resoldre el joc de manera exacta requereix un temps d'execució \textbf{doblement exponencial} respecte a la profunditat del combat, fent que el càlcul en temps real sigui computacionalment inabordable.
-
-Per fer la decisió computable en mil·lilisegons, els paradigmes desenvolupats en aquest treball apliquen \textbf{reduccions d'enginyeria}:
+La cerca d'un Equilibri de Nash o de la política òptima conjunta en un POSG d'horitzó finit és \textbf{NEXP-complet}~\cite{bernstein_nexp_2002}: no hi ha algorisme exacte viable en el temps de resposta d'un combat. Les polítiques d'aquest treball no resolen el POSG; n'apliquen reduccions:
 \begin{itemize}
     \item \textbf{Aprenentatge per Reforç (PPO) i Clonatge Conductual (XGBoost)}: Redueixen la complexitat multijugador integrant la política del rival $\pi_2(a_2 \mid o_2)$ directament dins de la funció de transició de l'entorn:
           \begin{equation}
@@ -539,7 +553,7 @@ Per fer la decisió computable en mil·lilisegons, els paradigmes desenvolupats 
               \label{eq:eff_transition}
           \end{equation}
           Aquesta formulació transforma el POSG competitiu de dos jugadors en un \textbf{POMDP d'un sol decisor} (Figura~\ref{fig:mdp_pomdp}b), on l'adversari s'absorbeix en la dinàmica de l'entorn.
-    \item \textbf{Cerca Minimax i MCTS}: Acoten el càlcul a un horitzó temporal local a l'arrel de l'arbre (1 torn o pocs torns endavant), construint la matriu de recompenses local o executant \emph{rollouts} d'esperança per respondre immediatament.
+    \item \textbf{Cerca Minimax i MCTS}: Acoten l'horitzó a un torn (maximin pur sobre la matriu local; l'equilibri mixt es reserva com a referent teòric, Secció~\ref{subsec:teoria_minimax}) o a rollouts rasos a l'arrel. L'MCTS determiniza cada simulació de manera consistent amb $o_t$.
 \end{itemize}
 
 \subsection{Instanciació dels components a \texttt{gen9randombattle}}
@@ -571,12 +585,12 @@ Per traslladar els conceptes teòrics de la tupla POSG/POMDP $(S, A, T, R, \Omeg
     \label{tab:pomdp_pokemon}
 \end{table}
 
-Com s'observa a la Taula~\ref{tab:pomdp_pokemon}, la traducció de la tupla formal $(S, A, T, R, \Omega, O)$ varia lleugerament segons el paradigma de decisió implementat. Mentre que les heurístiques i els algorismes de cerca (Minimax i MCTS) operen directament sobre l'objecte d'estat parcial \texttt{Battle} emès per \textit{poke-env} i generen accions basades en objectes \texttt{SingleBattleOrder}, els algorismes d'aprenentatge automàtic requereixen transformacions específiques de la informació. En l'aprenentatge per imitació (XGBoost), l'observació $\Omega$ es tradueix en una matriu de característiques tabulars (\emph{feature vector}) d'estat i enfrontament. En l'aprenentatge per reforç profund (MaskablePPO), l'observació contínua s'estructura mitjançant un vectoritzador d'estats normalitzat en el rang $[0,1]$, i l'espai d'accions es redueix a un vector de probabilitats sobre els índexs d'acció vàlids definits per la màscara de legalitat $M(a)$. Els detalls concrets d'enginyeria sobre la construcció d'aquests vectors de característiques, les funcions de recompensa modificades, els mecanismes d'emmascarament d'accions i l'arquitectura del codi es desenvolupen de manera exhaustiva en els capítols de metodologia i implementació (Capítols~\ref{chap:metodologia} i~\ref{chap:implementacio}).
+La Taula~\ref{tab:pomdp_pokemon} tanca el mapatge. Heurístiques i cerca operen sobre l'objecte \texttt{Battle}; XGBoost el projecta a un vector tabular; MaskablePPO, a un vector en $[0,1]$ i a una màscara $M(a)$. El detall d'aquestes representacions és als Capítols~\ref{chap:metodologia} i~\ref{chap:implementacio}.
 
 \subsection{Marc d'avaluació estadística i mètodes d'inferència}
 \label{subsec:marc_estadistic}
 
-La comparació empírica entre agents de diferents paradigmes requereix un marc d'inferència estadística rigorós per garantir que les diferències observades en la taxa de victòria no siguin fruit del soroll estocàstic del simulador ni de la variància en la generació d'equips. Aquesta secció justifica i defineix formalment les eines matemàtiques (intervals de Wilson, rànquings Bradley-Terry per Màxima Versemblança, significança de diferències, mètriques de pèrdua i emmascarament d'accions) utilitzades per avaluar el rendiment dels algorismes.
+La comparació empírica entre agents requereix un marc d'inferència que separi diferències de política del soroll del simulador i de la generació d'equips. Aquesta secció defineix la taxa de victòries, els intervals de Wilson, el rànquing Bradley--Terry per MLE i els contrasts de dues proporcions. Les funcions de pèrdua d'imitació i l'emmascarament PPO es defineixen a la Secció~\ref{sec:ia_tecniques}; la telemetria conductual, al Capítol~\ref{chap:metodologia}.
 
 \begin{enumerate}
     \item \textbf{Estimació de la Taxa de Victòria (\emph{Win Rate}) i Marge d'Error:}
@@ -600,8 +614,8 @@ La comparació empírica entre agents de diferents paradigmes requereix un marc 
           \end{equation}
           on $z = z_{1-\alpha/2} = 1{,}96$ per a un nivell de confiança del $95\%$ ($\alpha = 0{,}05$).
 
-    \item \textbf{Model de Bradley-Terry i Puntuació Elo per Màxima Versemblança (MLE):}
-          Per ordenar un conjunt d'agents en un llistat global 1D independent de la composició d'oponents, s'utilitza el model de comparació per parelles de Bradley-Terry~\cite{bradley_terry_1952} transformat a escala Elo~\cite{elo_rating}. La probabilitat esperada de victòria de l'agent $A_i$ enfront de l'agent $A_j$ amb puntuacions $R_i$ i $R_j$ s'expressa mitjançant la funció logística:
+    \item \textbf{Model de Bradley--Terry i puntuació Elo per màxima versemblança (MLE):}
+          Per ordenar un conjunt d'agents en un llistat global 1D independent de la composició d'oponents, s'utilitza el model de comparació per parelles de Bradley--Terry~\cite{bradley_terry_1952} transformat a escala Elo~\cite{elo_rating}. La probabilitat esperada de victòria de l'agent $A_i$ enfront de l'agent $A_j$ amb puntuacions $R_i$ i $R_j$ s'expressa mitjançant la funció logística:
           \begin{equation}
               P(A_i > A_j) = \frac{1}{1 + 10^{(R_j - R_i)/400}} = \sigma\left( \frac{\ln 10}{400} (R_i - R_j) \right)
               \label{eq:elo_expected}
@@ -630,32 +644,6 @@ La comparació empírica entre agents de diferents paradigmes requereix un marc 
               \label{eq:ci_diff}
           \end{equation}
           Si l'interval de confiança $\mathrm{CI}_{95\%}(\Delta p)$ no inclou el valor $0$, es conclou que la millora de rendiment és estadísticament significativa amb $p < 0{,}05$.
-
-    \item \textbf{Mètriques de Pèrdua per a Aprendre de Dades Humanes i Polítiques Emmascarades:}
-          Per als agents basats en clonatge conductual i aprenentatge per imitació (XGBoost), la convergència sobre la partició de dades d'experts s'avalua mitjançant la pèrdua de crosse-entropia (\emph{Log-Loss})~\cite{xgboost}:
-          \begin{equation}
-              \mathcal{L}_{\mathrm{CE}} = -\frac{1}{N} \sum_{i=1}^N \sum_{k=1}^K y_{i,k} \ln \hat{y}_{i,k}
-              \label{eq:cross_entropy_loss}
-          \end{equation}
-          Per als agents d'aprenentatge per reforç profund (MaskablePPO), l'assignació de probabilitats sobre les accions legals s'executa mitjançant la distribució categòrica emmascarada (\emph{Invalid Action Masking})~\cite{huang_action_masking}:
-          \begin{equation}
-              P(a \mid o) = \frac{M(a) \exp(z_a)}{\sum_{a'} M(a') \exp(z_{a'})}, \quad M(a) \in \{0, 1\}
-              \label{eq:masked_softmax}
-          \end{equation}
-          on $M(a) = 0$ elimina immediatament les accions il·legals abans del càlcul del softmax, optimitzant la funció d'objectiu de PPO amb retallat (\emph{clipped surrogate objective})~\cite{ppo}:
-          \begin{equation}
-              \mathcal{L}^{\mathrm{CLIP}}(\theta) = \hat{\mathbb{E}}_t \left[ \min\left( r_t(\theta)\hat{A}_t, \, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t \right) \right]
-              \label{eq:ppo_clip}
-          \end{equation}
-
-    \item \textbf{Telemetria Multidimensional i Indicadors Tàctics:}
-          A més de la taxa de victòria escalar, el marc d'avaluació recull una telemetria multidimensional per combat per desglossar l'origen estratègic del rendiment en quatre dimensions principals:
-          \begin{itemize}
-              \item \textbf{Eficiència Executiva:} Latència mitjana per decisió (ms), nombre de torns per combat i taxa d'accions de fallback o errors.
-              \item \textbf{Dinàmica de Relleus:} Proporció de canvis voluntaris estratègics respecte als canvis forçats per debilitament de Pokémon.
-              \item \textbf{Control del Camp i Tàctica:} Gestió de perills d'entrada (\emph{Stealth Rock}, \emph{Spikes}), activació de moviments de preparació (\emph{setup moves}) i eficiència de noaut (KO).
-              \item \textbf{Aïllament del Soroll d'RNG:} Registre de cops crítics, fallades per precisió i cops super-efectius rebuts/efectuats per separar la qualitat de la decisió de la sort estocàstica.
-          \end{itemize}
 \end{enumerate}
 
 A la Taula~\ref{tab:stat_framework_summary} es sintetitza el conjunt d'eines matemàtiques, mètriques d'inferència i propietats estadístiques que integren el marc teòric d'avaluació d'aquest treball.
@@ -674,15 +662,15 @@ A la Taula~\ref{tab:stat_framework_summary} es sintetitza el conjunt d'eines mat
         \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         Interval de Wilson             & $\mathrm{CI}_{\mathrm{Wilson}}$ Eq.~(\ref{eq:wilson_ci})                                              & Robustesa en límits $p \to 0,1$ i mostres petites     \\
         \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        Model Bradley-Terry Elo        & $P(A_i > A_j) = \sigma\left(\frac{\ln 10}{400}(R_i - R_j)\right)$                                     & Rànquing 1D conjunt per MLE ($R_{\text{rand}}=1000$)  \\
+        Model Bradley--Terry Elo       & $P(A_i > A_j) = \sigma\left(\frac{\ln 10}{400}(R_i - R_j)\right)$                                     & Rànquing 1D conjunt per MLE ($R_{\text{rand}}=1000$)  \\
         \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         Test $Z$ de Diferència         & $\mathrm{CI}_{95\%}(\Delta p) = (\hat{p}_1 - \hat{p}_2) \pm 1{,}96 \cdot \mathrm{SE}(\Delta \hat{p})$ & Avaluació de significança en ablacions ($p < 0{,}05$) \\
         \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        Pèrdua Crosse-Entropia         & $\mathcal{L}_{\mathrm{CE}} = -\frac{1}{N}\sum y_{i,k} \ln \hat{y}_{i,k}$                              & Minimització d'error en aprenentatge per imitació     \\
+        Entropia creuada (IL)          & Equació~\ref{eq:bc_cross_entropy}                                                                      & Pèrdua de clonatge conductual (Secció~\ref{subsec:teoria_imitacio}) \\
         \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        Policy PPO amb Masking         & $P(a\mid o) = \frac{M(a)\exp(z_a)}{\sum M(a')\exp(z_{a'})}$                                           & Garantia d'execució només d'accions legals $M(a)$     \\
+        Softmax emmascarat (PPO)       & Equació~\ref{eq:masked_softmax_sec24}                                                                  & Accions legals $M(a)$ (Secció~\ref{subsec:teoria_drl}) \\
         \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        Telemetria Tàctica             & Indicadors de latència, canvis, hazards i RNG                                                         & Anàlisi multifactorial del comportament executiu      \\
+        Telemetria tàctica             & Indicadors de latència, canvis, hazards i RNG                                                          & Definit al Capítol~\ref{chap:metodologia}             \\
         \bottomrule
     \end{tabularx}
     \caption{Síntesi del marc d'avaluació estadística, eines d'inferència i les seves propietats teòriques.}
@@ -711,7 +699,7 @@ Davant les dificultats de l'exploració activa a l'entorn de simulació, una lí
 
 \subsection{Models de llenguatge de gran escala i cerca adversària híbrida}
 
-L'emergència dels models de llenguatge de gran escala (LLM) ha generat una nova línia d'agents capaços de raonar sobre l'estat del combat mitjançant llenguatge natural. L'agent \textit{PokéLLMon}~\cite{pokellmon} utilitza LLMs per processar l'historial del combat i inferir la informació oculta del rival. Paral·lelament, l'agent \textit{PokéChamp}~\cite{pokechamp, pokechamp_icml} combina un model de llenguatge per a la construcció de l'estat de creença amb un algorisme de cerca Minimax d'un pas per a l'avaluació d'accions simultànees, assolint les posicions més altes de la classificació pública (\emph{ladder}) de Showdown. Aquests treballs demostren que integrar coneixement de domini o motors de cerca amb models apressos supera el rendiment de qualsevol de les tècniques aplicades de manera aïllada.
+L'emergència dels models de llenguatge de gran escala (LLM) ha generat una nova línia d'agents capaços de raonar sobre l'estat del combat mitjançant llenguatge natural. L'agent \textit{PokéLLMon}~\cite{pokellmon} utilitza LLMs per processar l'historial del combat i inferir la informació oculta del rival. Paral·lelament, l'agent \textit{PokéChamp}~\cite{pokechamp, pokechamp_icml} combina un model de llenguatge per a la construcció de l'estat de creença amb un algorisme de cerca Minimax d'un pas per a l'avaluació d'accions simultànies, assolint les posicions més altes de la classificació pública (\emph{ladder}) de Showdown. Aquests treballs demostren que integrar coneixement de domini o motors de cerca amb models apresos supera el rendiment de qualsevol de les tècniques aplicades de manera aïllada.
 
 \subsection{Mancances de la literatura i justificació d'aquest treball}
 
@@ -725,7 +713,7 @@ Tot i els avenços descrits, la literatura prèvia presenta dues manques estruct
 
 Per respondre a aquestes manques, aquest Treball de Final de Màster aporta les següents contribucions teòriques i metodològiques:
 \begin{enumerate}
-    \item \textbf{Un marc d'avaluació integrat i homogeni entre paradigmes:} Defineix una matriu de combat que enfronta de manera directa i igualitària els cinc paradigmes fonamentals de decisió sobre un mateix entorn i format (\texttt{gen9randombattle}), sota mètodes d'inferència estadística rigorosos (intervals de Wilson i ajust Bradley-Terry Elo per MLE).
+    \item \textbf{Un marc d'avaluació integrat i homogeni entre paradigmes:} Defineix una matriu de combat que enfronta de manera directa i igualitària els cinc paradigmes fonamentals de decisió sobre un mateix entorn i format (\texttt{gen9randombattle}), sota mètodes d'inferència estadística rigorosos (intervals de Wilson i ajust Bradley--Terry Elo per MLE).
     \item \textbf{Una seqüència d'ablació incremental del coneixement de domini:} Desenvolupa una jerarquia d'agents heurístics estructurada en blocs de regles que permet mesurar de manera aïllada el valor afegit de cada component tàctic del joc.
     \item \textbf{Arquitectures híbrides de cerca i d'imitació guiades per heurístiques:} Explora la integració de regles de domini com a distribucions a priori (\emph{priors}) o executors de suport en algorismes de cerca adversària (Minimax i MCTS) i aprenentatge per imitació, avaluant el guany estratègic del raonament anticipatori.
     \item \textbf{Una avaluació rigorosa de MaskablePPO i clonatge conductual:} Desenvolupa i avalua un entorn DRL integrant emmascarament binari d'accions legals, disseny de recompenses denses i inicialització de polítiques mitjançant clonatge conductual sobre dades expertes.
@@ -821,12 +809,12 @@ La funció d'avaluació d'estat $V(s')$ combina el balanç de punts de salut nor
     V(s') = \sum_{k \in \text{propi}} hp_k - w_{\mathrm{opp}} \sum_{m \in \text{rival}} hp_m + B(s')
     \label{eq:minimax_eval}
 \end{equation}
-on $B(s')$ incorpora les contribucions d'estats alterats, condicions laterals (com \emph{Stealth Rock}) i modificadors d'etapa estatística. A més, es poden incorporar distribucions a priori d'orientació provinents de polítiques heurístiques per esbiaixar la matriu cap a decisions d'alta qualitat.
+on $B(s')$ incorpora les contribucions d'estats alterats, condicions laterals (com \emph{Stealth Rock}) i modificadors d'etapa estadística. A més, es poden incorporar distribucions a priori d'orientació provinents de polítiques heurístiques per esbiaixar la matriu cap a decisions d'alta qualitat.
 
 \subsection{Cerca de Monte Carlo a l'arrel (shallow MCTS)}
 \label{subsec:teoria_mcts}
 
-L'algorisme de cerca en arbre de Monte Carlo (MCTS)~\cite{mcts_survey, coulom_mcts} alterna quatre fases iteratives: selecció, expansió, simulació (\emph{rollout}) i retropropagació de la recompensa. En entorns de simulació amb restriccions de temps de resposta com Pokémon Showdown, l'MCTS ras limita la profunditat de construcció de l'arbre a l'arrel ($d=1$), tractant les accions legals de l'arrel $a_1 \in A_1$ com a braços d'un problema de bandits multi-braç avalats mitjançant trajectòries de $k$ torns executades per una política de referència $\pi_{\text{rollout}}$.
+L'algorisme de cerca en arbre de Monte Carlo (MCTS)~\cite{mcts_survey, coulom_mcts} alterna quatre fases iteratives: selecció, expansió, simulació (\emph{rollout}) i retropropagació de la recompensa. En entorns amb restricció de temps de resposta, l'MCTS ras limita l'arbre a l'arrel ($d=1$) i tracta les accions legals $a_1 \in A_1$ com a braços d'un bandit multi-braç, avalats amb trajectòries de $k$ torns sota $\pi_{\text{rollout}}$. Cada rollout és una \emph{determinizació} consistent amb $o_t$, no una esperança sobre $b(s)$.
 
 \begin{figure}[htbp]
     \centering
@@ -865,7 +853,7 @@ on $P(j)$ representa la probabilitat a priori assignada a l'acció $j$ per una p
 \subsection{Imitació i clonatge conductual}
 \label{subsec:teoria_imitacio}
 
-L'aprenentatge per imitació (\emph{behavioral cloning}) aproxima la política d'un agent a partir de la supervisió de trajectòries d'experts humans~\cite{pomerleau_alvinn, argall_lfd}. Donat un conjunt de dades de parelles observació-acció $\mathcal{D} = \{(x_i, y_i)\}_{i=1}^N$ extretes de partides de competició d'alt nivell (on $x_i = \phi(o_i) \in \mathbb{R}^d$ és el vector de característiques de l'estat i $y_i \in \{1, \dots, K\}$ és la decisió de l'expert), el model aprèn a maximitzar la probabilitat assignada a les accions humanes optimitzant la pèrdua de crosse-entropia multiclasse:
+L'aprenentatge per imitació (\emph{behavioral cloning}) aproxima la política d'un agent a partir de la supervisió de trajectòries d'experts humans~\cite{pomerleau_alvinn, argall_lfd}. Donat un conjunt de dades de parelles observació-acció $\mathcal{D} = \{(x_i, y_i)\}_{i=1}^N$ extretes de partides de competició d'alt nivell (on $x_i = \phi(o_i) \in \mathbb{R}^d$ és el vector de característiques de l'estat i $y_i \in \{1, \dots, K\}$ és la decisió de l'expert), el model aprèn a maximitzar la probabilitat assignada a les accions humanes optimitzant la pèrdua d'entropia creuada multiclasse:
 \begin{equation}
     \mathcal{L}_{\mathrm{BC}}(\theta) = -\frac{1}{N} \sum_{i=1}^N \sum_{k=1}^K \mathbb{I}(y_i = k) \ln P_\theta(Y=k \mid x_i)
     \label{eq:bc_cross_entropy}
@@ -976,13 +964,13 @@ on $V_\phi$ és la funció de valor aproximada, $c_1, c_2 > 0$ són coeficients 
     \label{fig:ppo_clip}
 \end{figure}
 
-A més de l'emmascarament d'accions binari $M(a)$, l'entrenament DRL d'aquest treball incorpora dos mecanismes clau per estabilitzar la convergència: el disseny de recompenses denses (\emph{reward shaping}) basat en diferències de salut i debilitaments ($\Delta r_t = R_{\text{terminal}} + \gamma \Phi(s_t) - \Phi(s_{t-1})$), i la inicialització guiada de la política (\emph{warm-start}) mitjançant el pre-entrenament per clonatge conductual sobre 400 partides expertes.
+A més de l'emmascarament d'accions binari $M(a)$, l'entrenament DRL d'aquest treball incorpora dos mecanismes per estabilitzar la convergència: recompenses denses (\emph{reward shaping}) basades en diferències de salut i debilitaments ($\Delta r_t = R_{\text{terminal}} + \gamma \Phi(s_t) - \Phi(s_{t-1})$), i inicialització guiada (\emph{warm-start}) per clonatge conductual sobre l'heurística intermèdia \texttt{v8} (no \texttt{v12}).
 
 % ============================================================
 \section{Síntesi del marc teòric}
 \label{sec:marc_teoric_sintesi}
 
-Aquest capítol ha integrat les mecàniques del combat Pokémon, la seva formalització matemàtica com a POSG/POMDP i els fonaments algorítmics dels cinc paradigmes de decisió estudiats. Aquesta articulació teòrica i el marc d'inferència estadística definit constitueixen el fonament directe sobre el qual s'estructura el \textbf{Capítol~\ref{chap:metodologia} (Metodologia)}, on es detallen el disseny experimental, l'enginyeria de característiques i la infraestructura de simulació.
+Aquest capítol ha fixat el domini, el POSG/POMDP, el marc d'inferència i els cinc paradigmes. El Capítol~\ref{chap:metodologia} n'aplica el disseny experimental; el Capítol~\ref{chap:infraestructura}, l'entorn d'execució.
 
 
 

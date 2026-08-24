@@ -2,7 +2,9 @@
 \chapter{Entorn de desenvolupament i infraestructura de còmput}
 \label{chap:infraestructura}
 
-La matriu de 784 cel·les i l'entrenament PPO requereixen una màquina estable, accés remot i supervisió d'execucions llargues. Aquest capítol documenta el maquinari, la xarxa, les notificacions i les dependències. El coordinador dels experiments es descriu al Capítol~\ref{chap:implementacio}.
+El Capítol~\ref{chap:metodologia} exigeix centenars de cel·les independents, motors V8 reciclables i execucions de dies. Aquest capítol documenta l'entorn que fa viable aquella execució ---maquinari, xarxa, monitoratge, dependències i organització--- i sobre el qual el Capítol~\ref{chap:implementacio} implementa coordinador, agents i connector amb el \emph{ladder}. El coordinador mateix es descriu allà; aquí es fixa on i amb quins recursos corre.
+
+Cal distingir dos volums. La \textbf{matriu dirigida} de 28 agents suma \textbf{6,4 milions} de batalles (6.409.000). El \textbf{còmput total} ---proves, altres formats, entrenament PPO, repeticions i execucions de diagnòstic--- s'aproxima a \textbf{52,7 milions} de batalles. Les dues xifres no són intercanviables: la primera és l'experiment; la segona, el cost de còmput acumulat.
 
 \section{Organització del projecte i gestió amb Kanban}
 \label{sec:kanban}
@@ -18,7 +20,7 @@ El desenvolupament del projecte s'ha organitzat mitjançant una metodologia àgi
     \item \textbf{\textit{Done}:} Mòduls finalitzats, simulacions executades, dades validades i seccions redactades.
 \end{itemize}
 
-Aquesta estructura ha garantit una gestió eficient de les tasques i una traçabilitat directa amb el repositori de codi (Secció~\ref{sec:git_metrics}).
+Aquesta estructura ha permès controlar l'abast (heurístiques, cerca, imitació, PPO, LLM i redacció) i traçar-lo amb el repositori (Secció~\ref{sec:git_metrics}).
 
 \begin{figure}[H]
     \centering
@@ -31,31 +33,29 @@ Aquesta estructura ha garantit una gestió eficient de les tasques i una traçab
 
 \subsection{Fase 1: prototipatge en portàtil}
 
-El desenvolupament inicial, la construcció de les primeres heurístiques (\texttt{v1}--\texttt{v6}) i la redacció de la memòria es van dur a terme en un ordinador portàtil d'alta mobilitat:
+El desenvolupament inicial, la construcció de les primeres heurístiques (\texttt{v1}--\texttt{v6}) i la redacció de la memòria es van dur a terme en un portàtil:
 
 \begin{itemize}
-    \item \textbf{Processador (CPU):} Intel Core Ultra 7 155H (16 nuclis i 22 fils fins a 4,8~GHz), utilitzat per a la programació de mòduls i proves d'integració inicials.
-    \item \textbf{Memòria RAM:} 16~GB, idonis per al desenvolupament i la redacció, però condicionats en executar múltiples instàncies de Showdown en paral·lel.
-    \item \textbf{Emmagatzematge:} SSD NVMe d'1~TB dedicat al directori \path{data/} i a les dades de treball.
+    \item \textbf{Processador (CPU):} Intel Core Ultra 7 155H (16 nuclis / 22 fils).
+    \item \textbf{Memòria RAM:} 16~GB ---suficient per a prototipatge, insuficient per a múltiples instàncies de Showdown en paral·lel.
+    \item \textbf{Emmagatzematge:} SSD NVMe d'1~TB per a \path{data/}.
 \end{itemize}
 
-Aquesta fase de prototipatge va permetre identificar les primeres restriccions de memòria RAM, impulsant el disseny de neteges amb \texttt{gc.collect()}, lots de partides continguts i el reinici periòdic dels servidors Node.js.
+Aquesta fase va identificar el coll d'ampolla de RAM i va motivar les neteges amb \texttt{gc.collect()}, els lots continguts i el reinici periòdic de Node.js ja fixats com a principi al Capítol~\ref{chap:metodologia}.
 
 \subsection{Fase 2: estació de treball}
 
-Els experiments finals i la generació massiva de resultats s'executen en una torre d'altes prestacions configurada específicament per a tasques computacionals sostingudes:
+Els experiments finals i la matriu s'executen en una torre configurada per a càrrega sostinguda:
 
 \begin{itemize}
-    \item \textbf{Processador (CPU):} AMD Ryzen 7 5700X3D (8 nuclis i 16 fils a 4,1~GHz, dotat de 96~MB de memòria cau 3D V-Cache L3), que proporciona un rendiment excepcional en simulació de partides i avaluació d'arbres de cerca minimax i MCTS.
-    \item \textbf{Placa base:} MSI MAG B550 TOMAHAWK MAX WIFI (MS-7C91), que garanteix màxima estabilitat elèctrica en les fases d'alimentació (VRM) durant setmanes d'alta càrrega continuada.
-    \item \textbf{Refrigeració:} Dissipador d'aire d'alt rendiment \textbf{Noctua}, assegurant que la CPU operi en rangs tèrmics òptims ($<65^\circ$C sota càrrega intensiva contínua) amb mínim soroll i màxima fiabilitat sense risc de degradació.
-    \item \textbf{Memòria RAM:} 32~GB DDR4 (2$\times$16~GB en doble canal), indispensable per mantenir en memòria cau múltiples instàncies de Showdown, arbres de decisió i conjunts de dades tabulars.
-    \item \textbf{Targeta gràfica (GPU):} NVIDIA GeForce RTX 2080 de 8~GB VRAM (Turing), utilitzada per a l'acceleració dels entrenaments MaskablePPO amb CUDA/PyTorch i la inferència de models de llenguatge locals.
-    \item \textbf{Emmagatzematge primari:} SSD NVMe PCIe 4.0 Crucial P310/P3 Plus d'1~TB (\texttt{CT1000P310SSD8}) d'alta velocitat d'I/O per als registres de telemetria i escriptures concurrents de fitxers CSV, acompanyat d'unitats SSD SATA auxiliars (Samsung 850 PRO, Kingston) i discs durs per a còpies de seguretat.
-    \item \textbf{Font d'alimentació:} Font d'alta eficiència certificada (80 Plus Gold), que minimitza les pèrdues energètiques i aporta estabilitat als rails de tensió durant el funcionament 24/7.
+    \item \textbf{Processador (CPU):} AMD Ryzen 7 5700X3D (8 nuclis / 16 fils, 96~MB L3 3D V-Cache), adequat a simulació de partides i a arbres Minimax/MCTS.
+    \item \textbf{Refrigeració:} dissipador d'aire Noctua; la CPU es manté per sota de $65^\circ$C sota càrrega contínua, que és el pressupost tèrmic del dimoni de la Secció~\ref{sec:telegram_bot}.
+    \item \textbf{Memòria RAM:} 32~GB DDR4 en doble canal, necessaris per a vuit instàncies de Showdown, estructures de cerca i conjunts tabulars.
+    \item \textbf{Targeta gràfica (GPU):} NVIDIA GeForce RTX 2080 (8~GB VRAM), per a MaskablePPO (CUDA/PyTorch) i inferència local d'LLM.
+    \item \textbf{Emmagatzematge:} SSD NVMe PCIe 4.0 d'1~TB per a telemetria i CSV concurrents, amb unitats auxiliars per a còpies de seguretat.
 \end{itemize}
 
-La configuració habitual utilitza vuit instàncies de Showdown (ports 8000--8007), cadascuna amb 15--25 batalles asíncrones. Les cel·les heurístiques es completen molt més ràpidament que les d'MCTS; aquesta diferència de cost motiva els volums de 10.000 i 1.000 partides. L'avaluació PPO contra \texttt{v12} també utilitza vuit ports.
+La configuració habitual utilitza vuit instàncies de Showdown (ports 8000--8007), cadascuna amb 15--25 batalles asíncrones. Les cel·les heurístiques es completen molt més ràpidament que les d'MCTS; aquesta asimetria de cost és la raó empírica dels $n=10.000$ i $n=1.000$ de la Secció~\ref{sec:n_10k}. L'avaluació PPO contra \texttt{v12} també utilitza vuit ports.
 
 \section{Control de versions, traçabilitat i mètriques del programari}
 \label{sec:git_metrics}
@@ -78,12 +78,12 @@ Com s'il·lustra a la Figura~\ref{fig:github_calendar}, el desenvolupament ha ma
 
 Pel que fa a la dimensió del codi font, el directori principal \path{src/} comprèn un total de \textbf{297 fitxers}, dels quals destaquen \textbf{153 fitxers de codi i scripts actius}:
 \begin{itemize}
-    \item \textbf{Mòduls Python (\texttt{.py}):} 119 fitxers amb \textbf{24.635 línies} de codi font pur que implementen els agents, l'arquitectura de combat, les 15 versions heurístiques, els arbres de cerca, els entorns Gymnasium i el coordinador concurrent.
+    \item \textbf{Mòduls Python (\texttt{.py}):} 119 fitxers amb \textbf{24.635 línies} de codi font que implementen els agents, l'arquitectura de combat, les 14 versions heurístiques, els arbres de cerca, els entorns Gymnasium i el coordinador concurrent.
     \item \textbf{Quaderns d'anàlisi (\texttt{.ipynb}):} 16 \textit{notebooks} Jupyter interactius amb \textbf{14.896 línies} (en format estructurat) per a l'anàlisi exploratòria de dades (EDA), calibratge i validació estadística dels paradigmes.
     \item \textbf{Scripts d'automatització (\texttt{.sh}):} 18 scripts Bash amb \textbf{2.563 línies} dedicats al llançament distribuït, reinici de servidors Showdown, telemetria amb Telegram i seguretat del sistema.
     \item \textbf{Documentació tècnica i configuració (\texttt{.md}, \texttt{.json}):} 55 fitxers amb 4.986 línies de guies tècniques, protocols d'execució i esquemes d'estat.
 \end{itemize}
-Aquesta base de codi suma més de \textbf{42.000 línies de programari} desenvolupat específicament per a aquest treball, reflectint una arquitectura modular, estructurada i escalable.
+Aquesta base de codi suma més de \textbf{42.000 línies} desenvolupades per a aquest treball. Les mètriques documenten l'abast del programari; no substitueixen l'avaluació empírica del Capítol~\ref{chap:resultats}.
 
 \section{Accés remot i continuïtat: Tailscale i tmux}
 \label{sec:tailscale}
@@ -96,42 +96,73 @@ Per treballar de manera remota des del portàtil sobre l'estació de treball sen
     \item \textbf{Continuïtat de sessions amb \texttt{tmux}:} Les execucions de la matriu i els entrenaments PPO s'executen dins de sessions persistents de \textbf{tmux}. Així, qualsevol tancament del portàtil o desconnexió de xarxa no interromp els processos de fons.
 \end{itemize}
 
-Aquesta combinació garanteix un entorn de desenvolupament remot segur, àgil i capaç de mantenir execucions sostenibles 24/7.
+Aquesta combinació permet desenvolupar des del portàtil i mantenir execucions 24/7 a la torre sense exposar SSH a Internet.
 
 \section{Bot de Telegram i monitoratge de seguretat}
 \label{sec:telegram_bot}
 
-L'execució sostinguda de més de 52,7 milions de batalles durant setmanes ininterrompudes (24/7) exigeix un sistema de supervisió passiva i interactiva que operi sense intervenció manual. Aquesta funció es materialitza mitjançant un bot de Telegram dedicat i el dimoni de monitoratge \path{src/p00_core/scripts/seguretat_tfm.sh}.
+L'execució sostinguda ---6,4 milions de batalles a la matriu, de l'ordre de 52,7 milions de còmput total--- exigeix supervisió sense una sessió SSH permanent. El canal és un bot de Telegram amb dues peces complementàries: el dimoni sempre actiu \path{src/p00_core/scripts/seguretat_tfm.sh} (maquinari, comandes i resum matinal) i el llançador de la matriu (notificacions de cicle de vida i recuperació de lots bloquejats), materialitzat al Capítol~\ref{chap:implementacio}.
 
-\subsection{Creació del bot i integració en scripts}
+\subsection{Creació del bot i credencials}
 
-\begin{itemize}
-    \item \textbf{Creació i credencials de l'API:} El bot es va crear mitjançant el \textit{BotFather} oficial de Telegram, generant un token privat d'API (\texttt{TELEGRAM\_TOKEN}) i un identificador de xat (\texttt{TELEGRAM\_CHAT\_ID}). Per motius de seguretat, aquestes claus s'emmagatzemen al fitxer d'entorn local \texttt{.env} (fora del control de versions de Git).
-    \item \textbf{Integració en els scripts de llançament (\texttt{run\_*.sh}):} Els scripts automatitzats de la matriu (\path{src/p00_core/scripts/runs_benchmark/}) llegeixen el token i envien notificacions HTTP POST directes mitjançant la comanda \texttt{curl} davant de qualsevol esdeveniment rellevant (inici/final d'un enfrontament $A \text{ vs } B$ o completació d'un bloc de 10.000 partides).
-\end{itemize}
+El bot es crea amb el \textit{BotFather} oficial. El token (\texttt{TELEGRAM\_TOKEN}) i l'identificador de xat (\texttt{TELEGRAM\_CHAT\_ID}) viuen a \texttt{.env}, fora de Git. Tots dos scripts el carreguen i envien missatges amb \texttt{curl} a l'endpoint \texttt{sendMessage} de l'API de Telegram. El dimoni, a més, escolta el xat amb \textit{long polling} natiu (\texttt{getUpdates?timeout=25}): la connexió dorm als servidors de Telegram (CPU local $\approx 0\%$) fins que arriba una comanda; l'\texttt{update\_id} es persisteix a \path{~/.telegram_last_update_id} per no reprocessar missatges.
 
-\subsection{Dimoni de seguretat i protecció de maquinari}
+\subsection{Dimoni de seguretat}
 
-El script \texttt{seguretat\_tfm.sh} s'executa com un dimoni permanent en segon pla dins d'una sessió de \texttt{tmux}. La seva funció primària és la protecció física i operativa de l'estació de treball mitjançant la lectura contínua de \texttt{lm-sensors}:
+\texttt{seguretat\_tfm.sh} corre en una sessió \texttt{tmux} independent de la matriu. Llegeix \texttt{lm-sensors} en bucle: CPU (\texttt{Tctl} de \texttt{k10temp}), RAM (\texttt{jc42}) i NVMe (\texttt{Composite}). Els llindars són els de la Taula~\ref{tab:telegram_thresholds}. També detecta l'arrencada i l'aturada de \texttt{benchmark.py}.
 
-\begin{itemize}
-    \item \textbf{Supervisió tèrmica (CPU, RAM i NVMe):} Registra la temperatura de la CPU AMD Ryzen 7 5700X3D (\texttt{Tctl}), els mòduls RAM (\texttt{jc42}) i l'SSD NVMe (\texttt{Composite}). Estableix un llindar d'avís als $85^\circ\text{C}$ (CPU) / $70^\circ\text{C}$ (RAM/NVMe) i un protocol d'aturada d'emergència (\emph{panic shutdown}) als $92^\circ\text{C}$ (CPU) / $80^\circ\text{C}$ (RAM/NVMe) per evitar la degradació del maquinari sota càrrega 24/7.
-    \item \textbf{Recuperació automàtica de memòria RAM:} Quan el consum de memòria arriba als $27{,}5~\text{GB}$ (de $32~\text{GB}$), el dimoni buida automàticament la memòria cau del sistema (\emph{PageCache} via \texttt{vm.drop\_caches=3}). Si la memòria s'apropa als $29{,}0~\text{GB}$, reinicia les instàncies de Showdown per alliberar memòria V8 sense perdre el progrés de les batalles.
-\end{itemize}
+\begin{table}[htbp]
+    \centering
+    \caption{Llindars del dimoni \texttt{seguretat\_tfm.sh}. L'avís espera 15 minuts abans de repetir-se; el pànic apaga la màquina (\texttt{poweroff}).}
+    \label{tab:telegram_thresholds}
+    \small
+    \begin{tabularx}{\textwidth}{lXX}
+        \toprule
+        \textbf{Senyal} & \textbf{Avís} & \textbf{Acció crítica} \\
+        \midrule
+        CPU (\texttt{Tctl}) & $85^\circ$C & $92^\circ$C: apagat \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        RAM / NVMe (temp.) & $70^\circ$C & $80^\circ$C: apagat \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        RAM usada & $27{,}5$~GB: \texttt{vm.drop\_caches=3} & $29$~GB: \texttt{pkill} Showdown \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
 
-\subsection{Comandes interactives i notificacions automàtiques}
+\subsection{Comandes interactives}
 
-El dimoni escolta les comandes del xat mitjançant la tècnica de \textit{Long Polling} nativa de Telegram (\texttt{/getUpdates?timeout=25}), mantenint la connexió dormant als servidors de Telegram amb un consum de CPU del 0\% fins que l'usuari interacciona:
+La Taula~\ref{tab:telegram_commands} recull les comandes que el dimoni interpreta (es normalitzen a minúscules i s'hi elimina el sufix \texttt{@bot}). \texttt{/now} llegeix els CSV temporals \texttt{\_tmp\_*.csv} de \path{data/benchmarks/all_10k/gen9randombattle}: files ja fusionades més files en curs, objectiu $10.000$ o $1.000$ si l'etiqueta conté \texttt{v18}--\texttt{v20}, i temperatures actuals. No calcula ETA: el ritme el reporta el monitor del llançador (Capítol~\ref{chap:implementacio}). A les 09:00 s'envia un recap automàtic del tram 00:00--09:00 (cel·les tancades i partides, més l'estat de CPU/RAM/NVMe).
 
-\begin{itemize}
-    \item \textbf{Comanda interactiva \texttt{/now} (o \texttt{/status}):} Analitza els CSV temporals de l'enfrontament en curs (\texttt{\_tmp\_*.csv}), calcula les files jugades, el percentatge de progrés, la velocitat actual, l'estimació de temps restant (ETA) i la temperatura exacta de CPU, RAM i NVMe, retornant un informe complet a l'instant.
-    \item \textbf{Informe matinal automàtic (09:00 AM):} Cada matí a les 09:00 envia un resum diari consolidat amb el nombre de batalles disputades en les últimes 24 hores, cel·les de la matriu tancades i l'estat general de salut del servidor.
-    \item \textbf{Alertes \textit{push} d'incidències:} Envia avisos immediats quan un procés s'atura, es reinicia un servidor Showdown o es detecta un procés de cerca bloquejat.
-\end{itemize}
+\begin{table}[htbp]
+    \centering
+    \caption{Comandes del bot (dimoni \texttt{seguretat\_tfm.sh}). El llançador de la matriu afegeix avisos \emph{push} de cicle de vida, no comandes noves.}
+    \label{tab:telegram_commands}
+    \small
+    \renewcommand{\arraystretch}{1.15}
+    \begin{tabularx}{\textwidth}{lX}
+        \toprule
+        \textbf{Comanda} & \textbf{Efecte} \\
+        \midrule
+        \texttt{/now}, \texttt{/status} & Enfrontament actiu (\texttt{A\_vs\_B}), partides fetes / objectiu i temperatures. \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        \texttt{/summary} & Cel·les CSV tancades i total aproximat de partides al directori de la matriu. \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        \texttt{/session}, \texttt{/runtime} & Hores des de l'arrencada del dimoni i cel·les tancades en aquesta sessió. \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        \texttt{/log} & Últimes 10 línies de \texttt{paradigm\_eval.log}. \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        \texttt{/pause} & \texttt{SIGSTOP} a \texttt{benchmark.py} i \texttt{worker.py} (sospèn sense matar). \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        \texttt{/resume} & \texttt{SIGCONT} als mateixos processos. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+El mateix canal admet comandes lúdiques (\texttt{/meme}, \texttt{/pokemon}) pensades per a execucions de dies; no formen part del protocol experimental.
 
 \subsection{Utilitat i valor pràctic}
 
-L'ús del bot de Telegram ha resultat indispensable per a l'èxit de la fase experimental: ha permès supervisar setmanes d'execució sostinguda de 52,7 milions de batalles des de qualsevol dispositiu mòbil amb total pau mental, evitant l'obligació de mantenir connexions SSH obertes i prevenint de forma activa avaries per sobreescalfament o saturació de RAM.
+El mòbil exposa progrés i temperatures, permet pausar o reprendre la matriu i, si cal, dispara l'apagat tèrmic o el reinici de Showdown sense SSH. Aquesta capa és el que ha fet viable l'execució 24/7. El llançador de la Secció~\ref{sec:matrix_launcher} hi afegeix els avisos de cada cel·la i la recuperació de fils bloquejats.
 
 \begin{figure}[H]
     \centering
@@ -189,21 +220,13 @@ El projecte s'articula entorn de tres repositoris base: el motor de simulació o
 \section{Ecosistema de redacció i documentació en \LaTeX}
 \label{sec:perque_latex}
 
-La memòria d'aquest Treball de Final de Màster s'ha redactat íntegrament en \textbf{\LaTeX{}} en substitució de processadors de text convencionals WYSIWYG (com Microsoft Word o Google Docs). Aquesta decisió d'enginyeria documental respon a cinc motius clau:
-
-\begin{enumerate}
-    \item \textbf{Qualitat tipogràfica i maquetació professional:} \LaTeX{} implementa algoritmes òptims de partició de paràgrafs (algorisme de Knuth-Plass), microtipografia (\texttt{microtype}), control estricte d'orfeneses/vídues i gestió harmònica d'espais, garantint un acabat editorial net i d'alt nivell acadèmic.
-    \item \textbf{Notació matemàtica i formalisme rigorós:} El treball requereix una notació matemàtica densa per a la formalització de jocs estocàstics imperfectes (POMDP), funcions d'avantatge $\hat{A}_t$, la funció d'objectiu retallada de PPO ($L^{CLIP}$) i intervals de confiança estadístics (Wilson, Clopper-Pearson), representada de forma nativa i sense ambigüitats mitjançant \textbf{AMS-\LaTeX{}}.
-    \item \textbf{Separació de contingut i estil:} L'arquitectura modular del document (dividit en capítols mitjançant \texttt{\textbackslash include} i taules independents a \path{tables/}) permet desacoblar la redacció del disseny visual, assegurant consistència estilística automàtica a través de les més de cent pàgines de la memòria.
-    \item \textbf{Integració nativa amb Git i traçabilitat línia a línia:} Com que el document està estructurat en text pla (\texttt{.tex}), cada paràgraf, taula o canvi gaudeix de traçabilitat directa mitjançant \textit{diffs} a GitHub. Això evita la corrupció de fitxers binaris propietaris, permet auditories de canvis i facilita la integració contínua de la memòria.
-    \item \textbf{Automatització de referències i gestió bibliogràfica:} La integració de BibTeX i \texttt{natbib} assegura una gestió robusta de més de 50 referències bibliogràfiques, taules creuades, índexs automàtics de figures i taules, i enllaços interns actius (\texttt{hyperref}) sense errors de numeració.
-\end{enumerate}
+La memòria s'ha redactat en \textbf{\LaTeX{}} per cinc motius operatius: (1)~notació matemàtica densa (POSG, $\hat{A}_t$, $\mathcal{L}^{\mathrm{CLIP}}$, intervals de Wilson) via AMS-\LaTeX{}; (2)~capítols i taules modulars (\texttt{\textbackslash include}, \path{tables/}); (3)~traçabilitat línia a línia amb Git, coherent amb la Secció~\ref{sec:git_metrics}; (4)~gestió bibliogràfica (BibTeX/\texttt{natbib}) i referències creuades (\texttt{hyperref}); (5)~maquetació estable en un document llarg. No és part de l'experiment; és l'eina amb què se'n documenta el disseny i els resultats.
 
 % ============================================================
 \section{Anàlisi de cost econòmic i pressupost de recursos}
 \label{sec:cost_economic}
 
-El desenvolupament d'aquest Treball de Final de Màster s'ha caracteritzat per una gestió altament eficient dels recursos computacionals, d'infraestructura i de programari. Atès l'elevat volum de batalles de la matriu d'avaluació (més de 6,4 milions) i la durada dels entrenaments, la principal despesa operativa directa s'associa al consum energètic derivat de l'execució ininterrompuda. Aquesta secció desglossa l'anàlisi econòmica i les mesures d'eficiència aplicades.
+El cost \emph{marginal} del treball ---maquinari ja de propietat, programari lliure i energia--- es concentra en el consum elèctric de l'execució ininterrompuda. El volum de referència per a aquesta despesa és el còmput total (de l'ordre de 52,7 milions de batalles), no només la matriu de 6,4 milions.
 
 \subsection{Desglossament de recursos i optimització de costos}
 
@@ -246,4 +269,4 @@ Els costos operatius del projecte es resumeixen en quatre eixos principals:
     \end{tabularx}
 \end{table}
 
-Aquesta combinació d'autoconsum solar diürn, optimització de còmput en mode terminal, execució local d'LLMs i llicències d'estudiant ha permès contenir el cost energètic de les 684,89 hores (més de 4 setmanes) d'execució ininterrompuda 24/7 i completar el projecte de manera altament eficient i sostenible.
+Aquesta combinació d'autoconsum solar diürn, mode terminal, execució local d'LLMs i llicències d'estudiant ha contingut el cost energètic de les 684,89 hores d'execució 24/7.

@@ -2,46 +2,29 @@
 \chapter{Resultats}
 \label{chap:resultats}
 
-Aquest capítol analitza la matriu de 28 agents i l'experiment PPO. Les fonts internes són els 784 CSV de \path{data/benchmarks/all_10k/gen9randombattle}, els informes de \path{src/p00_core/reporting/agents/}, \path{heuristics_and_imitation_thesis_analysis.md} i \path{src/p05_ppo_drl/RESULTS.md}.
+Aquest capítol llegeix els artefactes del Capítol~\ref{chap:implementacio} sota el protocol del Capítol~\ref{chap:metodologia}. No es reobren el POSG, l'ablació ni el motor: aquí es mesura. Tres ancoratges es donen per fixats: \texttt{v12} és el millor resultat \emph{observat} a la matriu; \texttt{v14} és l'heurística de \emph{servei} (fulla, prior, executor i bot de \emph{ladder}), no el sostre de rendiment; MaskablePPO s'avalua fora de la matriu, contra \texttt{v12}.
 
-La lectura separa tres nivells. Un \textbf{resultat observat} és una taxa o un comptador derivat dels fitxers. Una \textbf{interpretació} relaciona diversos indicadors amb el disseny de l'agent. Una \textbf{hipòtesi explicativa} proposa què podria haver causat el patró, però requeriria una ablació o una repetició específica per confirmar-se. Aquesta distinció permet explicar els resultats sense convertir una correlació de telemetria en una conclusió causal.
+Les fonts internes són els 784 CSV de \path{data/benchmarks/all_10k/gen9randombattle} ---\textbf{6.409.000} partides dirigides---, produïts pel pipeline de la Secció~\ref{sec:reporting_impl} (\texttt{generate\_heatmap.py}, \texttt{elo\_ranking.py}, informes a \path{src/p00_core/reporting/agents/}) i \path{src/p05_ppo_drl/RESULTS.md}. Un \textbf{resultat observat} és una taxa o un comptador; una \textbf{interpretació} relaciona indicadors amb el disseny; una \textbf{hipòtesi explicativa} requeriria una ablació nova per confirmar-se.
 
 % ============================================================
 \section{Protocol de lectura dels resultats}
 \label{sec:res_protocol}
 
-\subsection{La matriu}
-
-28 agents, cadascun com a \emph{nosaltres} contra 28 oponents, format \texttt{gen9randombattle}. Fitxers dirigits \texttt{A\_vs\_B.csv}. El PPO es llegeix a part, contra \texttt{v12}, a la secció~\ref{sec:res_ppo}.
+28 agents, cadascun com a \emph{nosaltres} contra 28 oponents, format \texttt{gen9randombattle}. Fitxers dirigits \texttt{A\_vs\_B.csv}. PPO es llegeix a part (Secció~\ref{sec:res_ppo}).
 
 \input{tables/taxonomy}
 
-La fila d'una taula o d'un mapa de calor és l'agent analitzat i la columna és l'oponent. Un 59,91 a la cel·la \texttt{v12} $\times$ Abyssal indica que \texttt{v12} ha guanyat 5.991 de les 10.000 partides d'aquell fitxer dirigit.
+La fila és l'agent analitzat i la columna, l'oponent. Un 59,91 a la cel·la \texttt{v12} $\times$ Abyssal indica 5.991 victòries de 10.000 en aquell fitxer dirigit.
 
-\subsection{Precisió de les estimacions}
-
-Cada partida aporta un resultat binari $W\in\{0,1\}$. L'equació~\eqref{eq:wilson_ci} dona el marge màxim aproximat per a una proporció:
-\[
-\pm 1{,}96\sqrt{0{,}25/n}.
-\]
-A $n=10.000$ és $\pm 0{,}98$~pp i a $n=1.000$, $\pm 3{,}1$~pp. Per a la diferència entre dues proporcions independents properes al 50\%, els marges aproximats són 1,39 i 4,38~pp, respectivament. Els intervals reportats són de Wilson; aquestes aproximacions serveixen per entendre l'ordre de magnitud.
-
-La mida de la Pokédex no apareix directament a $\mathrm{Var}(\hat p)=p(1-p)/n$. L'objectiu és estimar una taxa marginal sota el generador d'equips de la Generació~IX, no cobrir totes les combinacions possibles.
-
-La Taula~\ref{tab:ci_n} (metodologia) recull els tres pisos. Aquí només cal recordar-los abans de llegir MCTS.
-
-\subsection{Volum i ponderació}
+Cada cel·la és una proporció binomial. Els intervals són Wilson al 95\% (Equació~\ref{eq:wilson_ci}); els tres pisos mostrals són els de la Taula~\ref{tab:ci_n}. A $n=10.000$ el marge màxim és de l'ordre d'$\pm 1$~pp; a $n=1.000$ (totes les cel·les MCTS), $\pm 3$~pp. La Pokédex no entra a $\mathrm{Var}(\hat p)$: s'estima una taxa marginal sota el generador d'equips de la Generació~IX.
 
 \begin{itemize}
-    \item Una fila no MCTS conté \textbf{253.000} partides: $25\times 10.000$ i $3\times 1.000$ contra MCTS.
-    \item Una fila MCTS conté \textbf{28.000} partides: $28\times 1.000$.
-    \item La matriu completa conté \textbf{6.409.000} partides dirigides.
-    \item Les orientacions recíproques sumen aproximadament el 100\% i l'autojoc se situa prop del 50\%, com s'espera en absència d'un efecte sistemàtic de l'orientació.
+    \item Fila no MCTS: \textbf{253.000} partides ($25\times 10.000$ i $3\times 1.000$ contra MCTS).
+    \item Fila MCTS: \textbf{28.000} partides ($28\times 1.000$).
+    \item Matriu: \textbf{6.409.000} partides dirigides. Les orientacions recíproques sumen $\approx 100\%$ i l'autojoc se situa prop del 50\%.
 \end{itemize}
 
-La taxa global d'una fila no MCTS pondera els oponents MCTS deu vegades menys que la resta; en una fila MCTS tots els oponents pesen igual. Per tant, aquestes taxes globals tenen diferent precisió i diferent ponderació. La comparació entre paradigmes es basa en cel·les comunes, no en una única ordenació global.
-
-Les proves de desenvolupament amb 100 partides no formen part de les conclusions d'aquest capítol.
+La taxa global d'una fila no MCTS pondera els oponents MCTS deu vegades menys; en una fila MCTS tots pesen igual. La comparació entre paradigmes es basa en cel·les comunes ---especialment contra \texttt{v12}---, no en una única ordenació global. Les proves de desenvolupament amb 100 partides no entren a les conclusions.
 
 % ============================================================
 \section{Controls globals de la matriu}
@@ -256,7 +239,7 @@ La mostra pública de \texttt{v14} (secció~\ref{sec:res_ladder}) no permet reor
 \section{Minimax d'un torn}
 \label{sec:res_mm}
 
-La pregunta és si valorar explícitament la resposta més desfavorable del torn millora \texttt{v14}. La telemetria registra amb quina freqüència s'executa el mòdul i quan la seva acció difereix de la proposta heurística.
+La pregunta de disseny ---si un maximin d'un torn corregeix \texttt{v14}--- és la de la Secció~\ref{sec:disseny_agents}. Aquí es mesura amb quina freqüència s'executa el mòdul i quan la seva acció difereix de la proposta heurística.
 
 \input{tables/minimax_headline}
 
@@ -355,13 +338,6 @@ La combinació «més canvis decidits per cerca» i «menys discrepància» no �
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{images/minimax/minimax_winrate_grouped.png}
-    \caption{Taxa de victòries agrupada. \texttt{v15} i \texttt{v16} se superposen; \texttt{v17} queda per sobre, encara per sota de \texttt{v9}/\texttt{v11}.}
-    \label{fig:minimax_grouped}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
     \includegraphics[width=0.92\linewidth]{images/minimax/minimax_wr_by_paradigm.png}
     \caption{Taxa de victòries del minimax per família d'oponent. El prior de \texttt{v17} s'associa amb les millores principals contra heurístiques i MCTS.}
     \label{fig:minimax_paradigm}
@@ -371,9 +347,7 @@ La combinació «més canvis decidits per cerca» i «menys discrepància» no �
 \section{MCTS ras: UCB a l'arrel i simulacions de cinc torns}
 \label{sec:res_mcts}
 
-\textbf{Totes les cel·les d'aquesta secció tenen $n=1.000$.} El marge màxim aproximat per a una proporció és $\pm 3,1$~pp. La mitjana global de les files MCTS també té una ponderació diferent de la de les files no MCTS.
-
-La pregunta és si les simulacions de cinc torns milloren les regles de \texttt{v14} que s'executen abans de la cerca o s'utilitzen com a prior.
+\textbf{Totes les cel·les d'aquesta secció tenen $n=1.000$} ($\pm 3$~pp, Taula~\ref{tab:ci_n}). La mitjana global de les files MCTS també té una ponderació diferent de la de les files no MCTS. La pregunta de disseny ---si cinc torns simulats superen l'horitzó de \texttt{v14}--- és la de la Secció~\ref{sec:disseny_agents}.
 
 \input{tables/mcts_headline}
 
@@ -391,7 +365,7 @@ Quan s'activa una drecera prèvia, les 100 simulacions no s'executen. Per tant, 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{mcts_override.png}
+    \includegraphics[width=0.92\linewidth]{images/mcts/mcts_override.png}
     \caption{Taxa de discrepància respecte de \texttt{v14} entre les decisions de cerca. UCB1 (\texttt{v18}/\texttt{v19}) discrepa aproximadament en el 71\% dels casos i PUCT (\texttt{v20}), en el 19\%. Les derrotes mostren més discrepància mitjana, una associació que no estableix causalitat.}
     \label{fig:mcts_override}
 \end{figure}
@@ -438,7 +412,7 @@ Les freqüències de preparació i perills d'entrada es mantenen a nivells sembl
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{mcts_future_proxies.png}
+    \includegraphics[width=0.92\linewidth]{images/mcts/mcts_future_proxies.png}
     \caption{Indicadors d'efectes diferits a les simulacions de cinc torns. La preparació i els perills d'entrada es mantenen a nivells semblants als de \texttt{v14}.}
     \label{fig:mcts_future}
 \end{figure}
@@ -505,13 +479,6 @@ El patró de \texttt{v20} no és el d'una política més defensiva que simplemen
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{images/mcts/mcts_winrate_grouped.png}
-    \caption{Taxa de victòries agrupada d'MCTS. \texttt{v18} i \texttt{v19} se superposen; \texttt{v20} queda per sobre. Aquesta mitjana de 28.000 partides no té la mateixa ponderació que les files de 253.000.}
-    \label{fig:mcts_grouped}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
     \includegraphics[width=0.92\linewidth]{images/mcts/mcts_wr_by_paradigm.png}
     \caption{Taxa de victòries d'MCTS per paradigma d'oponent ($n=1.000$ a cada cel·la). PUCT millora principalment contra heurístiques i minimax.}
     \label{fig:mcts_paradigm}
@@ -521,7 +488,7 @@ El patró de \texttt{v20} no és el d'una política més defensiva que simplemen
 \section{Aprenentatge per imitació: dues formes d'execució}
 \label{sec:res_il}
 
-Les dues variants comparteixen el classificador XGBoost i el llindar $\tau=0{,}5525$, però difereixen en la selecció de l'acció concreta.
+Les dues variants comparteixen el classificador XGBoost i el llindar $\tau=0{,}5525$ del Capítol~\ref{chap:implementacio}, però difereixen en la selecció de l'acció concreta.
 
 \input{tables/il_headline}
 
@@ -618,13 +585,6 @@ Els canvis forçats són semblants perquè depenen sobretot del nombre de debili
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{images/il/il_winrate_grouped.png}
-    \caption{Taxa de victòries agrupada de les dues arquitectures d'imitació. \texttt{v21} se situa prop de \texttt{v9}; \texttt{v22}, per sota de \texttt{v1}.}
-    \label{fig:il_grouped}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
     \includegraphics[width=0.92\linewidth]{images/il/il_wr_by_paradigm.png}
     \caption{Taxa de victòries dels agents d'imitació per família d'oponent. \texttt{v21} supera \texttt{v22} en els sis blocs, amb diferències d'aproximadament 20--26~pp.}
     \label{fig:il_paradigm}
@@ -706,7 +666,7 @@ La mostra pública avalua \texttt{v14} fora de l'entorn local, però no és una 
 \section{PPO contra \texttt{v12}}
 \label{sec:res_ppo}
 
-El cinquè paradigma s'avalua contra l'agent amb millor resultat observat a la matriu, \texttt{v12}, amb $n=10.000$ i les dues orientacions. El model és MaskablePPO, amb una observació de 328 dimensions, un espai \texttt{Discrete(14)} i inicialització per clonatge conductual de \texttt{v8} durant 400 partides.
+El cinquè paradigma s'avalua fora de la matriu, contra \texttt{v12}, amb $n=10.000$ i les dues orientacions (Secció~\ref{sec:disseny_experiments}). L'entorn, la màscara \texttt{Discrete(14)}, el vector de 328 dimensions i el clonatge de \texttt{v8} (400 partides) són els del Capítol~\ref{chap:implementacio}. Aquí es llegeixen les validacions congelades i el model A.
 
 \input{tables/ppo_headline}
 
@@ -724,11 +684,30 @@ A la matriu, \texttt{v8} obté \textbf{32,9\%} contra \texttt{v12} ($n=10.000$).
 
 \subsection{Currículum}
 
-La Taula~\ref{tab:ppo_curriculum_impl} i la Figura~\ref{fig:ppo_curriculum_curves} separen entrenament i validació. Les dues primeres etapes compleixen el criteri operatiu: 91,8\% contra Random i 70,5\% contra MaxBP, amb $n=1.000$. Això mostra que la política aprèn l'espai d'accions i supera polítiques simples.
+La Taula~\ref{tab:ppo_curriculum_eval} i la Figura~\ref{fig:ppo_curriculum_curves} separen artefactes d'entrenament (Capítol~\ref{chap:implementacio}) i validació congelada. Les dues primeres etapes compleixen el criteri operatiu; la fase~2 no, i la fase~3 s'executa com a prova de continuació.
 
-El canvi qualitatiu apareix a \texttt{v8}. Després de 400 partides de clonatge, la validació és només 40,6\%, per sota del 55\% requerit. Per tant, no és correcte descriure el currículum complet com quatre graduacions reeixides. Les fases 1 i 1.5 es validen; la fase 2 no, i la fase 3 s'executa com una prova de continuació i una mesura contra el comparador final.
+\begin{table}[htbp]
+    \centering
+    \caption{Validació congelada del currículum PPO. Els artefactes i hiperparàmetres són la Taula~\ref{tab:ppo_curriculum_impl}.}
+    \label{tab:ppo_curriculum_eval}
+    \small
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabularx}{\textwidth}{clcc>{\raggedright\arraybackslash}X}
+        \toprule
+        \textbf{Fase} & \textbf{Oponent} & $n$ & \textbf{TV} & \textbf{Porta} \\
+        \midrule
+        1   & Random       & 1.000  & 91,8\% & $\ge 90\%$: superada \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        1.5 & MaxBP        & 1.000  & 70,5\% & $>70\%$: superada per estimació puntual \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        2   & \texttt{v8}  & 1.000  & 40,6\% & $>55\%$: no superada \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        3   & \texttt{v12} & 10.000 & 34,1\% & mesura final (model A) \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
 
-Una configuració amb taxa d'aprenentatge $1{,}5\times 10^{-4}$ i 16 entorns obté 32,6\% contra \texttt{v12} amb $n=1.000$. L'extensió a 346 dimensions, inicialitzada amb \texttt{v14}, es va interrompre amb una taxa d'entrenament aproximada del 33,5\%. Aquests valors són diagnòstics i no substitueixen l'avaluació final del model A.
+No és correcte descriure el currículum com quatre graduacions reeixides. Una configuració amb taxa $1{,}5\times 10^{-4}$ i 16 entorns obté 32,6\% contra \texttt{v12} amb $n=1.000$. L'extensió a 346 dimensions, inicialitzada amb \texttt{v14}, es va interrompre amb una taxa d'entrenament aproximada del 33,5\%. Aquests valors són diagnòstics i no substitueixen l'avaluació del model A.
 
 \subsection{Interpretació del límit observat}
 
@@ -750,7 +729,28 @@ Amb aquesta observació, recompensa, inicialització i pressupost, MaskablePPO n
 
 \subsection{Patró d'integració residual}
 
-\texttt{v21} (imitació), \texttt{v17} (minimax) i \texttt{v20} (MCTS) comparteixen un patró: conserven les regles tàctiques de \texttt{v14} i hi afegeixen un mòdul que intervé en una fracció de les decisions. Les figures~\ref{fig:il_fp}, \ref{fig:minimax_override} i \ref{fig:mcts_override} mostren que aquests mòduls intervenen aproximadament en el 15--18\% dels torns o redueixen la discrepància respecte de l'heurística. Dins de cada família, aquestes variants obtenen un resultat superior a les alternatives que substitueixen més sovint la proposta de \texttt{v14}.
+\texttt{v21} (imitació), \texttt{v17} (minimax) i \texttt{v20} (MCTS) comparteixen un patró: conserven les regles tàctiques de \texttt{v14} i hi afegeixen un mòdul que intervé en una fracció de les decisions (Taula~\ref{tab:residual_integration}). Dins de cada família, aquestes variants obtenen un resultat superior a les alternatives que substitueixen més sovint la proposta de \texttt{v14}. PPO, en canvi, no hereta l'executor \texttt{v14} i queda al nivell del professor \texttt{v8}.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Integració residual sobre \texttt{v14}. El percentatge de torns és la fracció en què s'executa el mòdul afegit; la discrepància és la taxa en què aquest mòdul no retorna l'acció de \texttt{v14} (no aplica a XGBoost ni a PPO). $n=10.000$ tret de \texttt{v20} ($n=1.000$).}
+    \label{tab:residual_integration}
+    \small
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabularx}{\textwidth}{lXccc}
+        \toprule
+        \textbf{Variant} & \textbf{Mòdul} & \textbf{Torns} & \textbf{Discrepància} & \textbf{vs \texttt{v12}} \\
+        \midrule
+        \texttt{v17} & maximin d'un torn & 16--18\% & 37\% & 40,94\% \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        \texttt{v20} & PUCT, prior $0{,}70$ & 16--18\% & 18,7\% & 42,7\% \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        \texttt{v21} & XGBoost atacar/canviar & 15\% & --- & 41,28\% \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        PPO A & política neuronal & 100\% & --- & 34,1\% \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
 
 El patró no demostra que qualsevol arquitectura híbrida sigui superior. Les variants difereixen en més d'un component i s'han seleccionat després d'observar els resultats. Sí que aporta evidència consistent que, amb les representacions i pressupostos implementats, preservar restriccions tàctiques de domini és important.
 
