@@ -76,7 +76,7 @@ La comunicació és un protocol textual sobre WebSocket. El servidor obre una sa
 
           \begin{figure}[H]
               \centering
-              \begin{minipage}{0.85\textwidth}
+              \begin{minipage}{0.70\linewidth}
                   \begin{scriptsize}
                       \begin{verbatim}
 {
@@ -90,8 +90,10 @@ La comunicació és un protocol textual sobre WebSocket. El servidor obre una sa
   "side": {
     "name": "p1",
     "pokemon": [
-      {"ident": "p1: Gengar", "condition": "216/216", "active": true, "moves": ["thunderbolt", "voltswitch"]},
-      {"ident": "p1: Great Tusk", "condition": "303/303", "active": false, "moves": ["headlongrush", "closecombat"]}
+      {"ident": "p1: Gengar", "condition": "216/216", "active": true,
+       "moves": ["thunderbolt", "voltswitch"]},
+      {"ident": "p1: Great Tusk", "condition": "303/303", "active": false,
+       "moves": ["headlongrush", "closecombat"]}
     ]
   },
   "rqid": 12
@@ -121,20 +123,32 @@ La Figura~\ref{fig:pokeenv_arch} resumeix aquestes tres capes. El que canvia ent
 \begin{figure}[htbp]
     \centering
     \begin{tikzpicture}[
-            node distance=0.55cm, font=\footnotesize,
-            box/.style={rectangle, draw, text width=3.15cm, align=center, minimum height=0.95cm},
-            arr/.style={->, thick, >=stealth}
+            node distance=0.45cm, font=\footnotesize,
+            box/.style={rectangle, draw=#1!70!black, fill=#1!8, rounded corners=4pt, text width=5.0cm, align=center, minimum height=0.85cm, inner sep=5pt},
+            lbl/.style={font=\tiny\bfseries, color=gray!70!black, midway, fill=white, inner sep=1.5pt},
+            arr/.style={->, >=stealth, thick, color=gray!80!black}
         ]
-        \node[box, fill=red!10] (sd) {Showdown\\estat $S$, filtre $O$,\\lock simultani i $T$};
-        \node[box, fill=yellow!12, below=of sd] (ws) {WebSocket\\\texttt{|request|} / log};
-        \node[box, fill=orange!12, below=of ws] (parser) {\textit{poke-env}\\parser $\rightarrow$ \texttt{Battle}};
-        \node[box, fill=green!12, below=of parser] (pol) {Política\\\texttt{choose\_move}};
-        \node[box, fill=blue!10, below=of pol] (ord) {\texttt{BattleOrder}\\$\rightarrow$ \texttt{/choose}};
-        \draw[arr] (sd) -- (ws);
-        \draw[arr] (ws) -- (parser);
-        \draw[arr] (parser) -- (pol);
-        \draw[arr] (pol) -- (ord);
-        \draw[arr, dashed] (ord.east) -- ++(0.85,0) |- (sd.east);
+        % Server Layer
+        \node[box=red] (sd) {\textbf{Pokémon Showdown (àrbitre)}\\Estat omniscient $S$, filtre $O$, lock i $T$};
+
+        % Transport Layer
+        \node[box=orange] (ws) [below=of sd] {\textbf{Canal WebSocket}\\Protocol textual (\texttt{|request|} / log de torn)};
+
+        % Framework Interface Layer
+        \node[box=yellow!80!black] (parser) [below=of ws] {\textbf{\textit{poke-env} (interfície Python)}\\Parser de protocol $\rightarrow$ Objecte \texttt{Battle}};
+
+        % Agent Policy Layer (Core decision)
+        \node[box=green!80!black] (pol) [below=of parser] {\textbf{Política d'Agent (mòdul $A_i$)}\\\texttt{choose\_move(battle)}};
+
+        % Action Order Layer
+        \node[box=blue] (ord) [below=of pol] {\textbf{Ordre de Combat}\\Acció legal \texttt{BattleOrder} $\rightarrow$ \texttt{/choose}};
+
+        % Connections
+        \draw[arr] (sd) -- node[lbl]{Protocol JSON/Text} (ws);
+        \draw[arr] (ws) -- node[lbl]{Observació $o_i$} (parser);
+        \draw[arr] (parser) -- node[lbl]{Estat estructurat $\Omega$} (pol);
+        \draw[arr] (pol) -- node[lbl]{Acció seleccionada $a_i$} (ord);
+        \draw[arr, dashed, color=blue!70!black, thick] (ord.east) -- ++(1.5,0) node[midway, right=1.0cm, font=\tiny\bfseries, color=blue!70!black]{Execució de l'ordre} |- (sd.east);
     \end{tikzpicture}
     \caption{Tres capes del contracte. Showdown és l'àrbitre omniscient; \textit{poke-env} tradueix el protocol a un objecte i a una ordre legal; la política és l'únic bloc específic de cada paradigma. La fletxa discontínua tanca el torn al motor.}
     \label{fig:pokeenv_arch}
@@ -158,22 +172,50 @@ El cicle de la Figura~\ref{fig:cicle_batalla} és el bucle que el gestor ha de p
 \begin{figure}[htbp]
     \centering
     \begin{tikzpicture}[
-            node distance=1.0cm, auto, font=\footnotesize,
-            block/.style={rectangle, draw, fill=blue!5, text width=4.6cm, align=center, minimum height=0.7cm},
-            msg/.style={->, thick, >=stealth},
-            lbl/.style={font=\scriptsize, midway}
+            font=\footnotesize,
+            header/.style={rectangle, draw=#1!80!black, fill=#1!12, rounded corners=3pt, text width=3.4cm, align=center, minimum height=0.75cm, font=\small\bfseries},
+            proc/.style={rectangle, draw=green!70!black, fill=green!10, rounded corners=3pt, text width=4.5cm, align=center, minimum height=0.7cm, font=\scriptsize},
+            msg/.style={->, >=stealth, thick, color=#1},
+            num/.style={circle, fill=#1, text=white, font=\tiny\bfseries, inner sep=1pt, minimum size=11pt}
         ]
-        \node[font=\small\bfseries] (agent_title) at (0,0) {Agent / \textit{poke-env}};
-        \node[font=\small\bfseries] (server_title) at (7.4,0) {Showdown (àrbitre)};
-        \draw[dashed, gray] (0,-0.5) -- (0,-9.6);
-        \draw[dashed, gray] (7.4,-0.5) -- (7.4,-9.6);
-        \draw[msg] (0,-1.0) -- node[above, lbl]{WebSocket a instància local} (7.4,-1.0);
-        \draw[msg] (0,-2.1) -- node[above, lbl]{repte \texttt{gen9randombattle}} (7.4,-2.1);
-        \draw[msg, <-] (0,-3.2) -- node[above, lbl]{\texttt{|request|}: $o_i$ i accions legals} (7.4,-3.2);
-        \node[block, fill=green!8] at (3.7,-4.35) {Política sobre \texttt{Battle}};
-        \draw[msg] (0,-5.5) -- node[above, lbl]{\texttt{/choose} moviment o canvi} (7.4,-5.5);
-        \draw[msg, <-] (0,-6.7) -- node[above, lbl]{log del torn (resolució $T$)} (7.4,-6.7);
-        \draw[msg, <-] (0,-8.2) -- node[above, lbl]{\texttt{|win|} i tancament de sala} (7.4,-8.2);
+        % Lifeline Headers
+        \node[header=blue] (agent) at (0,0) {Agent / \textit{poke-env}};
+        \node[header=red] (server) at (7.8,0) {Showdown (àrbitre)};
+
+        % Lifelines
+        \draw[dashed, gray!60] (agent.south) -- (0,-9.2);
+        \draw[dashed, gray!60] (server.south) -- (7.8,-9.2);
+
+        % Sequence Steps
+        % 1. Connection
+        \node[num=blue!70!black] at (-0.35, -0.9) {1};
+        \draw[msg=blue!70!black] (0,-0.9) -- node[above, font=\scriptsize\bfseries, midway]{Connexió WebSocket local} (7.8,-0.9);
+
+        % 2. Challenge
+        \node[num=blue!70!black] at (-0.35, -1.9) {2};
+        \draw[msg=blue!70!black] (0,-1.9) -- node[above, font=\scriptsize, midway]{Repte \texttt{gen9randombattle}} (7.8,-1.9);
+
+        % 3. Request
+        \node[num=red!70!black] at (8.15, -3.0) {3};
+        \draw[msg=red!70!black, <-] (0,-3.0) -- node[above, font=\scriptsize, midway]{\texttt{|request|}: Observació $o_i$ i accions legals $A(s)$} (7.8,-3.0);
+
+        % 4 & 5. Policy Execution Box (Local)
+        \node[proc] (pol_box) at (3.9, -4.2) {\textbf{4--5. Decisió de la Política}\\Avaluació sobre l'objecte \texttt{Battle}};
+
+        % 6. Choose action
+        \node[num=blue!70!black] at (-0.35, -5.4) {6};
+        \draw[msg=blue!70!black] (0,-5.4) -- node[above, font=\scriptsize, midway]{\texttt{/choose}: Resposta amb acció seleccionada} (7.8,-5.4);
+
+        % 7. Resolution log
+        \node[num=red!70!black] at (8.15, -6.6) {7};
+        \draw[msg=red!70!black, <-] (0,-6.6) -- node[above, font=\scriptsize, midway]{Log de resolució estocàstica $T$ (\texttt{|move|}, \texttt{|-damage|})} (7.8,-6.6);
+
+        % Loop bracket / indicator
+        \draw[thick, dotted, gray!80] (-0.8, -2.6) -- (-0.8, -7.2) node[midway, rotate=90, above=2pt, font=\tiny\bfseries, color=gray!70!black]{Bucle de torns};
+
+        % 8. Win & room close
+        \node[num=red!70!black] at (8.15, -8.3) {8};
+        \draw[msg=red!70!black, <-] (0,-8.3) -- node[above, font=\scriptsize\bfseries, midway]{\texttt{|win|}: Fi de partida i tancament de sala} (7.8,-8.3);
     \end{tikzpicture}
     \caption{Intercanvi d'un torn. Showdown filtra l'estat i no resol fins a tenir les dues ordres; \textit{poke-env} estructua l'observació i legalitza l'acció. L'agent no accedeix mai a $S$.}
     \label{fig:cicle_batalla}
@@ -219,10 +261,11 @@ Aquest aïllament és especialment rellevant per a Minimax i MCTS, que construei
     \resizebox{\textwidth}{!}{%
         \begin{tikzpicture}[
                 node distance=1cm, font=\footnotesize,
-                master/.style={rectangle, draw, fill=blue!10, text width=3.8cm, align=center, minimum height=1.2cm, rounded corners},
-                worker/.style={rectangle, draw, fill=green!8, text width=2.8cm, align=center, minimum height=1cm},
-                server/.style={rectangle, draw, fill=orange!10, text width=2.8cm, align=center, minimum height=0.9cm},
-                disk/.style={cylinder, draw, fill=gray!15, shape border rotate=90, aspect=0.25, minimum height=0.9cm, minimum width=2.2cm, align=center, font=\scriptsize}
+                master/.style={rectangle, draw=blue!80!black, fill=blue!10, text width=3.8cm, align=center, minimum height=1.2cm, rounded corners=4pt},
+                worker/.style={rectangle, draw=green!70!black, fill=green!8, text width=2.8cm, align=center, minimum height=1cm, rounded corners=3pt},
+                server/.style={rectangle, draw=orange!80!black, fill=orange!10, text width=2.8cm, align=center, minimum height=0.9cm, rounded corners=3pt},
+                tmpdisk/.style={cylinder, draw=orange!80!black, fill=orange!10, dashed, shape border rotate=90, aspect=0.25, minimum height=0.9cm, minimum width=2.4cm, align=center, font=\scriptsize},
+                finaldisk/.style={cylinder, draw=blue!80!black, fill=blue!12, thick, shape border rotate=90, aspect=0.25, minimum height=0.9cm, minimum width=2.4cm, align=center, font=\scriptsize}
             ]
             % Nodes principals
             \node[master] (master) at (0,0) {\textbf{COORDINADOR}\\Gestor d'enfrontaments};
@@ -236,8 +279,8 @@ Aquest aïllament és especialment rellevant per a Minimax i MCTS, que construei
             \node[server] (s2) at (-1.0, -4.0) {Showdown dedicat};
             \node[server] (sn) at (3.2, -4.0) {Showdown dedicat};
 
-            \node[disk] (tmp) at (7.8, -2.2) {Lots temporals\\(\texttt{.csv})};
-            \node[disk] (final) at (7.8, -4.6) {Resultats persistits\\(\texttt{.csv} / BD)};
+            \node[tmpdisk] (tmp) at (7.8, -2.2) {Lots temporals\\(\texttt{.csv} efímer)};
+            \node[finaldisk] (final) at (7.8, -4.6) {Resultats persistits\\(\texttt{.csv} / BD permanent)};
 
             % Connexions: Coordinador -> Treballadors
             \draw[->, thick, blue!60!black] (master.south) -- (w1.north);
@@ -258,11 +301,11 @@ Aquest aïllament és especialment rellevant per a Minimax i MCTS, que construei
             % Etapa 2: Treballador N (sortint per la dreta) s'uneix al bus a x = 5.3
             \draw[dashed, gray!80!black] (wn.east) .. controls (4.8, -2.2) and (4.8, -3.1) .. (5.3, -3.1);
 
-            % Etapa 3: Tram final que comença a pujar gradualment 1 cm abans (des de x=5.3) amb l'etiqueta en direcció sud
-            \draw[->, dashed, gray!80!black, thick] (5.3, -3.1) .. controls (5.9, -3.1) and (6.4, -2.4) .. (tmp.west) node[midway, below=6pt, font=\tiny] {escriptura de lots};
+            % Etapa 3: Tram final que flueix de manera continuada des del bus cap a Lots temporals
+            \draw[->, dashed, gray!80!black, thick] (5.3, -3.1) .. controls (6.1, -3.1) and (5.5, -1.8) .. (tmp.west) node[midway, below=14pt, font=\tiny] {escriptura de lots};
 
-            % Connexió: Lots temporals -> Resultats persistits (Consolidació)
-            \draw[->, thick, solid] (tmp.south) -- node[right, font=\tiny] {Consolidació} (final.north);
+            % Connexió: Lots temporals -> Resultats persistits (Consolidació i neteja)
+            \draw[->, thick, solid, blue!70!black] (tmp.south) -- node[right, font=\tiny\bfseries] {Consolidació i neteja} (final.north);
 
             % Connexió: Coordinador -> Lots temporals (Supervisió i fusió)
             \draw[->, thick, dotted, blue!80!black] (master.east) -| (tmp.north) node[near start, above, font=\tiny] {Supervisió i fusió};
@@ -319,48 +362,63 @@ La seqüència no és una cadena estricta. Les versions primerenques exploren es
     \resizebox{\textwidth}{!}{%
         \begin{tikzpicture}[
                 font=\scriptsize,
-                n/.style={rectangle, rounded corners, draw, align=center, minimum height=0.68cm, text width=1.12cm, inner sep=2pt},
-                leg/.style={rectangle, rounded corners, draw, align=center, minimum height=0.45cm, font=\tiny, inner sep=2pt},
+                n/.style={rectangle, rounded corners=3pt, draw, align=center, minimum height=0.68cm, text width=1.12cm, inner sep=2pt},
+                leg/.style={rectangle, rounded corners=3pt, draw, align=center, minimum height=0.45cm, font=\tiny, inner sep=2pt},
                 arr/.style={->, thick, >=stealth}
             ]
-            % Llegenda de colors (desplaçada a y=2.2 per evitar solapaments amb v4/v5)
-            \node[leg, fill=blue!10] (l1) at (0, 2.2) {Nucli dany inicial};
-            \node[leg, fill=gray!15, right=0.15cm of l1] (l2) {Camp i modificadors};
-            \node[leg, fill=green!12, right=0.15cm of l2] (l3) {Nucli ponderat i KO};
-            \node[leg, fill=orange!15, right=0.15cm of l3] (l4) {Tempo i tàctica};
-            \node[leg, fill=red!12, right=0.15cm of l4] (l5) {Gen IX i inferència};
-            \node[leg, fill=purple!12, right=0.15cm of l5] (l6) {Paradigmes de cerca};
-            \node[leg, fill=yellow!20, right=0.15cm of l6] (l7) {Imitació jeràrquica};
+            % Llegenda de colors (centrada i desplaçada a la dreta a y=2.4 per deixar espai amb v4/v5)
+            \node[leg, fill=blue!10] (l1) at (1.5, 2) {Nucli dany inicial};
+            \node[leg, fill=gray!15, right=0.12cm of l1] (l2) {Camp i modificadors};
+            \node[leg, fill=green!12, right=0.12cm of l2] (l3) {Nucli ponderat i KO};
+            \node[leg, fill=orange!15, right=0.12cm of l3] (l4) {Tempo i tàctica};
+            \node[leg, fill=red!12, right=0.12cm of l4] (l5) {Gen IX i inferència};
+            \node[leg, fill=purple!12, right=0.12cm of l5] (l6) {Paradigmes de cerca};
+            \node[leg, fill=yellow!20, right=0.12cm of l6] (l7) {Imitació jeràrquica};
 
-            % Nodes de la genealogia
+            % RUTA PRINCIPAL (Tots al mateix nivell horitzontal y=0)
+            % 1. Primerencs (v1, v2, v3, v6) a l'esquerra
             \node[n, fill=blue!10] (v1) at (0,0) {\texttt{v1}};
-            \node[n, fill=blue!10, right=0.24cm of v1] (v2) {\texttt{v2}};
-            \node[n, fill=blue!10, right=0.24cm of v2] (v3) {\texttt{v3}};
-            \node[n, fill=blue!10, right=0.24cm of v3] (v6) {\texttt{v6}};
-            \node[n, fill=gray!15, above=0.42cm of v2] (v4) {\texttt{v4}};
-            \node[n, fill=gray!15, right=0.24cm of v4] (v5) {\texttt{v5}};
-            \node[n, fill=green!12, below=0.7cm of v1] (v7) {\texttt{v7}};
-            \node[n, fill=green!12, right=0.24cm of v7] (v8) {\texttt{v8}};
-            \node[n, fill=orange!15, right=0.24cm of v8] (v9) {\texttt{v9}};
-            \node[n, fill=orange!15, below=0.42cm of v8] (v10) {\texttt{v10}};
-            \node[n, fill=orange!15, right=0.55cm of v9] (v11) {\texttt{v11}};
-            \node[n, fill=red!12, right=0.24cm of v11] (v12) {\texttt{v12}};
-            \node[n, fill=red!12, right=0.24cm of v12] (v13) {\texttt{v13}};
-            \node[n, fill=red!12, right=0.24cm of v13] (v14) {\texttt{v14}};
-            \node[n, fill=purple!12, below=0.5cm of v14] (mm) {\texttt{v15}--\texttt{v17}};
-            \node[n, fill=purple!12, left=0.28cm of mm] (mcts) {\texttt{v18}--\texttt{v20}};
-            \node[n, fill=yellow!20, right=0.28cm of mm] (il) {\texttt{v21}/\texttt{v22}};
+            \node[n, fill=blue!10, right=0.22cm of v1] (v2) {\texttt{v2}};
+            \node[n, fill=blue!10, right=0.22cm of v2] (v3) {\texttt{v3}};
+            \node[n, fill=blue!10, right=0.22cm of v3] (v6) {\texttt{v6}};
 
+            % 2. Ablació principal (v7--v14 al mateix nivell a la dreta de v6)
+            \node[n, fill=green!12, right=0.85cm of v6] (v7) {\texttt{v7}};
+            \node[n, fill=green!12, right=0.22cm of v7] (v8) {\texttt{v8}};
+            \node[n, fill=orange!15, right=0.22cm of v8] (v9) {\texttt{v9}};
+            \node[n, fill=orange!15, right=0.55cm of v9] (v11) {\texttt{v11}};
+            \node[n, fill=red!12, right=0.22cm of v11] (v12) {\texttt{v12}};
+            \node[n, fill=red!12, right=0.22cm of v12] (v13) {\texttt{v13}};
+            \node[n, fill=red!12, right=0.22cm of v13] (v14) {\texttt{v14}};
+
+            % RAMIFICACIONS SUPERIORS (sota la llegenda, a sobre de v2/v3)
+            \node[n, fill=gray!15, above=0.45cm of v2] (v4) {\texttt{v4}};
+            \node[n, fill=gray!15, right=0.22cm of v4] (v5) {\texttt{v5}};
+
+            % RAMIFICACIONS INFERIORS
+            % v10 sota v8/v9
+            \node[n, fill=orange!15, below=0.45cm of v8, xshift=1.5cm] (v10) {\texttt{v10}};
+
+            % Paradigmes terminals sota v14
+            \node[n, fill=purple!12, below=0.55cm of v14, xshift=-1.5cm] (mcts) {\texttt{v18}--\texttt{v20}};
+            \node[n, fill=purple!12, below=0.55cm of v14] (mm) {\texttt{v15}--\texttt{v17}};
+            \node[n, fill=yellow!20, below=0.55cm of v14, xshift=1.5cm] (il) {\texttt{v21}/\texttt{v22}};
+
+            % CONNEXIONS
             \draw[arr] (v1) -- (v2);
             \draw[arr] (v2) -- (v3);
             \draw[arr] (v3) -- (v6);
             \draw[arr] (v2) -- (v4);
             \draw[arr] (v4) -- (v5);
+
+            % Enllaç de reescriptura v6 -> v7 al mateix nivell
+            \draw[arr, dashed, gray!70!black] (v6) -- node[midway, above=8pt, font=\tiny\bfseries, color=gray!60!black] {Reescriptura} (v7);
+
             \draw[arr] (v7) -- (v8);
             \draw[arr] (v8) -- (v9);
-            \draw[arr] (v8) -- (v10);
+            \draw[arr] (v8.south) |- (v10.west);
             \draw[arr] (v9) -- (v11);
-            \draw[arr] (v10.east) -- (v11.south);
+            \draw[arr] (v10.east) -| (v11.south);
             \draw[arr] (v11) -- (v12);
             \draw[arr] (v12) -- (v13);
             \draw[arr] (v13) -- (v14);
@@ -442,6 +500,7 @@ Com es mostra a la Figura~\ref{fig:minimax_diagram}, per a cada torn l'agent con
 
 \begin{figure}[htbp]
     \centering
+    \hspace*{4cm}%
     \resizebox{0.75\textwidth}{!}{%
         \begin{tikzpicture}[
                 font=\footnotesize,
@@ -505,12 +564,12 @@ Mentre que Minimax només avalua un torn en el futur amb una fulla estàtica, la
 
 \subsubsection*{Decisions de disseny i funcionament}
 
-Com s'il·lustra a la Figura~\ref{fig:mcts_diagram}, la cerca s'adopta en un esquema de profunditat d'arbre $d=1$ a l'arrel per respectar els temps de resposta en temps real de Showdown. Per a cada decisió, s'obren branques per a totes les accions legals immediates i s'executen 100 iteracions de simulació:
+Com s'il·lustra a la Figura~\ref{fig:mcts_diagram}, la cerca s'adopta en un esquema de profunditat d'arbre $d=1$ a l'arrel (limitant la ramificació als fills immediats per contenir la complexitat en jocs de decisions simultànies i mantenir temps de resposta en temps real de Showdown $< 1$~segon). Per a cada decisió, s'obren branques per a totes les accions legals immediates i s'executa un pressupost fix de 100 iteracions de simulació:
 
 \begin{enumerate}
-    \item \textbf{Selecció:} Es tria l'acció fill a explorar aplicant un criteri d'exploració/explotació (UCB1 o PUCT amb prior de \texttt{v14}).
-    \item \textbf{Simulació (\emph{Rollout}):} Es reprodueix la partida durant 5 torns cap a endavant utilitzant un simulador local en memòria (\texttt{LocalSim}) basat només en la informació revelada.
-    \item \textbf{Avaluació i Retropropagació:} L'estat final de la simulació s'avalua amb el nucli heurístic \texttt{v14} i el resultat s'acumula a l'acció arrel. Al final de les 100 iteracions, es selecciona l'acció més visitada.
+    \item \textbf{Selecció:} Es tria l'acció fill a explorar aplicant un criteri d'exploració/explotació: UCB1 ($C=1{,}4$, constant teòrica estàndard $C \approx \sqrt{2}$) o PUCT amb prior de probabilitat de \texttt{v14}.
+    \item \textbf{Simulació (\emph{Rollout}):} Es reprodueix la partida durant 5 torns cap a endavant utilitzant un simulador local en memòria (\texttt{LocalSim}) basat només en la informació revelada. Una profunditat de 5 torns permet capturar efectes tàctics d'horitzó mitjà (acumulació de dany per perills d'entrada, modificadors o estats) sense introduir una divergència excessiva en la simulació estocàstica.
+    \item \textbf{Avaluació i Retropropagació:} L'estat final de la simulació s'avalua amb el nucli heurístic \texttt{v14} i el resultat s'acumula a l'acció arrel. Al final de les 100 iteracions, es selecciona l'acció més visitada ($\arg\max_a N_a$).
 \end{enumerate}
 
 \begin{figure}[htbp]
@@ -530,9 +589,9 @@ Com s'il·lustra a la Figura~\ref{fig:mcts_diagram}, la cerca s'adopta en un esq
             \node[card=blue] (c1) {};
             \node[tag=blue] at (c1.north) {1. Selecció};
             \node[item, text width=2.9cm] (c1_body) at (c1.center) {
-                \textbf{Arrel} $s_0$ ($d=1$)\\[3pt]
-                Tria branca $a^*$\\[2pt]
-                \tiny UCB1 / PUCT ($P=0{,}70$)
+            \textbf{Arrel} $s_0$ ($d=1$)\\[3pt]
+            Tria branca $a^*$\\[2pt]
+            \tiny UCB1 / PUCT ($P=0{,}70$)
             };
 
             % Step 2: Simulació
@@ -569,7 +628,7 @@ Com s'il·lustra a la Figura~\ref{fig:mcts_diagram}, la cerca s'adopta en un esq
 
             % Return loop arrow
             \draw[looparr] (c4.south) .. controls ($(c4.south)+(0,-0.75)$) and ($(c1.south)+(0,-0.75)$) .. (c1.south)
-                node[midway, fill=white, draw=teal!70!black, rounded corners=4pt, font=\tiny\bfseries, text=teal!90!black, inner sep=3pt] {Bucle de 100 iteracions per decisió};
+            node[midway, fill=white, draw=teal!70!black, rounded corners=4pt, font=\tiny\bfseries, text=teal!90!black, inner sep=3pt] {Bucle de 100 iteracions per decisió};
 
         \end{tikzpicture}%
     }
@@ -582,7 +641,7 @@ Es defineixen tres variants principals per aïllar la selecció de la funció d'
 \begin{itemize}
     \item \textbf{\texttt{v18} --- UCB1 sense prior:} Selecció pura per UCB1 ($C=1{,}4$) i avaluació de fulla basada en HP, modificadors, estats i perills. Avalua si la simulació estocàstica cap a endavant per si sola, sense guiatge expert, pot corregir els biaixos heurístics. Actua com a línia de base agnòstica amb cerca uniforme.
     \item \textbf{\texttt{v19} --- UCB1 amb fulla enriquida:} Manté la selecció UCB1, però incorpora a la fulla la ponderació per rols (Win-Con i Vital Wall), l'amenaça de KO i les dreceres tàctiques de \texttt{v14}. Mesura el guany de qualitat en el \textit{rollout} quan l'estat final es valora amb coneixement de domini avançat.
-    \item \textbf{\texttt{v20} --- PUCT amb prior heurístic:} Substitueix UCB1 per selecció PUCT esbiaixada amb un prior de $0{,}70$ sobre l'acció recomanada per \texttt{v14} i la fulla enriquida de \texttt{v19}. Comprova si guiar l'exploració de l'arbre amb priors d'expertesa aconsegueix concentrar les simulacions en les branques més promissòries.
+    \item \textbf{\texttt{v20} --- PUCT amb prior heurístic:} Substitueix UCB1 per selecció PUCT esbiaixada assignant una massa de probabilitat a priori de $P(a_{\text{v14}}) = 0{,}70$ a l'acció recomanada pel nucli \texttt{v14}, i redistribuint el $0{,}30$ restant de forma uniforme entre les $K-1$ accions legals alternatives ($P(a_{\text{alt}}) = \frac{0{,}30}{K-1}$). Amb un pressupost compost per només 100 iteracions per decisió (imposat pels requeriments de temps real de Showdown), la cerca uniforme d'UCB1 patia un alt soroll de simulació que provocava canvis injustificats en el 71,1\% dels torns. El prior de $0{,}70$ obliga la cerca a concentrar les primeres simulacions a validar la proposta de l'heurística d'expertesa, conservant alhora un 30\% de capacitat exploratòria per redescobrir alternatives tàctiques superiors quan les simulacions ho confirmin. Això redueix la taxa de discrepància al 18,7\% i maximitza el rendiment d'aquesta família.
 \end{itemize}
 
 Com en la família Minimax, les simulacions s'executen en un simulador local en memòria alimentat només amb la informació revelada (respectant la naturalesa POSG del joc) i es mesura la \textbf{mètrica de discrepància} respecte a \texttt{v14}.
@@ -620,77 +679,81 @@ El procés de construcció i entrenament del classificador XGBoost es sintetitza
 
 \subsubsection*{Dues arquitectures d'execució micro: Híbrida vs Pura Dual}
 
-Com s'il·lustra a la Figura~\ref{fig:imitation_architecture}, es dissenyen dues variants per avaluar el grau de delegació a l'heurística manual i mesurar la capacitat de generalització del model fora de distribució:
+Per avaluar el grau de delegació necessari a l'executor heurístic i mesurar la capacitat de generalització dels models d'imitació fora de la distribució d'entrenament, es dissenyen dues arquitectures d'execució micro contrastades:
+
+\begin{itemize}
+    \item \textbf{\texttt{v21} (Arquitectura Híbrida):} Combina la intuïció estratègica humana obtinguda de les repeticions d'alt nivell amb la seguretat del nucli heurístic. Funciona en tres etapes seqüencials:
+    \begin{enumerate}
+        \item \emph{Dreceres tàctiques d'emergència:} Abans de consultar el model après, avalua si es disparen les regles crítiques de \texttt{v14} (KO garantit immediat, resolució exhaustiva de finals amb $\le 2$ Pokémon, reacció a preparació rival i absorció d'estats). Si es compleixen, s'executa l'acció immediatament sense passar pel model.
+        \item \emph{Decisió macro per XGBoost:} Si no hi ha drecera tàctica, construeix el vector d'estat $s \in \mathbb{R}^{1150}$ i utilitza el classificador XGBoost per decidir la intenció d'alt nivell ($p(\text{canvi}) \ge \tau \implies \text{canviar}$, en cas contrari $\text{atacar}$).
+        \item \emph{Execució micro heurística:} Seleccionada la intenció macro, la decisió concreta de quin moviment executar o quin substitut introduir es delega al nucli \texttt{v14}, aprofitant el seu càlcul de dany i l'anàlisi d'avantatge de tipus.
+    \end{enumerate}
+
+    \item \textbf{\texttt{v22} (Arquitectura Pura Dual):} Prescindeix completament de qualsevol regla manual o drecera de \texttt{v14} per mesurar la capacitat de l'aprenentatge per imitació pur d'operar de forma autònoma (\emph{end-to-end}):
+    \begin{enumerate}
+        \item \emph{Decisió macro directa:} Avalua tots els torns sense filtres d'emergència mitjançant el classificador XGBoost per determinar la intenció d'atacar o canviar.
+        \item \emph{Execució micro de canvi contrafactual:} Quan la decisió és canviar, avalua hipotèticament el canvi a cada Pokémon disponible de la banqueta $c \in \mathcal{C}$ generant l'estat resultat $s'_c$. Passa $s'_c$ pel classificador XGBoost i selecciona el substitut que minimitza la probabilitat de necessitar un altre canvi immediat al torn següent ($\arg\min_c p_{\text{XGB}}(\text{canvi} \mid s'_c)$).
+        \item \emph{Execució micro d'atac per model d'atributs:} Si la decisió és atacar, avalua els atacs legals amb un segon model après entrenat sobre atributs sintetitzats (potència base, bonus STAB, efectivitat de tipus, prioritat del moviment i salut restant).
+    \end{enumerate}
+\end{itemize}
+
+Mentre que \texttt{v21} manté la protecció de les regles de domini davant d'estats fora de la distribució d'entrenament, \texttt{v22} avalua el límit de l'aprenentatge supervisat pur. La seva estructura en dos nivells i els seus fluxos d'execució es sintetitzen a la Figura~\ref{fig:imitation_architecture}.
 
 \begin{figure}[htbp]
     \centering
-    \resizebox{0.95\textwidth}{!}{%
+    \resizebox{0.88\textwidth}{!}{%
         \begin{tikzpicture}[
-                node distance=0.45cm and 0.5cm,
-                font=\footnotesize,
-                box/.style={rectangle, draw=#1!80!black, fill=#1!6, rounded corners=6pt, line width=0.8pt, align=center, inner sep=6pt},
-                tag/.style={rectangle, fill=#1!20, draw=#1!80!black, rounded corners=3pt, font=\bfseries\tiny, text=#1!90!black, inner sep=2.5pt},
-                arr/.style={->, >=stealth, line width=1.1pt, color=gray!70!black},
-                dasharr/.style={->, >=stealth, line width=1.1pt, color=gray!70!black, dashed}
+                node distance=0.5cm and 0.8cm,
+                font=\small,
+                box/.style={rectangle, draw=#1!80!black, fill=#1!8, rounded corners=6pt, line width=0.9pt, align=center, inner sep=6pt},
+                arr/.style={->, >=stealth, line width=1.1pt, color=gray!70!black}
             ]
 
-            % Entry State
-            \node[box=gray, text width=2.4cm] (state) {
-                \textbf{Estat de Batalla} ($s$)\\[2pt]
-                \tiny Replays Elo $\ge 1800$
+            % State Input
+            \node[box=gray, text width=2.2cm] (state) {
+                \textbf{Estat} ($s$)\\[2pt]
+                \tiny Elo $\ge 1800$
             };
 
-            % Macro Decision
-            \node[box=blue, right=0.7cm of state, text width=3.2cm] (macro) {
-                \textbf{Decisió Macro (XGBoost)}\\[3pt]
-                \tiny Predeix $\hat{y} \in \{\text{Atacar}, \text{Canviar}\}$\\
-                $p(\mathrm{canvi}) = \sigma(W \cdot x + b)$
+            % Macro Classifier
+            \node[box=blue, right=0.8cm of state, text width=2.8cm] (macro) {
+                \textbf{Macro XGBoost}\\[2pt]
+                \tiny Atacar vs Canviar
             };
 
-            % v21 Branch
-            \node[box=purple, above right=0.2cm and 0.8cm of macro, text width=3.8cm] (v21) {
-                \textbf{Variant \texttt{v21} (Híbrida)}\\[3pt]
-                \tiny 1. Filtra per dreceres tàctiques \texttt{v14}\\[1pt]
-                2. Executa micro-acció amb nucli \texttt{v14}
+            % v21 Hybrid Node
+            \node[box=purple, above right=0.3cm and 0.9cm of macro, text width=3.8cm] (v21) {
+                \textbf{\texttt{v21} Híbrida}\\[2pt]
+                \tiny Dreceres tàctiques + Micro \texttt{v14}
             };
 
-            % v22 Branch
-            \node[box=teal, below right=0.2cm and 0.8cm of macro, text width=3.8cm] (v22) {
-                \textbf{Variant \texttt{v22} (Pura Dual)}\\[3pt]
-                \tiny Canvi: Contrafactual ($\min p(\mathrm{canvi})$)\\[1pt]
-                Atac: Model de funcions (STAB, dany)
+            % v22 Pure Dual Node
+            \node[box=teal, below right=0.3cm and 0.9cm of macro, text width=3.8cm] (v22) {
+                \textbf{\texttt{v22} Pura Dual}\\[2pt]
+                \tiny Contrafactual + Model Atributs
             };
 
-            % Final Actions
-            \node[box=gray, right=0.7cm of v21, text width=2.2cm] (act21) {
-                \textbf{Acció Final}\\[2pt]
-                \tiny Acció \texttt{v21} ($a^*$)
+            % Action Outputs
+            \node[box=purple!80!black, fill=purple!20, right=0.8cm of v21, text width=1.8cm] (a21) {
+                \textbf{Acció \texttt{v21}}
             };
 
-            \node[box=gray, right=0.7cm of v22, text width=2.2cm] (act22) {
-                \textbf{Acció Final}\\[2pt]
-                \tiny Acció \texttt{v22} ($a^*$)
+            \node[box=teal!80!black, fill=teal!20, right=0.8cm of v22, text width=1.8cm] (a22) {
+                \textbf{Acció \texttt{v22}}
             };
 
             % Connectors
             \draw[arr] (state) -- (macro);
             \draw[arr] (macro.east) |- (v21.west);
             \draw[arr] (macro.east) |- (v22.west);
-            \draw[arr] (v21) -- (act21);
-            \draw[arr] (v22) -- (act22);
+            \draw[arr] (v21) -- (a21);
+            \draw[arr] (v22) -- (a22);
 
         \end{tikzpicture}%
     }
-    \caption{Arquitectura d'imitació jeràrquica amb desacoblament macro/micro. El classificador macro (XGBoost) decideix si atacar o canviar a partir de partides d'alt nivell. A nivell micro, \texttt{v21} delega l'execució al nucli heurístic \texttt{v14}, mentre que \texttt{v22} utilitza un model dual pur (contrafactual per canvis i model d'atributs per atacs).}
+    \caption{Arquitectura d'imitació jeràrquica. El classificador macro XGBoost prediu la intenció (atacar/canviar); \texttt{v21} combina filtres i execució amb \texttt{v14}, mentre que \texttt{v22} resol el nivell micro amb models apresos (contrafactual i atributs).}
     \label{fig:imitation_architecture}
 \end{figure}
-
-\begin{itemize}
-    \item \textbf{\texttt{v21} (Híbrida):} Aplica primer les dreceres tàctiques de \texttt{v14} (debilitament garantit, solver de finals, reacció a preparació, absorció d'estats). Quan aquestes regles no es disparen, consulta el model XGBoost per decidir la macro-acció; posteriorment, delega l'execució micro (quin atac fer o a quin Pokémon canviar) al nucli de regles \texttt{v14}. Aquest disseny hereta la seguretat i la robustesa heurística fora de la distribució d'entrenament.
-    \item \textbf{\texttt{v22} (Pura Dual):} Prescindeix completament de les regles de \texttt{v14}. Utilitza el mateix classificador macro XGBoost, però resol el nivell micro amb dos mecanismes apresos: si la decisió és canviar, selecciona el substitut per avaluació contrafactual (tria el candidat de banqueta que minimitza la probabilitat de necessitar un altre canvi immediat, $\min p(\text{canvi})$); si la decisió és atacar, avalua els moviments legals amb un segon model entrenat sobre atributs sintetitzats (potència, STAB, efectivitat, prioritat, HP).
-\end{itemize}
-
-El contrast entre ambdues permet aïllar el valor de les proteccions heurístiques: mentre que \texttt{v21} combina la intuïció estratègica humana amb la rigorositat de les regles de domini, \texttt{v22} mesura fins a quin punt l'aprenentatge per imitació pur pot funcionar de manera autònoma sense cap xarxa de seguretat manual.
 
 \subsection{Família DRL (MaskablePPO): currículum de dificultat creixent}
 \label{subsec:disseny_curriculum_ppo}
@@ -788,6 +851,7 @@ Es vol un $n$ prou gran perquè les diferències de taxa no siguin soroll de la 
 \end{enumerate}
 
 \input{tables/ci_sample_size}
+\input{tables/taxonomy_design}
 
 La matriu (Taula~\ref{tab:taxonomy_design}) és dirigida de $28 \times 28 = 784$ cel·les: 6 referències, 14 heurístiques, 3 Minimax, 3 MCTS i 2 d'imitació. Es fa dirigida ---$A$ vs $B$ separat de $B$ vs $A$--- pel biaix de seient. L'execució equival a més de \textbf{6,4 milions de batalles} dirigides. El PPO queda fora d'aquesta matriu i s'avalua contra \texttt{v12}, pels motius de la Secció~\ref{subsec:disseny_curriculum_ppo}.
 
@@ -813,33 +877,33 @@ Aquesta capa de telemetria permet caçar i estructurar automàticament en el fit
 
 \begin{enumerate}
     \item \textbf{Dinàmica de combat i pressió ofensiva:}
-    \begin{itemize}
-        \item \textit{Torns totals} i durada de la partida.
-        \item \textit{Salut percentual restant} ($\text{HP}_{\mathrm{us}}$ vs $\text{HP}_{\mathrm{opp}}$) i nombre de Pokémon debilitats, permetent distingir victòries per domini ofensiu de guerres de desgast extrem.
-    \end{itemize}
+          \begin{itemize}
+              \item \textit{Torns totals} i durada de la partida.
+              \item \textit{Salut percentual restant} ($\text{HP}_{\mathrm{us}}$ vs $\text{HP}_{\mathrm{opp}}$) i nombre de Pokémon debilitats, permetent distingir victòries per domini ofensiu de guerres de desgast extrem.
+          \end{itemize}
 
     \item \textbf{Mobilitat i caracterització de canvis:}
-    \begin{itemize}
-        \item \textit{Canvis voluntaris vs forçats}: El mòdul intercep els missatges de protocol per diferenciar quan un agent realitza un canvi estratègic voluntari de quan es veu obligat a canviar per debilitament del seu Pokémon o per efectes de moviments de \textit{phazing} (com \textit{Roar}, \textit{Whirlwind} o \textit{Dragon Tail}, detectats via la línia de protocol \texttt{drag}). Aquesta distinció és clau per separar el pivot tàctic del canvi de pànic.
-    \end{itemize}
+          \begin{itemize}
+              \item \textit{Canvis voluntaris vs forçats}: El mòdul intercep els missatges de protocol per diferenciar quan un agent realitza un canvi estratègic voluntari de quan es veu obligat a canviar per debilitament del seu Pokémon o per efectes de moviments de \textit{phazing} (com \textit{Roar}, \textit{Whirlwind} o \textit{Dragon Tail}, detectats via la línia de protocol \texttt{drag}). Aquesta distinció és clau per separar el pivot tàctic del canvi de pànic.
+          \end{itemize}
 
     \item \textbf{Freqüències de moviments i esdeveniments de combat:}
-    \begin{itemize}
-        \item \textit{Comptador de moviments executats}: Es registra l'ús individual de cada moviment (\texttt{move\_stats\_us/opp}) per analitzar la diversitat de repertori i detectar moviments dominants.
-        \item \textit{Factors d'atzar (RNG)}: S'intercepten els esdeveniments de cops crítics (\texttt{-crit}), fallades de precisió (\texttt{-miss}) i cops molt efectius (\texttt{-supereffective}) per avaluar l'impacte de la variància a curt termini.
-    \end{itemize}
+          \begin{itemize}
+              \item \textit{Comptador de moviments executats}: Es registra l'ús individual de cada moviment (\texttt{move\_stats\_us/opp}) per analitzar la diversitat de repertori i detectar moviments dominants.
+              \item \textit{Factors d'atzar (RNG)}: S'intercepten els esdeveniments de cops crítics (\texttt{-crit}), fallades de precisió (\texttt{-miss}) i cops molt efectius (\texttt{-supereffective}) per avaluar l'impacte de la variància a curt termini.
+          \end{itemize}
 
     \item \textbf{Activació de regles de domini i ablació heurística:}
-    \begin{itemize}
-        \item Registre de l'activació de blocs d'ablació: col·locació i eliminació de perills d'entrada (\textit{Stealth Rock}, \textit{Spikes}), execució de moviments d'amplificació de noves estadístiques (\textit{setup}), comprovació de KO garantits, ús de Teracristal·lització, protectors de bucles infinits (\texttt{loop\_guards}) i resolució de finals (\texttt{endgame\_solves}).
-    \end{itemize}
+          \begin{itemize}
+              \item Registre de l'activació de blocs d'ablació: col·locació i eliminació de perills d'entrada (\textit{Stealth Rock}, \textit{Spikes}), execució de moviments d'amplificació de noves estadístiques (\textit{setup}), comprovació de KO garantits, ús de Teracristal·lització, protectors de bucles infinits (\texttt{loop\_guards}) i resolució de finals (\texttt{endgame\_solves}).
+          \end{itemize}
 
     \item \textbf{Diagnòstic intern de paradigmes avançats:}
-    \begin{itemize}
-        \item \textit{Imitació Jeràrquica (XGBoost)}: Registre de la probabilitat acumulada $p(\text{canvi})$ i de les decisions macro adoptades (\texttt{xgb\_switches} vs \texttt{xgb\_stays}).
-        \item \textit{Cerca (Minimax / MCTS)}: Enregistrament de les vegades que el mòdul de cerca modifica l'acció suggerida per l'heurística base (\texttt{search\_switches}, \texttt{search\_moves}) i la mètrica de discrepància.
-        \item \textit{Robustesa i errors}: Comptador de decisions per defecte (\texttt{fallback\_moves}) o moviments no permesos (\texttt{error\_moves}) per garantir que la política no cau en accions degenerades.
-    \end{itemize}
+          \begin{itemize}
+              \item \textit{Imitació Jeràrquica (XGBoost)}: Registre de la probabilitat acumulada $p(\text{canvi})$ i de les decisions macro adoptades (\texttt{xgb\_switches} vs \texttt{xgb\_stays}).
+              \item \textit{Cerca (Minimax / MCTS)}: Enregistrament de les vegades que el mòdul de cerca modifica l'acció suggerida per l'heurística base (\texttt{search\_switches}, \texttt{search\_moves}) i la mètrica de discrepància.
+              \item \textit{Robustesa i errors}: Comptador de decisions per defecte (\texttt{fallback\_moves}) o moviments no permesos (\texttt{error\_moves}) per garantir que la política no cau en accions degenerades.
+          \end{itemize}
 \end{enumerate}
 
 Aquest conjunt integrat de telemetria garanteix que cada cel·la de la matriu d'experiments no només produeixi un percentatge de victòries, sinó també una signatura conductual completa diagnòstica de l'agent.
@@ -852,26 +916,36 @@ A banda de la matriu d'avaluació creuada principal de $28 \times 28$ cel·les e
 
 \subsection{Integració exploratòria d'agents LLM}
 
-Els agents basats en models de llenguatge (LLM), com \textbf{PokéChamp} i \textbf{PokéLLMon} (revisats a la Secció~\ref{sec:estat_art}), es van considerar inicialment per tancar el mapa de l'estat de l'art com a part del benchmark. Aquests agents operen serialitzant l'estat estructurat de la batalla en un prompt de text natural (que inclou l'equip actiu, la banqueta, els moviments i habilitats ja revelats i la taula d'efectivitats de tipus) i generen la decisió mitjançant raonament de cadena de pensament (\textit{Chain-of-Thought}, CoT).
+Els agents basats en models de llenguatge de gran escala (LLM), com \textbf{PokéChamp} i \textbf{PokéLLMon} (revisats a la Secció~\ref{sec:estat_art}), s'inclouen com una exploració conceptual per avaluar la capacitat del raonament en llenguatge natural (\textit{Chain-of-Thought}, CoT) en la presa de decisions en temps real. Aquests agents serialitzen l'estat observable de la batalla (Pokémon actius, banqueta, moviments revelats i taula d'efectivitats) en un prompt textual i deleguen l'elecció de l'acció a un model generatiu.
 
-Per dur a terme aquestes proves sense dependre d'APIs externes de pagament i per mantenir el control del flux de dades, es va implementar una infraestructura d'inferència local basada en el servidor \textbf{Ollama}~\cite{ollama_2023}, executant models oberts com ara \textit{Qwen 3.5 8B} o \textit{Llama 3}. La descàrrega i l'acceleració de la inferència es van articular mitjançant la plataforma computacional \textbf{NVIDIA CUDA}~\cite{nvidia_cuda} sobre targetes gràfiques (GPU) dedicades.
-
-No obstant això, les proves de rendiment i latència van revelar importants limitacions pràctiques per a la seva inclusió a la matriu massiva:
+Des del punt de vista del disseny experimental, la integració dels LLM s'estableix com un \textbf{estudi exploratori de viabilitat} i no com una fila de la matriu principal d'avaluació creuada per dues raons de disseny:
 \begin{enumerate}
-    \item \textbf{Latència d'inferència i \textit{timeouts}:} Tot i comptar amb acceleració CUDA per GPU, el processament de prompts de context extens i la generació autoregressiva de l'explicació raonada requereixen des de diversos segons fins a més d'un minut per torn. En entorns de temps real a Pokémon Showdown, això produeix desconnexions i pèrdues de torn per \textit{timeout} de la presa de decisions.
-    \item \textbf{Contenció de recursos en execució paral·lela:} L'arquitectura de treballadors paral·lels (Secció~\ref{sec:arquitectura_avaluacio}) executa múltiples instàncies concurrents de combat. La consulta simultània de diversos treballadors al servidor Ollama genera colls d'ampolla de memòria VRAM a la GPU i commutacions de context a CUDA, saturant el motor d'inferència.
-    \item \textbf{Infeasibilitat computacional del volum:} Executar cel·les de $n=10.000$ partides per a un agent LLM requeriria mesos de temps continu de GPU, trencant l'homogeneïtat temporal i el contracte de volum del benchmark.
+    \item \textbf{Asimetria de la latència de decisió:} La generació autoregressiva d'un LLM requereix diversos segons o minuts per torn, a diferència de les respostes en mil·lilisegons de les heurístiques o la cerca rasa. Això introdueix un desfasament en entorns de temps real a Showdown.
+    \item \textbf{Incompatibilitat de pressupost de volum:} Executar la matriu massiva ($n=10.000$ partides per cel·la) amb agents generatius és inabastable sota un pressupost de temps i còmput homogeni.
 \end{enumerate}
 
-Per aquests motius, els agents LLM es classifiquen formalment com una \textbf{prova exploratòria de capacitat i viabilitat tècnica}, quedant exclosos de la matriu de $28 \times 28$ per garantir la comparabilitat computacional rigorosa i el compliment dels terminis de l'estudi.
+Per tant, l'abast dels LLMs es restrringeix a validar la compatibilitat de l'arquitectura i analitzar el cost temporal per decisió, mentre que la comparació competitiva rigorosa del benchmark es reserva per a les 28 polítiques de les famílies anteriors.
 
-\subsection{Protocol d'avaluació PPO contra referència}
+\subsection{Avaluació dedicada de MaskablePPO}
 
-MaskablePPO s'avalua en un experiment separat contra \texttt{v12}, amb $n=10.000$ partides i el model congelat en finalitzar el currículum. Es fa així ---i no com a fila de la matriu--- perquè l'agent ha entrenat específicament contra oponents d'aquest currículum; mesurar-lo contra 27 polítiques no especialitzades barrejaria generalització amb overfitting al rival de la fase~3. Aquest protocol és el que tanca la fase~3 de la Taula~\ref{tab:ppo_curriculum_design}.
+L'agent MaskablePPO no s'inclou com una fila addicional de la matriu d'avaluació creuada, sinó que s'avalua mitjançant un experiment dedicat contra \texttt{v12} amb els pesos del xarxa congelats en finalitzar el currículum. Aquest disseny respon a dues raons metodològiques:
+\begin{enumerate}
+    \item \textbf{Alineació amb el currículum:} L'agent s'ha entrenat de forma progressiva per superar oponents de dificultat creixent fins a la fase final contra \texttt{v12} (Secció~\ref{subsec:disseny_curriculum_ppo}). Mesurar-lo contra l'oponent de referència valida la convergència de la darrera porta del currículum (Taula~\ref{tab:ppo_curriculum_design}).
+    \item \textbf{Aïllament del biaix d'entrenament:} Incloure PPO a la matriu general contra 27 polítiques no especialitzades barrejaria el rendiment sobre l'objectiu d'aprenentatge amb la generalització davant d'estats fora de la distribució d'entrenament.
+\end{enumerate}
 
-\subsection{Avaluació en la classificació pública}
+\subsection{Avaluació en la classificació pública i coordinació amb desenvolupadors}
 
-La matriu és un entorn tancat: equips aleatoris, bots, sense humans. Es vol una prova de validesa externa sobre el mateix protocol de Showdown, però contra jugadors reals. Per això \texttt{v14} ---l'heurística terminal, orientada a rivals humans--- es juga a la classificació pública oficial. Aquesta mostra no substitueix la matriu: la complementa, amb $n$ menor i oponents no controlats.
+La matriu principal avalua els agents en un entorn controlat entre bots i equips aleatoris. Per aportar validesa externa, l'heurística terminal \texttt{v14} es desplega a la classificació pública oficial de Pokémon Showdown (\emph{ladder}) contra jugadors humans reals, oferint un contrast en condicions de competició oberta.
+
+A fi d'assegurar un desplegament ètic i conformat amb la normativa de la plataforma, es va establir contacte directe amb l'equip de desenvolupadors oficials de Pokémon Showdown i Smogon mitjançant els seus servidors de Discord (\emph{Showdown! Coding} i \emph{Smogon Development}). Les consultes amb l'equip tècnic (com ara el desenvolupador \texttt{\_iforgetwhyimhere}) van permetre confirmar aspectes clau de la infraestructura:
+\begin{itemize}
+    \item \textbf{Absència de registre formal per a bots de batalla:} El rang \emph{Global Bot} s'assigna exclusivament a xatbots de moderació amb permisos HTML, mentre que els agents de batalla operen sota el mateix protocol de connexió WebSocket que els usuaris estàndard.
+    \item \textbf{Gestió de la taxa de connexió:} La plataforma aplica un control automàtic de freqüència (\emph{rate-limiting} de 12 partides cada 3 minuts) per evitar la saturació del servidor, sense aplicar restriccions permanents d'IP per activitat continuada de combat.
+    \item \textbf{Integritat de les estadístiques de l'escala:} Pokémon Showdown disposa de mecanismes automàtics per filtrar el tràfic de bots del càlcul de les estadístiques oficials d'ús del \emph{metagame}, garantint que l'avaluació de l'agent no alterés les dades públiques.
+\end{itemize}
+
+Aquesta coordinació prèvia va validar la viabilitat del protocol d'avaluació pública, adaptant la velocitat d'execució de l'agent a les restriccions del servidor i garantint la reproductibilitat del desplegament en entorns reals.
 
 % ============================================================
 \section{Amenaces a la validesa i reproductibilitat}

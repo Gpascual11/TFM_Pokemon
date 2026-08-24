@@ -4,15 +4,26 @@
 
 La matriu de 784 cel·les i l'entrenament PPO requereixen una màquina estable, accés remot i supervisió d'execucions llargues. Aquest capítol documenta el maquinari, la xarxa, les notificacions i les dependències. El coordinador dels experiments es descriu al Capítol~\ref{chap:implementacio}.
 
-\section{Organització del projecte}
+\section{Organització del projecte i gestió amb Kanban}
 \label{sec:kanban}
 
-El desenvolupament s'ha organitzat amb un tauler Kanban dividit en objectius, tasques pendents, treball en curs i tasques completades. Cada targeta representa una unitat verificable, com una versió heurística, un agent de cerca, un entrenament o una secció de la memòria.
+El desenvolupament del projecte s'ha organitzat mitjançant una metodologia àgil basada en un tauler \textbf{Kanban} (Figura~\ref{fig:kanban}), dividit en sis seccions funcionals per controlar l'abast i prioritzar el treball:
+
+\begin{itemize}
+    \item \textbf{\textit{Aim of the study}:} Defineix els objectius principals, hipòtesis de recerca i el disseny dels 5 paradigmes.
+    \item \textbf{\textit{Tentative (If we have time)}:} Línies d'investigació secundàries o exploratòries (com els agents LLM i proves multigeneracionals).
+    \item \textbf{\textit{To Do (Icebox/later)}:} Idees i tasques congelades a llarg termini per evitar la dispersió de l'abast (\textit{scope creep}).
+    \item \textbf{\textit{To Do}:} Tasques pendents immediates i prioritzades de codi, simulació o redacció.
+    \item \textbf{\textit{In Progress}:} Treball actiu en desenvolupament, entrenament PPO o execució de la matriu.
+    \item \textbf{\textit{Done}:} Mòduls finalitzats, simulacions executades, dades validades i seccions redactades.
+\end{itemize}
+
+Aquesta estructura ha garantit una gestió eficient de les tasques i una traçabilitat directa amb el repositori de codi (Secció~\ref{sec:git_metrics}).
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{diagrams/kanban.png}
-    \caption{Tauler Kanban utilitzat per organitzar el desenvolupament del TFM.}
+    \caption{Tauler Kanban del projecte dividit en les sis seccions d'organització del treball.}
     \label{fig:kanban}
 \end{figure}
 
@@ -20,7 +31,15 @@ El desenvolupament s'ha organitzat amb un tauler Kanban dividit en objectius, ta
 
 \subsection{Fase 1: prototipatge en portàtil}
 
-El prototip va córrer en un Intel Core Ultra 7 155H (22 fils) amb 16~GB de RAM. Un disc NVMe d'1~TB dedicat a \texttt{data/} es va muntar amb \textit{bind mount}. Amb 16~GB, múltiples Showdown + Python obligaven a \texttt{gc.collect()}, chunks petits i reinicis de Node.js: aquestes rutines neixen d'aquesta fase.
+El desenvolupament inicial, la construcció de les primeres heurístiques (\texttt{v1}--\texttt{v6}) i la redacció de la memòria es van dur a terme en un ordinador portàtil d'alta mobilitat:
+
+\begin{itemize}
+    \item \textbf{Processador (CPU):} Intel Core Ultra 7 155H (16 nuclis i 22 fils fins a 4,8~GHz), utilitzat per a la programació de mòduls i proves d'integració inicials.
+    \item \textbf{Memòria RAM:} 16~GB, idonis per al desenvolupament i la redacció, però condicionats en executar múltiples instàncies de Showdown en paral·lel.
+    \item \textbf{Emmagatzematge:} SSD NVMe d'1~TB dedicat al directori \path{data/} i a les dades de treball.
+\end{itemize}
+
+Aquesta fase de prototipatge va permetre identificar les primeres restriccions de memòria RAM, impulsant el disseny de neteges amb \texttt{gc.collect()}, lots de partides continguts i el reinici periòdic dels servidors Node.js.
 
 \subsection{Fase 2: estació de treball}
 
@@ -66,25 +85,72 @@ Pel que fa a la dimensió del codi font, el directori principal \path{src/} comp
 \end{itemize}
 Aquesta base de codi suma més de \textbf{42.000 línies de programari} desenvolupat específicament per a aquest treball, reflectint una arquitectura modular, estructurada i escalable.
 
-\section{Accés remot: Tailscale}
+\section{Accés remot i continuïtat: Tailscale i tmux}
+\label{sec:tailscale}
 
-El portàtil i la torre formen una xarxa privada amb \textbf{Tailscale}~\cite{tailscale} (WireGuard). SSH va per aquesta malla, sense obrir el port 22 al WAN. L'editor (Cursor / VS Code) treballa amb Remote-SSH sobre el disc del servidor: el codi, els CSV i els checkpoints PPO viuen a la torre.
-
-Les execucions llargues i els entrenaments PPO s'executen dins de \textbf{tmux}; així, una desconnexió del portàtil no interromp el coordinador ni el procés CUDA.
-
-\section{Bot de Telegram}
-
-Els scripts de llançament de \path{src/p00_core/scripts/runs_benchmark/} i el monitor \path{src/p00_core/scripts/seguretat_tfm.sh} envien notificacions mitjançant un bot de Telegram~\cite{telegram_bot_api}. El token s'emmagatzema a \texttt{.env} i no es versiona.
-
-Funcions que s'han usat de debò:
+Per treballar de manera remota des del portàtil sobre l'estació de treball sense comprometre la seguretat del sistema, s'ha configurat una xarxa privada virtual (\emph{VPN}) basada en \textbf{Tailscale}~\cite{tailscale} (protocol \textit{WireGuard}):
 
 \begin{itemize}
-    \item \textbf{Avisos de progrés:} inici i final d'un enfrontament, reintents, temps d'espera i partides completades.
-    \item \textbf{Supervisió de recursos:} temperatura de CPU i NVMe, ús de memòria i aturada d'emergència a $92^\circ$C.
-    \item \textbf{Comandes interactives} mitjançant \texttt{seguretat\_tfm.sh}: consulta de l'estat, resum de la sessió, registres i pausa o represa de l'execució.
+    \item \textbf{Xarxa privada xifrada:} El portàtil i la torre formen una xarxa en malla (\emph{mesh network}) privada. El servei SSH opera exclusivament dins d'aquesta xarxa, evitant obrir el port 22 a Internet (WAN) i aïllant l'estació de treball d'atacs externs.
+    \item \textbf{Desenvolupament remot transparent:} Mitjançant l'extensió \textit{Remote-SSH} de l'editor (Cursor / VS Code), el desenvolupament es fa des del portàtil mentre l'execució de codi, el processament de CSVs i la inferència CUDA tenen lloc directament a la torre.
+    \item \textbf{Continuïtat de sessions amb \texttt{tmux}:} Les execucions de la matriu i els entrenaments PPO s'executen dins de sessions persistents de \textbf{tmux}. Així, qualsevol tancament del portàtil o desconnexió de xarxa no interromp els processos de fons.
 \end{itemize}
 
-Aquesta infraestructura permet supervisar les execucions sense exposar serveis directament a Internet: Tailscale proporciona l'accés remot i Telegram informa del progrés.
+Aquesta combinació garanteix un entorn de desenvolupament remot segur, àgil i capaç de mantenir execucions sostenibles 24/7.
+
+\section{Bot de Telegram i monitoratge de seguretat}
+\label{sec:telegram_bot}
+
+L'execució sostinguda de més de 52,7 milions de batalles durant setmanes ininterrompudes (24/7) exigeix un sistema de supervisió passiva i interactiva que operi sense intervenció manual. Aquesta funció es materialitza mitjançant un bot de Telegram dedicat i el dimoni de monitoratge \path{src/p00_core/scripts/seguretat_tfm.sh}.
+
+\subsection{Creació del bot i integració en scripts}
+
+\begin{itemize}
+    \item \textbf{Creació i credencials de l'API:} El bot es va crear mitjançant el \textit{BotFather} oficial de Telegram, generant un token privat d'API (\texttt{TELEGRAM\_TOKEN}) i un identificador de xat (\texttt{TELEGRAM\_CHAT\_ID}). Per motius de seguretat, aquestes claus s'emmagatzemen al fitxer d'entorn local \texttt{.env} (fora del control de versions de Git).
+    \item \textbf{Integració en els scripts de llançament (\texttt{run\_*.sh}):} Els scripts automatitzats de la matriu (\path{src/p00_core/scripts/runs_benchmark/}) llegeixen el token i envien notificacions HTTP POST directes mitjançant la comanda \texttt{curl} davant de qualsevol esdeveniment rellevant (inici/final d'un enfrontament $A \text{ vs } B$ o completació d'un bloc de 10.000 partides).
+\end{itemize}
+
+\subsection{Dimoni de seguretat i protecció de maquinari}
+
+El script \texttt{seguretat\_tfm.sh} s'executa com un dimoni permanent en segon pla dins d'una sessió de \texttt{tmux}. La seva funció primària és la protecció física i operativa de l'estació de treball mitjançant la lectura contínua de \texttt{lm-sensors}:
+
+\begin{itemize}
+    \item \textbf{Supervisió tèrmica (CPU, RAM i NVMe):} Registra la temperatura de la CPU AMD Ryzen 7 5700X3D (\texttt{Tctl}), els mòduls RAM (\texttt{jc42}) i l'SSD NVMe (\texttt{Composite}). Estableix un llindar d'avís als $85^\circ\text{C}$ (CPU) / $70^\circ\text{C}$ (RAM/NVMe) i un protocol d'aturada d'emergència (\emph{panic shutdown}) als $92^\circ\text{C}$ (CPU) / $80^\circ\text{C}$ (RAM/NVMe) per evitar la degradació del maquinari sota càrrega 24/7.
+    \item \textbf{Recuperació automàtica de memòria RAM:} Quan el consum de memòria arriba als $27{,}5~\text{GB}$ (de $32~\text{GB}$), el dimoni buida automàticament la memòria cau del sistema (\emph{PageCache} via \texttt{vm.drop\_caches=3}). Si la memòria s'apropa als $29{,}0~\text{GB}$, reinicia les instàncies de Showdown per alliberar memòria V8 sense perdre el progrés de les batalles.
+\end{itemize}
+
+\subsection{Comandes interactives i notificacions automàtiques}
+
+El dimoni escolta les comandes del xat mitjançant la tècnica de \textit{Long Polling} nativa de Telegram (\texttt{/getUpdates?timeout=25}), mantenint la connexió dormant als servidors de Telegram amb un consum de CPU del 0\% fins que l'usuari interacciona:
+
+\begin{itemize}
+    \item \textbf{Comanda interactiva \texttt{/now} (o \texttt{/status}):} Analitza els CSV temporals de l'enfrontament en curs (\texttt{\_tmp\_*.csv}), calcula les files jugades, el percentatge de progrés, la velocitat actual, l'estimació de temps restant (ETA) i la temperatura exacta de CPU, RAM i NVMe, retornant un informe complet a l'instant.
+    \item \textbf{Informe matinal automàtic (09:00 AM):} Cada matí a les 09:00 envia un resum diari consolidat amb el nombre de batalles disputades en les últimes 24 hores, cel·les de la matriu tancades i l'estat general de salut del servidor.
+    \item \textbf{Alertes \textit{push} d'incidències:} Envia avisos immediats quan un procés s'atura, es reinicia un servidor Showdown o es detecta un procés de cerca bloquejat.
+\end{itemize}
+
+\subsection{Utilitat i valor pràctic}
+
+L'ús del bot de Telegram ha resultat indispensable per a l'èxit de la fase experimental: ha permès supervisar setmanes d'execució sostinguda de 52,7 milions de batalles des de qualsevol dispositiu mòbil amb total pau mental, evitant l'obligació de mantenir connexions SSH obertes i prevenint de forma activa avaries per sobreescalfament o saturació de RAM.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{diagrams/telegram_sample1.jpeg}
+        \caption{Menú de comandes interactives.}
+        \label{fig:telegram_sample_jpeg}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{diagrams/telegram_sample1.png}
+        \caption{Execució de \texttt{/now}, resum diari i alertes.}
+        \label{fig:telegram_sample_png}
+    \end{subfigure}
+    \caption{Captures de la interfície del bot de Telegram: (a) mostra del menú complet de comandes interactives disponibles; (b) flux real de notificacions amb l'execució de \texttt{/now}, el resum diari automàtic de les 09:00 AM i les alertes automàtiques de finalització, reinici o aturada per bloqueig.}
+    \label{fig:telegram_samples}
+\end{figure}
 
 \section{Dependències}
 
@@ -103,6 +169,22 @@ El gestor de paquets és \textbf{uv}~\cite{uv} amb Python \textbf{3.12} i \textt
 \end{itemize}
 
 El fork \texttt{pokechamp/} s'incorpora al \texttt{sys.path} dels processos que necessiten \texttt{LocalSim} o Abyssal. Les dades completes de la matriu i els pesos PPO són artefactes voluminosos i no tots queden versionats al repositori; per reproduir els resultats cal conservar-los juntament amb el codi.
+
+\subsection{Congelació de versions i integració dels tres repositoris clau}
+
+El projecte s'articula entorn de tres repositoris base: el motor de simulació oficial \textbf{Pokémon Showdown} (Node.js), el marc de connexió \textbf{\textit{poke-env}} (Python, sèrie 0.11.x) i l'entorn de cerca/simulació local \textbf{\textit{PokéChamp}} (\texttt{pokechamp/}). La gestió d'aquests tres components respon a dues decisions d'enginyeria fonamentals:
+
+\begin{enumerate}
+    \item \textbf{Congelació estricta de versions i immutabilitat del motor:}
+          Tant el servidor \textit{Pokémon Showdown} com \textit{poke-env} es van fixar en revisions concretes des de l'inici de l'experimentació i no s'han actualitzat a meitat del projecte. Aquesta congelació és indispensable per a la reproductibilitat científica: qualsevol actualització del servidor a meitat de la matriu hauria introduït canvis en les fórmules de dany, velocitats o efectes de la Generació IX, alterant les condicions de combat entre les primeres cel·les executades i les darreres.
+
+    \item \textbf{Evolució de submòduls/\textit{forks} externs a integració directa al repositori:}
+          En les primeres etapes del desenvolupament, els tres repositoris (\textit{Pokémon Showdown}, \textit{poke-env} i \textit{PokéChamp}) es van incorporar mitjançant \textit{forks} i submòduls de Git externs per mantenir la separació formal de codi. Tanmateix, a mesura que avançava el projecte, es van integrar directament com a directoris locals a la llista font del repositori principal (\path{pokemon-showdown/}, \path{poke_env/} i \path{pokechamp/}). Aquesta decisió ha aportat dos beneficis determinants:
+          \begin{itemize}
+              \item \textbf{Llibertat de modificació i pegats manuals:} Va permetre introduir ajustos directes al codi font (p. ex., pegats de rendiment i gestió de memòria a Showdown, millores en l'estat local a \texttt{LocalSim} de PokéChamp i adaptacions de telemetria a \textit{poke-env}) sense haver de gestionar peticions de fusió (\emph{pull requests}) o sincronitzacions complexes de Git.
+              \item \textbf{Portabilitat i compatibilitat immediata entre equips:} Va resoldre els problemes de compatibilitat en migrar l'entorn entre el portàtil de prototipatge i l'estació de treball. En clonar el repositori principal, tots els servidors, simuladors i pegats estan immediatament disponibles i operatius sense dependre d'enllaços de submòduls externs trencats.
+          \end{itemize}
+\end{enumerate}
 
 \section{Ecosistema de redacció i documentació en \LaTeX}
 \label{sec:perque_latex}
@@ -125,39 +207,43 @@ El desenvolupament d'aquest Treball de Final de Màster s'ha caracteritzat per u
 
 \subsection{Desglossament de recursos i optimització de costos}
 
-Els costos del projecte es resumeixen en quatre eixos principals:
+Els costos operatius del projecte es resumeixen en quatre eixos principals:
 
 \begin{enumerate}
-    \item \textbf{Maquinari i equips de còmput (0,00~€):} Tant el portàtil de desenvolupament inicial com l'estació de treball principal (AMD Ryzen 7 5700X3D, 32~GB RAM, NVIDIA RTX 2080 8~GB) són equips de propietat personal del desenvolupador utilitzats prèviament per a altres activitats. No s'ha realitzat cap adquisició de maquinari dedicada exclusivament al TFM.
-    \item \textbf{Temps d'execució i consum energètic 24/7 ($\approx 5,85$~€):} A causa de l'alta complexitat computacional de la matriu d'enfrontaments i la necessitat d'aprofitar al màxim el temps disponible, l'estació de treball va funcionar de manera continuada les \textbf{24 hores del dia durant 4 setmanes}, acumulant un total de \textbf{684,89 hores d'execució efectiva de màquina} (i 2.794,01 hores de processament acumulat per concurrència multiprocés) sobre més de \textbf{52,7 milions de batalles} (52.725.601 partides en 7.662 fitxers). El càlcul del temps d'execució, derivat de l'anàlisi dels registres temporals (\textit{timestamps}) ignorant intervals superiors a 24 hores entre execucions independents, es desglossa com segueix:
-    \begin{itemize}
-        \item \textbf{Matriu final de \textit{benchmarks} Gen 9:} Localitzada a \path{data/benchmarks/all_10k/gen9randombattle}, representa els resultats definitius i oficials del torneig (785 cel·les d'enfrontament i 6.410.109 batalles). Va requerir \textbf{471,38 hores de còmput continu de màquina} (19,64 dies complets) i un temps acumulat de procés de 831,20 hores.
-        \item \textbf{Resta de dades del repositori:} Comprèn la totalitat de fitxers de \path{data/} restant, incloent-hi els \textit{benchmarks} multigeneracionals (Gen 1 a Gen 8 de 10.000 partides per cel·la), bateries de validació de minimax, MCTS, aprenentatge per imitació, smoke tests i registres de desenvolupament (6.877 fitxers i 46.315.492 batalles). Va acumular \textbf{213,66 hores de còmput continu de màquina} (8,90 dies complets) i 1.962,81 hores de procés acumulat.
-        \item \textbf{Autoconsum solar diürn:} Durant les hores de sol, la instal·lació de \textbf{plaques solars domèstiques} va reduir dràsticament el cost energètic cobrint directament la demanda de la torre mitjançant energia renovable gratuïta.
-        \item \textbf{Consum nocturn de xarxa:} Durant les hores nocturnes i períodes sense insolació, el còmput continuat va requerir subministrament de la xarxa elèctrica convencional. Amb una potència mitjana de 135~W per a les $\approx 685$~h de còmput (92,5~kWh totals, dels quals aproximadament el 50\% van ser de xarxa nocturna a la tarifa real contractada de $0{,}126561$~€/kWh), el cost directe es xifra en uns \textbf{5,85~€}.
-        \item \textbf{Mode terminal \textit{headless}:} Per tal de minimitzar el consum de potència (Watts/hora) durant el funcionament 24/7, l'estació de treball es va executar en mode purament terminal (sense entorn gràfic GUI) supervisada mitjançant \texttt{tmux}, mantenint actius únicament els processos estrictament necessaris.
-    \end{itemize}
-    \item \textbf{Models de llenguatge i eines de desenvolupament (0,00~€):} Les proves exploratòries amb models de llenguatge (\textit{PokéChamp} i \textit{PokéLLMon}) es van executar de manera 100\% local mitjançant el motor \textbf{Ollama}, sense consumir cap API comercial de pagament. Així mateix, l'ús d'eines de desenvolupament basades en IA (Antigravity, Cursor, PyCharm i VS Code) es va realitzar mitjançant llicències d'estudiant/pro, permetent accedir a models LLM d'altes capacitats sense cap despesa econòmica.
-    \item \textbf{Infraestructura de programari i comunicacions (0,00~€):} Totes les eines de la cadena de valor (Pokémon Showdown, \textit{poke-env}, entorn de desenvolupament Python, Tailscale per a la xarxa privada virtual, Telegram Bot API per a la telemetria en temps real, i \LaTeX{} per a la redacció) són de codi obert (\emph{open-source}) o s'han utilitzat en les seves modalitats gratuïtes.
+    \item \textbf{Maquinari i equips (0,00~€):} Tant el portàtil inicial com l'estació de treball són equips de propietat personal preexistents del desenvolupador. No s'ha realitzat cap adquisició dedicada.
+    \item \textbf{Temps d'execució i consum energètic ($\approx 5,85$~€):} L'estació de treball va funcionar de manera continuada 24/7 durant 4 setmanes, acumulant \textbf{684,89 hores de còmput continu de màquina} (471,38~h per a la matriu final Gen 9 i 213,66~h per a la resta de dades) sobre més de \textbf{52,7 milions de batalles}:
+          \begin{itemize}
+              \item \textbf{Autoconsum solar diürn:} Durant les hores de sol, la instal·lació de \textbf{plaques solars domèstiques} va cobrir la demanda de la torre amb energia renovable gratuïta. Com s'il·lustra a la Figura~\ref{fig:solar_panels}, la producció fotovoltaica va cobrir el consum elèctric global de l'habitatge (incloent-hi la torre de còmput) durant les hores d'alta insolació.
+              \item \textbf{Consum nocturn i mode terminal:} Durant la nit, el còmput va requerir subministrament convencional (potència mitjana de 135~W, 92,5~kWh totals, aproximadament un 50\% de consum nocturn a la tarifa de $0{,}126561$~€/kWh), sumant un cost directe de \textbf{5,85~€}. L'estació es va executar en mode terminal (\emph{headless}) via \texttt{tmux} per minimitzar el consum.
+          \end{itemize}
+
+          \begin{figure}[H]
+              \centering
+              \includegraphics[width=0.45\linewidth]{diagrams/solar_panels.jpeg}
+              \caption{Captura del sistema de monitoratge energètic de la llar, mostrant la producció solar i el consum elèctric global de l'habitatge durant l'execució del TFM.}
+              \label{fig:solar_panels}
+          \end{figure}
+    \item \textbf{Models de llenguatge i eines d'IA (0,00~€):} Les proves amb LLMs es van executar 100\% localment amb \textbf{Ollama}, i l'ús d'eines basades en IA (Cursor, PyCharm, Antigravity) es va realitzar mitjançant llicències d'estudiant/pro sense cap despesa econòmica.
+    \item \textbf{Programari i comunicacions (0,00~€):} Totes les eines de la cadena de valor (Showdown, \textit{poke-env}, Tailscale, Telegram Bot API i \LaTeX{}) són de codi obert (\emph{open-source}) o en modalitat gratuïta.
 \end{enumerate}
 
 \begin{table}[htbp]
-\centering
-\caption{Resum del pressupost econòmic i costos directes del TFM.}
-\label{tab:cost_economic}
-\small
-\begin{tabularx}{\textwidth}{lX r}
-\toprule
-\textbf{Concepte} & \textbf{Estratègia d'optimització / Font} & \textbf{Cost Directe (€)} \\
-\midrule
-Maquinari i equips & Ús d'equips personals preexistents (sense adquisicions noves) & 0,00 \\
-Consum energètic 24/7 & 684,89~h efectives (471,38~h Gen 9 + 213,66~h resta; 0,126561~€/kWh) & 5,85 \\
-Inferència d'LLMs & Execució local amb Ollama i llicències d'estudiant (Cursor/PyCharm) & 0,00 \\
-Eines i Infraestructura & Programari de codi obert (\emph{open-source}) i serveis gratuïts & 0,00 \\
-\midrule
-\textbf{Cost Total Directe} & & \textbf{5,85} \\
-\bottomrule
-\end{tabularx}
+    \centering
+    \caption{Resum del pressupost econòmic i costos directes del TFM.}
+    \label{tab:cost_economic}
+    \small
+    \begin{tabularx}{\textwidth}{lX r}
+        \toprule
+        \textbf{Concepte}           & \textbf{Estratègia d'optimització / Font}                            & \textbf{Cost Directe (€)} \\
+        \midrule
+        Maquinari i equips          & Ús d'equips personals preexistents (sense adquisicions noves)        & 0,00                      \\
+        Consum energètic 24/7       & 684,89~h efectives (471,38~h Gen 9 + 213,66~h resta; 0,126561~€/kWh) & 5,85                      \\
+        Inferència d'LLMs           & Execució local amb Ollama i llicències d'estudiant (Cursor/PyCharm)  & 0,00                      \\
+        Eines i Infraestructura     & Programari de codi obert (\emph{open-source}) i serveis gratuïts     & 0,00                      \\
+        \midrule
+        \textbf{Cost Total Directe} &                                                                      & \textbf{5,85}             \\
+        \bottomrule
+    \end{tabularx}
 \end{table}
 
 Aquesta combinació d'autoconsum solar diürn, optimització de còmput en mode terminal, execució local d'LLMs i llicències d'estudiant ha permès contenir el cost energètic de les 684,89 hores (més de 4 setmanes) d'execució ininterrompuda 24/7 i completar el projecte de manera altament eficient i sostenible.
