@@ -3,14 +3,19 @@
 \caption{Tres formalismes de decisió. Pokémon Singles combina observació parcial, un oponent i transicions aleatòries; el POSG n'és el model conceptual, però les implementacions n'aproximen només fragments.}
 \label{tab:mdp_pomdp_posg}
 \small
+\renewcommand{\arraystretch}{1.3}
 \begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X}
 \toprule
  & \textbf{MDP} & \textbf{POMDP} & \textbf{POSG} \\
 \midrule
 Decisors & Un agent contra l'entorn. & Un agent; l'estat no és visible. & Dos o més agents amb objectius. \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 El que es veu & L'estat $s$. & Una observació $o$ de $s$. & Observacions privades per jugador. \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 Incertesa & Només $T$ si l'entorn és estocàstic. & $T$ i l'estat ocult. & $T$, estat ocult i política rival. \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 Política & $\pi(a\mid s)$. & $\pi(a\mid b)$ sobre una creença $b$. & Estratègies (sovint d'equilibri). \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 Aquest TFM & Referència pedagògica. & Aproxima l'observació vectorial del PPO. & Model del combat a dos; no es resol exactament. \\
 \bottomrule
 \end{tabularx}

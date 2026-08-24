@@ -214,7 +214,14 @@ on $N_{\mathrm{espècies}} \approx \mathbf{10^3}$ (corresponent a les $1.025$ es
     \label{eq:team_complexity}
 \end{equation}
 
-Estudis recents sobre entorns de decisió complexos en Pokémon com Angliss et al.~\cite{angliss_vgcbench} xifren l'espai combinatori d'equips competitius en l'ordre de \textbf{$10^{139}$} configuracions possibles. Per posar aquesta magnitud en perspectiva, el nombre de combinacions (\textbf{$10^{139}$}) supera astronòmicament el nombre total d'àtoms de l'univers observable (estimat en l'ordre de \textbf{$10^{80}$}), així com l'espai d'estats de jocs clàssics de la IA com els escacs ($\approx \mathbf{10^{47}}$) o el Go ($\approx \mathbf{10^{170}}$).
+Estudis recents sobre entorns de decisió complexos en Pokémon com Angliss et al.~\cite{angliss_vgcbench} xifren l'espai combinatori d'equips competitius en l'ordre de \textbf{$10^{139}$} configuracions possibles. Per posar aquesta magnitud en perspectiva, el nombre de combinacions (\textbf{$10^{139}$}) supera astronòmicament el nombre total d'àtoms de l'univers observable (estimat en l'ordre de \textbf{$10^{80}$}), així com l'espai d'estats de jocs clàssics de la IA com els escacs ($\approx \mathbf{10^{47}}$) o el Go ($\approx \mathbf{10^{170}}$), tal com s'il·lustra a la Figura~\ref{fig:state_space_complexity}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\linewidth]{images/diagrams/state_space_complexity.png}
+    \caption{Comparativa en escala logarítmica ($\log_{10}$) de l'espai combinatori d'equips Pokémon ($\approx 10^{139}$) respecte a l'espai d'estats dels escacs ($\approx 10^{47}$), el nombre d'àtoms de l'univers observable ($\approx 10^{80}$) i el joc del Go ($\approx 10^{170}$).}
+    \label{fig:state_space_complexity}
+\end{figure}
 
 Aquesta immensa varietat imposa un repte metodològic central en l'avaluació d'agents d'intel·ligència artificial. En formats d'equips lliures (\emph{Teambuilding} o \emph{Custom Teams}), la taxa de victòria d'un agent pot quedar fortament emmascarada per la superioritat o el desequilibri inicial de la composició de l'equip (meta-gaming), impossibilitant mesurar amb claredat si el rendiment es deu a una presa de decisions autònoma i tàctica de qualitat o a un avantatge estructural previ. Conseqüentment, per avaluar amb rigor el raonament executiu d'un agent cal desacoblar la fase de construcció d'equips de l'execució en combat.
 
@@ -225,12 +232,43 @@ Per aïllar la presa de decisions executives i eliminar els biaixos de construcc
 
 Aquesta generació procedural garanteix que els agents s'enfrontin de manera contínua a escenaris no vistos i variats. Mitjançant una avaluació basada en un volum significatiu de batalles, la variància associada a la generació d'equips es cancel·la estadísticament, garantint la significança dels resultats que es detallen en la metodologia (Capítol~\ref{chap:metodologia}) i en l'avaluació empírica (Capítol~\ref{chap:resultats}).
 
-Com a introducció conceptual a l'arquitectura d'execució, les simulacions es basen en \textbf{Pokémon Showdown}~\cite{pokemon_showdown}, el simulador de codi obert en Node.js/TypeScript que implementa amb exactitud les regles oficials del joc en un entorn \emph{headless} i local, i la llibreria en Python \textit{poke-env}~\cite{poke_env} (versió 0.11.x), que exposa la interfície de comunicació per a la connexió d'agents autònoms. Aquesta breu introducció serveix de fonament teòric abans de desenvolupar en profunditat la infraestructura d'execució, el protocol de comunicació i el disseny detallat dels entorns al Capítol~\ref{chap:metodologia}.
+Com a introducció conceptual a l'arquitectura d'execució, les simulacions es basen en \textbf{Pokémon Showdown}~\cite{pokemon_showdown}, el simulador de codi obert en Node.js/TypeScript que implementa amb exactitud les regles oficials del joc en un entorn \emph{headless} i local, i la llibreria en Python \textit{poke-env}~\cite{poke_env} (versió 0.11.x), que exposa la interfície de comunicació per a la connexió d'agents autònoms. Mentre que un jugador humà interactua habitualment a través de la interfície gràfica web (Figura~\ref{fig:pokemon_showdown_battle}), els agents d'intel·ligència artificial i els processos d'avaluació en línia de comandes (\emph{CLI}) operen sobre una representació estructurada de l'estat. A cada torn de combat, l'agent rep l'estat parcial del joc i ha de seleccionar una acció d'un espai discret format per fins a 4 moviments (amb l'opció addicional d'activar la Teracristal·lització) i fins a 5 canvis a companys d'equip no debilitats, tal com s'il·lustra a la Figura~\ref{fig:terminal_battle_example}. Aquesta breu introducció serveix de fonament teòric abans de desenvolupar en profunditat la infraestructura d'execució, el protocol de comunicació i el disseny detallat dels entorns al Capítol~\ref{chap:metodologia}.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{minipage}{0.88\textwidth}
+        \begin{scriptsize}
+\begin{verbatim}
+[Turn 7] Battle: gen9randombattle | Weather: None | Tera: Available (Water)
+Opponent: Dragapult (Lv. 79) | HP: 82% [231/282] | Moves: Shadow Ball, Draco Meteor, ...
+Active:   Garchomp (Lv. 74)   | HP: 100% [274/274] | Item: Life Orb | Boosts: None
+
+Available moves:
+  [1] Earthquake   (Ground, Physical, BP: 100, Acc: 100%, PP: 16/16)
+  [2] Outrage      (Dragon, Physical, BP: 120, Acc: 100%, PP: 16/16)
+  [3] Swords Dance (Normal, Status,   Boost: +2 Atk,     PP: 32/32)
+  [4] Stone Edge   (Rock,   Physical, BP: 100, Acc:  80%, PP:  8/8)
+
+Available switches:
+  [5] Corviknight  (Lv. 76, Flying/Steel)   | HP: 100% [269/269] | Healthy
+  [6] Iron Valiant (Lv. 78, Fairy/Fighting) | HP:  64% [151/236] | Healthy
+  [7] Rotom-Wash   (Lv. 82, Electric/Water) | HP: 100% [216/216] | Healthy
+  [8] Skeledirge   (Lv. 77, Fire/Ghost)     | HP:  42% [128/305] | Healthy
+
+> Choose action [1-4 (+ 'terastallize'), 5-8]: 1
+\end{verbatim}
+        \end{scriptsize}
+    \end{minipage}
+    \caption{Exemple compacte de text amb l'estat del combat i l'espai d'accions discret (moviments [1--4], Teracristal·lització i canvis [5--8]) disponible per a l'agent a cada torn.}
+    \label{fig:terminal_battle_example}
+\end{figure}
 
 \subsection{Síntesi del domini: Pokémon com a entorn benchmark ideal per a la IA}
 \label{subsec:sintesi_domini}
 
-En resum, el combat Pokémon en el format \texttt{gen9randombattle} configura un entorn de decisió d'una complexitat extraordinària. A diferència dels jocs tradicionals de la IA que aïllen només una o dues dificultats, Pokémon és un dels pocs dominis en la literatura que encreua simultàniament quatre reptes centrals de la intel·ligència artificial (Figura~\ref{fig:statistical_reason}):
+En resum, el combat Pokémon en el format \texttt{gen9randombattle} configura un entorn de decisió d'una complexitat extraordinària. Aquesta conceptualització sintetitzada i la taxonomia visual dels quatre reptes estratègics fonamentals (Figura~\ref{fig:statistical_reason}) s'inspiren i adapten directament de l'anàlisi de referència presentada per Aaron Traylor (investigador i doctor en ciències de la computació i ciències cognitives, a més de jugador d'elit de Pokémon competitiu VGC) en la seva obra divulgativa \emph{Competitive Pokémon may be Impossible to Explain}~\cite{traylor_competitive_pokemon}. La claredat pedagògica i el rigor amb què aquest treball desglossa les dimensions de decisió van resultar determinants com a marc introductori d'aquest capítol i van constituir l'espurna motivacional directa per iniciar aquest Treball de Final de Màster.
+
+A diferència dels jocs tradicionals de la IA que aïllen només una o dues dificultats, Pokémon és un dels pocs dominis en la literatura que encreua simultàniament quatre reptes centrals de la intel·ligència artificial (Figura~\ref{fig:statistical_reason}):
 
 \begin{enumerate}
     \item \textbf{Planificació a llarg termini (\emph{Long-Term Planning}):} Propi de jocs d'estratègia posicional pura com els \textbf{escacs} o el \textbf{Go}. A Pokémon, les decisions no es poden valorar aïlladament per al torn actual: cal gestionar un equip de sis criatures al llarg de desenes de torns, sacrificant Pokémon per conservar la iniciativa (\emph{tempo}), col·locant perills d'entrada (\emph{hazards}) o preparant condicionants de victòria (\emph{win conditions}) per al final del combat.
@@ -239,12 +277,12 @@ En resum, el combat Pokémon en el format \texttt{gen9randombattle} configura un
     \item \textbf{Informació imperfecta i oculta (\emph{Imperfect Information}):} Propi de jocs de cartes com el \textbf{Pòquer} o \textbf{\textit{Magic: The Gathering}}. L'estat inicial del rival (moviments no revelats, objectes, habilitats, IVs/EVs i Tipus Tera) roman ocult fins que s'exposa en combat, exigint a l'agent mantenir i actualitzar una distribució de creença sobre les variables no observades.
 \end{enumerate}
 
-La convergència d'aquests quatre eixos (esquematitzada a la Figura~\ref{fig:statistical_reason}) converteix el combat Pokémon en un entorn benchmark d'un interès excepcional per a la intel·ligència artificial. Cap d'aquests quatre reptes es pot abordar de manera aïllada, ja que la presa de decisions exigeix ponderar simultàniament la planificació temporal a llarg termini, l'estocasticitat del motor i la incertesa sobre les accions i l'estat del rival.
+La convergència d'aquests quatre eixos (esquematitzada a la Figura~\ref{fig:statistical_reason}, extreta de l'anàlisi de Traylor~\cite{traylor_competitive_pokemon}) converteix el combat Pokémon en un entorn benchmark d'un interès excepcional per a la intel·ligència artificial. Cap d'aquests quatre reptes es pot abordar de manera aïllada, ja que la presa de decisions exigeix ponderar simultàniament la planificació temporal a llarg termini, l'estocasticitat del motor i la incertesa sobre les accions i l'estat del rival.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.75\linewidth]{images/diagrams/stadistical_reason.jpeg}
-    \caption{Intersecció dels quatre eixos fonamentals de complexitat en IA i la seva correspondència amb altres jocs.}
+    \caption{Intersecció dels quatre eixos fonamentals de complexitat en IA i la seva correspondència amb altres jocs (adaptat del treball divulgatiu d'Aaron Traylor~\cite{traylor_competitive_pokemon}).}
     \label{fig:statistical_reason}
 \end{figure}
 
@@ -319,16 +357,13 @@ Cal destacar que el simulador central de Pokémon Showdown actua com un àrbitre
             textlabel/.style={font=\sffamily\scriptsize, align=center}
             ]
 
-            % Constrain bounding box so long title text does not push the diagram off-center
-            \useasboundingbox (-0.1, -18) rectangle (12.1, 2.1);
-
             % ==========================================
             % a) MDP DIAGRAM
             % ==========================================
-            \begin{scope}[xshift=0cm, yshift=0cm]
-                \node[font=\sffamily\bfseries, anchor=west] at (0, 1.4) {a) MDP (Informació Perfecta)};
-                \node[agent] (m_ag) at (0.9, -0.7) {Agent};
-                \node[env] (m_env) at (5, -0.7) {Entorn};
+            \begin{scope}[xshift=1.5cm, yshift=0cm]
+                \node[font=\sffamily\bfseries, anchor=west] at (0, 1.3) {a) MDP (Informació Perfecta)};
+                \node[agent] (m_ag) at (1.0, -0.6) {Agent};
+                \node[env] (m_env) at (5.4, -0.6) {Entorn};
 
                 % Action Arrow (top)
                 \draw[->, blue!70!black, thick] (m_ag.north east) -- node[midway, above, textlabel] {Acció $a$} (m_env.north west);
@@ -340,10 +375,10 @@ Cal destacar que el simulador central de Pokémon Showdown actua com un àrbitre
             % ==========================================
             % b) POMDP DIAGRAM
             % ==========================================
-            \begin{scope}[xshift=6.6cm, yshift=0cm]
-                \node[font=\sffamily\bfseries, anchor=west] at (0, 1.4) {b) POMDP (Informació Oculta - 1 Decisor)};
-                \node[agent] (p_ag) at (0.9, -0.7) {Agent};
-                \node[env] (p_env) at (6.6, -0.7) {Entorn};
+            \begin{scope}[xshift=10.2cm, yshift=0cm]
+                \node[font=\sffamily\bfseries, anchor=west] at (0, 1.3) {b) POMDP (Informació Oculta - 1 Decisor)};
+                \node[agent] (p_ag) at (1.0, -0.6) {Agent};
+                \node[env] (p_env) at (6.4, -0.6) {Entorn};
 
                 % Action Arrow (top)
                 \draw[->, blue!70!black, thick] (p_ag.north east) -- node[midway, above, textlabel] {Acció $a$} (p_env.north west);
@@ -354,7 +389,7 @@ Cal destacar que el simulador central de Pokémon Showdown actua com un àrbitre
                 \node[red!80!black, textlabel, above=0.05cm of X_pos] {Estat Ocult $s$};
 
                 % Partial Observation Cloud (Bottom)
-                \node[pobscloud, below=0.9cm of $(p_ag)!0.5!(p_env)$] (pobs_cloud) {Observació $o$\\Recompensa $r$};
+                \node[pobscloud, below=0.5cm of $(p_ag)!0.5!(p_env)$] (pobs_cloud) {Observació $o$\\Recompensa $r$};
                 \draw[->, green!60!black, thick] (p_env.220) |- (pobs_cloud.east);
                 \draw[->, blue!70!black, thick] (pobs_cloud.west) -| (p_ag.south);
             \end{scope}
@@ -362,12 +397,12 @@ Cal destacar que el simulador central de Pokémon Showdown actua com un àrbitre
             % ==========================================
             % c) POSG TEÒRIC GENERAL (Model Abstracte)
             % ==========================================
-            \begin{scope}[xshift=0cm, yshift=-5.5cm]
-                \node[font=\sffamily\bfseries, anchor=west, align=left, text width=12cm] at (-0.05, 1.6) {c) POSG Teòric (Model abstracte de 2 jugadors i observacions privades)};
+            \begin{scope}[xshift=2cm, yshift=-4.8cm]
+                \node[font=\sffamily\bfseries, anchor=west] at (0, 1.3) {c) POSG Teòric (Model abstracte de 2 jugadors i observacions privades)};
 
-                \node[agent] (ag1) at (0.9, -0.3) {Jugador 1};
-                \node[env] (env_gen) at (6.0, -0.3) {Entorn\\(Estat $s$)};
-                \node[agent] (ag2) at (11.1, -0.3) {Jugador 2};
+                \node[agent] (ag1) at (1.0, -0.4) {Jugador 1};
+                \node[env] (env_gen) at (6.8, -0.4) {Entorn\\(Estat $s$)};
+                \node[agent] (ag2) at (12.6, -0.4) {Jugador 2};
 
                 % Action Arrows to Environment
                 \draw[->, blue!70!black, thick] (ag1.north east) -- node[midway, above, textlabel] {Acció $a_1$} (env_gen.north west);
@@ -384,11 +419,11 @@ Cal destacar que el simulador central de Pokémon Showdown actua com un àrbitre
                 \node[red!80!black, textlabel, below=0.08cm of X_pos2] {Informació Oculta};
 
                 % Observation Clouds (Bottom)
-                \node[pobscloud, below=1.2cm of $(ag1)!0.5!(env_gen)$] (obs1_cloud) {Emissió $O_1(o_1 \mid s', \mathbf{a})$\\Observació $o_1, r_1$};
+                \node[pobscloud, inner sep=1pt, below=1.0cm of $(ag1)!0.5!(env_gen)$] (obs1_cloud) {Emissió $O_1(o_1 \mid s', \mathbf{a})$\\Observació $o_1, r_1$};
                 \draw[->, green!60!black, thick] (env_gen.220) |- (obs1_cloud.north);
                 \draw[->, blue!70!black, thick] (obs1_cloud.west) -| (ag1.south);
 
-                \node[pobscloud, below=1.2cm of $(env_gen)!0.5!(ag2)$] (obs2_cloud) {Emissió $O_2(o_2 \mid s', \mathbf{a})$\\Observació $o_2, r_2$};
+                \node[pobscloud, inner sep=1pt, below=1.0cm of $(env_gen)!0.5!(ag2)$] (obs2_cloud) {Emissió $O_2(o_2 \mid s', \mathbf{a})$\\Observació $o_2, r_2$};
                 \draw[->, green!60!black, thick] (env_gen.320) |- (obs2_cloud.north);
                 \draw[->, blue!70!black, thick] (obs2_cloud.east) -| (ag2.south);
             \end{scope}
@@ -396,12 +431,12 @@ Cal destacar que el simulador central de Pokémon Showdown actua com un àrbitre
             % ==========================================
             % d) POSG INSTANCIAT A POKÉMON SHOWDOWN (Caso Real)
             % ==========================================
-            \begin{scope}[xshift=0cm, yshift=-12.0cm]
-                \node[font=\sffamily\bfseries, anchor=west, align=left, text width=12cm] at (-0.05, 1.8) {d) POSG Instanciat (Combat Pokémon real amb el motor àrbitre Pokémon Showdown)};
+            \begin{scope}[xshift=0cm, yshift=-11.1cm]
+                \node[font=\sffamily\bfseries, anchor=west] at (1, 1.9) {d) POSG Instanciat (Combat Pokémon real amb el motor àrbitre Pokémon Showdown)};
 
-                \node[agent] (ag1_real) at (0, -0.7) {Agent IA\\(Jugador 1)};
-                \node[env_showdown] (showdown_real) at (6.5, -0.7) {Motor Showdown\\(Estat Omniscient $s$)};
-                \node[agent] (ag2_real) at (13, -0.7) {Rival\\(Jugador 2)};
+                \node[agent] (ag1_real) at (1.5, -0.6) {Agent IA\\(Jugador 1)};
+                \node[env_showdown] (showdown_real) at (8.8, -0.6) {Motor Showdown\\(Estat Omniscient $s$)};
+                \node[agent] (ag2_real) at (16.1, -0.6) {Rival\\(Jugador 2)};
 
                 % Action Arrows via WebSocket / poke-env
                 \draw[->, blue!70!black, thick] (ag1_real.north east) -- node[midway, above=3pt, textlabel] {Comanda $a_1$ (\texttt{poke-env})} (showdown_real.north west);
@@ -462,14 +497,18 @@ En el combat Pokémon, com que tots dos jugadors escullen la seva acció de mane
 Per aquest motiu, l'objectiu de l'agent no és trobar una única "millor acció" fixa, sinó calcular una \textbf{estratègia inexplotable} mitjançant la formulació del torn com una \textbf{matriu de recompenses en forma normal} $M(a_1, a_2) = \mathbb{E}_{s \sim b} [R_1(s, a_1, a_2) + \gamma V(s')]$, on les files representen les accions del Jugador 1 ($a_1 \in A_1$) i les columnes les respostes del Jugador 2 ($a_2 \in A_2$).
 
 Prenguem com a exemple un torn on el Jugador 1 pot escollir entre un atac elèctric o un canvi defensiu, i el Jugador 2 pot escollir entre un atac d'aigua o un canvi a un Pokémon de tipus Terra (immune a l'electricitat):
-\begin{table}[H]
+\begin{table}[htbp]
     \centering
     \small
-    \begin{tabular}{|l|c|c|}
-        \hline
-        \textbf{Jugador 1 \textbackslash{} Jugador 2} & \textbf{Atac d'Aigua ($a_2^1$)} & \textbf{Canvi a Terra ($a_2^2$)}     \\ \hline
-        \textbf{Atac Elèctric ($a_1^1$)}              & $+10$ (Dany màxim $\times 4$)   & $-10$ (Avançat pel rival / Atac nul) \\ \hline
-        \textbf{Canvi defensiu ($a_1^2$)}             & $+2$ (Resisteix atac)           & $0$ (Canvi neutre)                   \\ \hline
+    \renewcommand{\arraystretch}{1.4}
+    \setlength{\tabcolsep}{6pt}
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Jugador 1 \textbackslash{} Jugador 2} & \textbf{Atac d'Aigua ($a_2^1$)} & \textbf{Canvi a Terra ($a_2^2$)} \\
+        \midrule
+        \textbf{Atac Elèctric ($a_1^1$)}  & $+10$ \quad \textit{(Dany màxim $\times 4$)}   & $-10$ \quad \textit{(Avançat pel rival / Atac nul)} \\
+        \textbf{Canvi defensiu ($a_1^2$)} & $+2$ \quad \textit{(Resisteix atac)}           & $\phantom{+}0$ \quad \textit{(Canvi neutre)} \\
+        \bottomrule
     \end{tabular}
     \caption{Exemple simplificat d'una matriu de recompenses en forma normal per a un torn de combat. Els valors representen la recompensa esperada del Jugador 1.}
     \label{tab:payoff_matrix_example}
@@ -507,19 +546,27 @@ Per fer la decisió computable en mil·lilisegons, els paradigmes desenvolupats 
 
 Per traslladar els conceptes teòrics de la tupla POSG/POMDP $(S, A, T, R, \Omega, O)$ al desenvolupament d'agents de decisió autònoms en aquest treball, cal definir com es tradueix cada component abstracte a l'entorn real de simulació de Pokémon Showdown i \textit{poke-env} en el format \texttt{gen9randombattle}. A la Taula~\ref{tab:pomdp_pokemon} es detalla aquest mapatge exactament.
 
-\begin{table}[H]
+\begin{table}[htbp]
     \centering
     \small
-    \begin{tabular}{|l|p{10.5cm}|}
-        \hline
-        \textbf{Component} & \textbf{Instanciació a Singles \texttt{gen9randombattle}}                                                                                                                                                                                                                                                                                                                         \\ \hline
-        $S$                & Sis Pokémon per bàndol (espècie, HP, configuració, objecte, habilitat, modificadors i condició d'estat), clima, perills d'entrada, Tera consumit i torn. $|S|$ és astronòmic i no s'enumera.                                                                                                                                                                                      \\ \hline
-        $A$                & Ordres directes de combat (\emph{raw orders}: 4 moviments, Tera opcional i fins a 5 canvis de banquet). En aprenentatge per reforç discret, es codifica en un espai fix ($4\text{ moviments} + 4\text{ moviments amb Tera} + 6\text{ slots d'equip}$). La legalitat $M(a)\in\{0,1\}$ la determinen els PP, debilitaments, bloqueigs i absència de canvi al mateix Pokémon actiu.  \\ \hline
-        $T$                & Motor de Showdown: determinista en les mecàniques de combat, estocàstic en el multiplicador de dany $[0{,}85,1{,}00]$, la precisió dels moviments, els efectes secundaris, els empats de velocitat (\emph{speed ties}) i la generació procedural de l'equip a l'inici del combat.                                                                                                 \\ \hline
-        $R$                & Recompensa terminal zero-sum conceptual $+1$ per victòria i $-1$ per derrota (indicador binari $W\in\{0,1\}$ enregistrat per a l'avaluació). En l'entrenament RL s'utilitza una funció de recompensa dita densa (\emph{reward shaping}) basada en la diferència d'HP, penalització/bonificació per debilitament de Pokémon, modificadors d'estat i penalització per pas de temps. \\ \hline
-        $\Omega$           & Equip propi complet; del rival, espècies revelades, percentatge d'HP, moviments utilitzats, condicions laterals i modificadors d'estat. EV, naturalesa, objecte i moviments no utilitzats romanen ocults.                                                                                                                                                                         \\ \hline
-        $O$                & Mecanisme d'emmascarament i protocol WebSocket de Pokémon Showdown / \textit{poke-env}. Intercepta l'estat global $S$ i genera l'observació parcial privada $o_i \in \Omega_i$ filtrant les dades no revelades abans de transmetre el paquet al client.                                                                                                                           \\ \hline
-    \end{tabular}
+    \renewcommand{\arraystretch}{1.35}
+    \begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}X}
+        \toprule
+        \textbf{Component} & \textbf{Instanciació a Singles \texttt{gen9randombattle}} \\
+        \midrule
+        $S$      & Sis Pokémon per bàndol (espècie, HP, configuració, objecte, habilitat, modificadors i condició d'estat), clima, perills d'entrada, Tera consumit i torn. $|S|$ és astronòmic i no s'enumera. \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        $A$      & Ordres directes de combat (\emph{raw orders}: 4 moviments, Tera opcional i fins a 5 canvis de banquet). En aprenentatge per reforç discret, es codifica en un espai fix ($4\text{ moviments} + 4\text{ moviments amb Tera} + 6\text{ slots d'equip}$). La legalitat $M(a)\in\{0,1\}$ la determinen els PP, debilitaments, bloqueigs i absència de canvi al mateix Pokémon actiu. \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        $T$      & Motor de Showdown: determinista en les mecàniques de combat, estocàstic en el multiplicador de dany $[0{,}85,1{,}00]$, la precisió dels moviments, els efectes secundaris, els empats de velocitat (\emph{speed ties}) i la generació procedural de l'equip a l'inici del combat. \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        $R$      & Recompensa terminal zero-sum conceptual $+1$ per victòria i $-1$ per derrota (indicador binari $W\in\{0,1\}$ enregistrat per a l'avaluació). En l'entrenament RL s'utilitza una funció de recompensa dita densa (\emph{reward shaping}) basada en la diferència d'HP, penalització/bonificació per debilitament de Pokémon, modificadors d'estat i penalització per pas de temps. \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        $\Omega$ & Equip propi complet; del rival, espècies revelades, percentatge d'HP, moviments utilitzats, condicions laterals i modificadors d'estat. EV, naturalesa, objecte i moviments no utilitzats romanen ocults. \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        $O$      & Mecanisme d'emmascarament i protocol WebSocket de Pokémon Showdown / \textit{poke-env}. Intercepta l'estat global $S$ i genera l'observació parcial privada $o_i \in \Omega_i$ filtrant les dades no revelades abans de transmetre el paquet al client. \\
+        \bottomrule
+    \end{tabularx}
     \caption{Mapatge POSG/POMDP al combat individual de Random Battle (Generació~IX).}
     \label{tab:pomdp_pokemon}
 \end{table}
@@ -613,21 +660,31 @@ La comparació empírica entre agents de diferents paradigmes requereix un marc 
 
 A la Taula~\ref{tab:stat_framework_summary} es sintetitza el conjunt d'eines matemàtiques, mètriques d'inferència i propietats estadístiques que integren el marc teòric d'avaluació d'aquest treball.
 
-\begin{table}[H]
+\begin{table}[htbp]
     \centering
     \small
-    \begin{tabular}{|l|p{6.5cm}|p{4.2cm}|}
-        \hline
-        \textbf{Mètrica / Eina}        & \textbf{Formulació Matemàtica / Càlcul}                                                               & \textbf{Objectiu / Propietat Estadística}             \\ \hline
-        Taxa de Victòria ($\hat{p}$)   & $\hat{p} = \frac{1}{N} \sum_{i=1}^N W_i$                                                              & Estimació puntual de Bernoulli                        \\ \hline
-        Marge d'Error ($\mathrm{MoE}$) & $\mathrm{MoE} = z_{1-\alpha/2} \sqrt{\frac{\hat{p}(1-\hat{p})}{N}}$                                   & Acotació d'error al $95\%$ de confiança               \\ \hline
-        Interval de Wilson             & $\mathrm{CI}_{\mathrm{Wilson}}$ Eq.~(\ref{eq:wilson_ci})                                              & Robustesa en límits $p \to 0,1$ i mostres petites     \\ \hline
-        Model Bradley-Terry Elo        & $P(A_i > A_j) = \sigma\left(\frac{\ln 10}{400}(R_i - R_j)\right)$                                     & Rànquing 1D conjunt per MLE ($R_{\text{rand}}=1000$)  \\ \hline
-        Test $Z$ de Diferència         & $\mathrm{CI}_{95\%}(\Delta p) = (\hat{p}_1 - \hat{p}_2) \pm 1{,}96 \cdot \mathrm{SE}(\Delta \hat{p})$ & Avaluació de significança en ablacions ($p < 0{,}05$) \\ \hline
-        Pèrdua Crosse-Entropia         & $\mathcal{L}_{\mathrm{CE}} = -\frac{1}{N}\sum y_{i,k} \ln \hat{y}_{i,k}$                              & Minimització d'error en aprenentatge per imitació     \\ \hline
-        Policy PPO amb Masking         & $P(a\mid o) = \frac{M(a)\exp(z_a)}{\sum M(a')\exp(z_{a'})}$                                           & Garantia d'execució només d'accions legals $M(a)$     \\ \hline
-        Telemetria Tàctica             & Indicadors de latència, canvis, hazards i RNG                                                         & Anàlisi multifactorial del comportament executiu      \\ \hline
-    \end{tabular}
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{4.4cm}}
+        \toprule
+        \textbf{Mètrica / Eina}        & \textbf{Formulació Matemàtica / Càlcul}                                                               & \textbf{Objectiu / Propietat Estadística}             \\
+        \midrule
+        Taxa de Victòria ($\hat{p}$)   & $\hat{p} = \frac{1}{N} \sum_{i=1}^N W_i$                                                              & Estimació puntual de Bernoulli                        \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        Marge d'Error ($\mathrm{MoE}$) & $\mathrm{MoE} = z_{1-\alpha/2} \sqrt{\frac{\hat{p}(1-\hat{p})}{N}}$                                   & Acotació d'error al $95\%$ de confiança               \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        Interval de Wilson             & $\mathrm{CI}_{\mathrm{Wilson}}$ Eq.~(\ref{eq:wilson_ci})                                              & Robustesa en límits $p \to 0,1$ i mostres petites     \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        Model Bradley-Terry Elo        & $P(A_i > A_j) = \sigma\left(\frac{\ln 10}{400}(R_i - R_j)\right)$                                     & Rànquing 1D conjunt per MLE ($R_{\text{rand}}=1000$)  \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        Test $Z$ de Diferència         & $\mathrm{CI}_{95\%}(\Delta p) = (\hat{p}_1 - \hat{p}_2) \pm 1{,}96 \cdot \mathrm{SE}(\Delta \hat{p})$ & Avaluació de significança en ablacions ($p < 0{,}05$) \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        Pèrdua Crosse-Entropia         & $\mathcal{L}_{\mathrm{CE}} = -\frac{1}{N}\sum y_{i,k} \ln \hat{y}_{i,k}$                              & Minimització d'error en aprenentatge per imitació     \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        Policy PPO amb Masking         & $P(a\mid o) = \frac{M(a)\exp(z_a)}{\sum M(a')\exp(z_{a'})}$                                           & Garantia d'execució només d'accions legals $M(a)$     \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        Telemetria Tàctica             & Indicadors de latència, canvis, hazards i RNG                                                         & Anàlisi multifactorial del comportament executiu      \\
+        \bottomrule
+    \end{tabularx}
     \caption{Síntesi del marc d'avaluació estadística, eines d'inferència i les seves propietats teòriques.}
     \label{tab:stat_framework_summary}
 \end{table}

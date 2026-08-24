@@ -3,15 +3,21 @@
 \caption{Famílies d'agents del disseny experimental. La llista completa de 28 identificadors es reutilitza als resultats (Taula~\ref{tab:taxonomy}). El PPO queda fora d'aquesta matriu.}
 \label{tab:taxonomy_design}
 \small
+\renewcommand{\arraystretch}{1.25}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.3cm}>{\raggedright\arraybackslash}p{6.6cm}r>{\raggedright\arraybackslash}X}
 \toprule
 \textbf{Família} & \textbf{Identificadors} & \textbf{$n$} & \textbf{Funció} \\
 \midrule
 Referències & \texttt{random}, \texttt{max\_power}, \texttt{one\_step}, \texttt{safe\_one\_step}, \texttt{abyssal}, \texttt{simple\_heuristic} & 10.000 & Controls i oponents de currículum. \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 Heurístiques & \texttt{v1}--\texttt{v14} & 10.000 & Ablació de coneixement. \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 Minimax & \texttt{v15}--\texttt{v17} & 10.000 & Cerca analítica d'un torn sobre \texttt{v14}. \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 MCTS ras & \texttt{v18}--\texttt{v20} & 1.000 & Simulació rasa; el cost limita $n$. \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 Imitació & \texttt{v21}, \texttt{v22} & 10.000 & Política humana d'alt nivell i executor. \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 PPO & model A (MaskablePPO) & 10.000 vs \texttt{v12} & Experiment separat, no fila de la matriu. \\
 \bottomrule
 \end{tabularx}

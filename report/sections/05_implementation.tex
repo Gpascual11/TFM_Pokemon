@@ -164,17 +164,25 @@ El flux, comú a les versions avançades, és:
     \caption{Correspondència entre els blocs de disseny de la Taula~\ref{tab:heuristic_design} i els components implementats.}
     \label{tab:heuristic_implementation}
     \small
+    \renewcommand{\arraystretch}{1.25}
     \begin{tabularx}{\textwidth}{lX}
         \toprule
         \textbf{Versions}         & \textbf{Component principal implementat}                                                                                          \\
         \midrule
         \texttt{v1}               & \texttt{\_score}: potència $\times$ efectivitat $\times$ STAB; sense canvis.                                                      \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         \texttt{v2}--\texttt{v3}  & \texttt{calculate\_base\_damage}; pivots TOX i «feble i outsped»; \texttt{v3} activa \texttt{tracks\_moves}.                       \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         \texttt{v4}--\texttt{v6}  & Modificadors de clima/terreny i prioritat; \texttt{v4}/\texttt{v5} trien el substitut per tipus; \texttt{v6} conserva el slot~0. \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         \texttt{v7}--\texttt{v8}  & Nova \texttt{\_estimate\_matchup}; \texttt{v8} afegeix KO de prioritat conservador i \texttt{ABILITY\_IMMUNITIES}.               \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         \texttt{v9}--\texttt{v11} & Hazards/setup només en torn lliure; estats, sacrifici $\le 20\%$ HP i pivots; \texttt{v11} els fusiona.                           \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         \texttt{v12}              & Tera ofensiva/defensiva i substitut forçat per puntuació d'enfrontament.                                                          \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         \texttt{v13}              & Matchup amb moviments revelats, recuperació, Choice lock i Tera conservadora.                                                     \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         \texttt{v14}              & Perfil \texttt{PREDICTIVE}/\texttt{CONSERVATIVE}, sondeig T1--3, interval de dany $(0{,}85,1)$ i solver d'un torn.                \\
         \bottomrule
     \end{tabularx}
@@ -359,13 +367,17 @@ La Taula~\ref{tab:ppo_curriculum_impl} registra com s'ha operacionalitzat cada p
     \caption{Implementació i validació del currículum PPO. «Superada» es refereix al llindar previst, no al fet que s'executés una fase posterior.}
     \label{tab:ppo_curriculum_impl}
     \small
+    \renewcommand{\arraystretch}{1.25}
     \begin{tabularx}{\textwidth}{cl>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{2.4cm}}
         \toprule
         \textbf{Fase} & \textbf{Oponent} & \textbf{Canvi implementat}                                    & \textbf{Validació congelada}     & \textbf{Decisió}               \\
         \midrule
         1             & Random           & PPO inicial, 318 dimensions, 4 entorns, 500k passos.          & 91,8\% a 1.000; llindar 90\%.    & Superada                       \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         1.5           & MaxBP            & Reprèn fase 1; taxa $2\times10^{-4}$, 500k passos.            & 70,5\% a 1.000; llindar $>70\%$. & Superada per estimació puntual \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         2             & \texttt{v8}      & Amplia a 328 dimensions, 400 partides de clonatge, 8 entorns. & 40,6\% a 1.000; llindar $>55\%$. & No superada                    \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         3             & \texttt{v12}     & Continua des de fase 2 i prova taxes/entorns diferents.       & Model A: 34,1\% a 10.000.        & Mesura final                   \\
         \bottomrule
     \end{tabularx}

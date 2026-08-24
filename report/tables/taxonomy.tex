@@ -3,6 +3,7 @@
 \caption[Taxonomia dels 28 agents de la matriu.]{Taxonomia dels 28 agents de la matriu \texttt{gen9randombattle}. Els identificadors de codi es mantenen en anglès. El prefix del mapa de calor indica la família: (H) heurística, (MM) minimax, (MCT) MCTS, (IL) imitació i (B) agent de referència. El PPO s'avalua separadament contra \texttt{v12}.}
 \label{tab:taxonomy}
 \small
+\renewcommand{\arraystretch}{1.3}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{3.1cm}X}
 \toprule
 \textbf{Identificadors} & \textbf{Paradigma} & \textbf{Descripció} \\
@@ -12,18 +13,23 @@
 \texttt{abyssal}, \texttt{simple\_heuristic}
   & Referències (B)
   & Agents de \textit{poke-env} i PokéChamp: atzar, potència base, un pas de dany i regles d'enfrontament. \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 \texttt{v1}--\texttt{v14}
   & Heurístiques (H)
   & Seqüència incremental de coneixement: dany, posició, perills d'entrada i Teracristal·lització, entre altres components. \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 \texttt{v15}--\texttt{v17}
   & Minimax d'un torn (MM)
   & Maximin analític d'un torn amb \texttt{HeuristicV14} com a base. \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 \texttt{v18}--\texttt{v20}
   & MCTS ras (MCT)
   & UCB a l'arrel i 100 simulacions de cinc torns amb \texttt{LocalSim}; cel·les amb $n=1.000$. \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 \texttt{v21}
   & Imitació híbrida (IL)
   & XGBoost decideix atacar o canviar i \texttt{v14} executa l'acció. \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 \texttt{v22}
   & Imitació (IL)
   & El mateix classificador d'alt nivell; el model de moviments puntua potència, STAB i efectivitat. \\

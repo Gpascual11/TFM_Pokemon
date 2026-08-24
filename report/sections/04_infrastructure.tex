@@ -24,9 +24,47 @@ El prototip va córrer en un Intel Core Ultra 7 155H (22 fils) amb 16~GB de RAM.
 
 \subsection{Fase 2: estació de treball}
 
-Els experiments finals s'executen en una torre amb AMD Ryzen 7 5700X3D (8 nuclis i 16 fils, 96~MB de memòria cau L3), 32~GB DDR4 i una GPU NVIDIA RTX 2080 de 8~GB. La matriu d'heurístiques, minimax, MCTS i imitació utilitza principalment la CPU. La GPU s'empra per a MaskablePPO i les proves amb models de llenguatge. El sistema i les dades de treball resideixen en una unitat NVMe.
+Els experiments finals i la generació massiva de resultats s'executen en una torre d'altes prestacions configurada específicament per a tasques computacionals sostingudes:
+
+\begin{itemize}
+    \item \textbf{Processador (CPU):} AMD Ryzen 7 5700X3D (8 nuclis i 16 fils a 4,1~GHz, dotat de 96~MB de memòria cau 3D V-Cache L3), que proporciona un rendiment excepcional en simulació de partides i avaluació d'arbres de cerca minimax i MCTS.
+    \item \textbf{Placa base:} MSI MAG B550 TOMAHAWK MAX WIFI (MS-7C91), que garanteix màxima estabilitat elèctrica en les fases d'alimentació (VRM) durant setmanes d'alta càrrega continuada.
+    \item \textbf{Refrigeració:} Dissipador d'aire d'alt rendiment \textbf{Noctua}, assegurant que la CPU operi en rangs tèrmics òptims ($<65^\circ$C sota càrrega intensiva contínua) amb mínim soroll i màxima fiabilitat sense risc de degradació.
+    \item \textbf{Memòria RAM:} 32~GB DDR4 (2$\times$16~GB en doble canal), indispensable per mantenir en memòria cau múltiples instàncies de Showdown, arbres de decisió i conjunts de dades tabulars.
+    \item \textbf{Targeta gràfica (GPU):} NVIDIA GeForce RTX 2080 de 8~GB VRAM (Turing), utilitzada per a l'acceleració dels entrenaments MaskablePPO amb CUDA/PyTorch i la inferència de models de llenguatge locals.
+    \item \textbf{Emmagatzematge primari:} SSD NVMe PCIe 4.0 Crucial P310/P3 Plus d'1~TB (\texttt{CT1000P310SSD8}) d'alta velocitat d'I/O per als registres de telemetria i escriptures concurrents de fitxers CSV, acompanyat d'unitats SSD SATA auxiliars (Samsung 850 PRO, Kingston) i discs durs per a còpies de seguretat.
+    \item \textbf{Font d'alimentació:} Font d'alta eficiència certificada (80 Plus Gold), que minimitza les pèrdues energètiques i aporta estabilitat als rails de tensió durant el funcionament 24/7.
+\end{itemize}
 
 La configuració habitual utilitza vuit instàncies de Showdown (ports 8000--8007), cadascuna amb 15--25 batalles asíncrones. Les cel·les heurístiques es completen molt més ràpidament que les d'MCTS; aquesta diferència de cost motiva els volums de 10.000 i 1.000 partides. L'avaluació PPO contra \texttt{v12} també utilitza vuit ports.
+
+\section{Control de versions, traçabilitat i mètriques del programari}
+\label{sec:git_metrics}
+
+Tota l'evolució del projecte s'ha gestionat de manera rigorosa mitjançant el sistema de control de versions \textbf{Git} allotjat a la plataforma \textbf{GitHub}. Per garantir una traçabilitat clara entre el desenvolupament tècnic i la redacció de la memòria, s'ha aplicat una política estructurada de missatges de confirmació (\textit{Conventional Commits}):
+
+\begin{itemize}
+    \item \textbf{Desenvolupament de codi:} Commits amb prefixos funcionals com \texttt{feat:} (noves heurístiques, mòduls de cerca o integracions), \texttt{fix:} (correccions de telemetria o concurrència), \texttt{refactor:} (reestructuració de mòduls i agents), \texttt{test:} (validacions i \textit{smoke tests}) i \texttt{infra:} (scripts de supervisió i seguretat).
+    \item \textbf{Redacció acadèmica:} Commits prefixats estrictament amb \texttt{report:} o \texttt{docs:} per identificar i aïllar les iteracions en el text de la memòria, generació de figures i taules comparatives.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{diagrams/github_activity_calendar.png}
+    \caption{Calendari d'activitat i mapa de calor de \textit{commits} a GitHub des de l'inici del projecte (14/02/2026) fins a la versió final (20/08/2026).}
+    \label{fig:github_calendar}
+\end{figure}
+
+Com s'il·lustra a la Figura~\ref{fig:github_calendar}, el desenvolupament ha mantingut un ritme sostingut al llarg de \textbf{110 commits} distribuïts en \textbf{47 dies d'activitat intensa}, reflectint les fases successives d'implementació d'heurístiques, integració de cerca adversarial (minimax i MCTS), entrenament de xarxes neuronals PPO i avaluació massiva de la matriu.
+
+Pel que fa a la dimensió del codi font, el directori principal \path{src/} comprèn un total de \textbf{297 fitxers}, dels quals destaquen \textbf{153 fitxers de codi i scripts actius}:
+\begin{itemize}
+    \item \textbf{Mòduls Python (\texttt{.py}):} 119 fitxers amb \textbf{24.635 línies} de codi font pur que implementen els agents, l'arquitectura de combat, les 15 versions heurístiques, els arbres de cerca, els entorns Gymnasium i el coordinador concurrent.
+    \item \textbf{Quaderns d'anàlisi (\texttt{.ipynb}):} 16 \textit{notebooks} Jupyter interactius amb \textbf{14.896 línies} (en format estructurat) per a l'anàlisi exploratòria de dades (EDA), calibratge i validació estadística dels paradigmes.
+    \item \textbf{Scripts d'automatització (\texttt{.sh}):} 18 scripts Bash amb \textbf{2.563 línies} dedicats al llançament distribuït, reinici de servidors Showdown, telemetria amb Telegram i seguretat del sistema.
+    \item \textbf{Documentació tècnica i configuració (\texttt{.md}, \texttt{.json}):} 55 fitxers amb 4.986 línies de guies tècniques, protocols d'execució i esquemes d'estat.
+\end{itemize}
+Aquesta base de codi suma més de \textbf{42.000 línies de programari} desenvolupat específicament per a aquest treball, reflectint una arquitectura modular, estructurada i escalable.
 
 \section{Accés remot: Tailscale}
 
@@ -66,6 +104,19 @@ El gestor de paquets és \textbf{uv}~\cite{uv} amb Python \textbf{3.12} i \textt
 
 El fork \texttt{pokechamp/} s'incorpora al \texttt{sys.path} dels processos que necessiten \texttt{LocalSim} o Abyssal. Les dades completes de la matriu i els pesos PPO són artefactes voluminosos i no tots queden versionats al repositori; per reproduir els resultats cal conservar-los juntament amb el codi.
 
+\section{Ecosistema de redacció i documentació en \LaTeX}
+\label{sec:perque_latex}
+
+La memòria d'aquest Treball de Final de Màster s'ha redactat íntegrament en \textbf{\LaTeX{}} en substitució de processadors de text convencionals WYSIWYG (com Microsoft Word o Google Docs). Aquesta decisió d'enginyeria documental respon a cinc motius clau:
+
+\begin{enumerate}
+    \item \textbf{Qualitat tipogràfica i maquetació professional:} \LaTeX{} implementa algoritmes òptims de partició de paràgrafs (algorisme de Knuth-Plass), microtipografia (\texttt{microtype}), control estricte d'orfeneses/vídues i gestió harmònica d'espais, garantint un acabat editorial net i d'alt nivell acadèmic.
+    \item \textbf{Notació matemàtica i formalisme rigorós:} El treball requereix una notació matemàtica densa per a la formalització de jocs estocàstics imperfectes (POMDP), funcions d'avantatge $\hat{A}_t$, la funció d'objectiu retallada de PPO ($L^{CLIP}$) i intervals de confiança estadístics (Wilson, Clopper-Pearson), representada de forma nativa i sense ambigüitats mitjançant \textbf{AMS-\LaTeX{}}.
+    \item \textbf{Separació de contingut i estil:} L'arquitectura modular del document (dividit en capítols mitjançant \texttt{\textbackslash include} i taules independents a \path{tables/}) permet desacoblar la redacció del disseny visual, assegurant consistència estilística automàtica a través de les més de cent pàgines de la memòria.
+    \item \textbf{Integració nativa amb Git i traçabilitat línia a línia:} Com que el document està estructurat en text pla (\texttt{.tex}), cada paràgraf, taula o canvi gaudeix de traçabilitat directa mitjançant \textit{diffs} a GitHub. Això evita la corrupció de fitxers binaris propietaris, permet auditories de canvis i facilita la integració contínua de la memòria.
+    \item \textbf{Automatització de referències i gestió bibliogràfica:} La integració de BibTeX i \texttt{natbib} assegura una gestió robusta de més de 50 referències bibliogràfiques, taules creuades, índexs automàtics de figures i taules, i enllaços interns actius (\texttt{hyperref}) sense errors de numeració.
+\end{enumerate}
+
 % ============================================================
 \section{Anàlisi de cost econòmic i pressupost de recursos}
 \label{sec:cost_economic}
@@ -78,11 +129,13 @@ Els costos del projecte es resumeixen en quatre eixos principals:
 
 \begin{enumerate}
     \item \textbf{Maquinari i equips de còmput (0,00~€):} Tant el portàtil de desenvolupament inicial com l'estació de treball principal (AMD Ryzen 7 5700X3D, 32~GB RAM, NVIDIA RTX 2080 8~GB) són equips de propietat personal del desenvolupador utilitzats prèviament per a altres activitats. No s'ha realitzat cap adquisició de maquinari dedicada exclusivament al TFM.
-    \item \textbf{Consum energètic de 24/7 ($Y$~€):} A causa de l'alta complexitat computacional de la matriu d'enfrontaments i la necessitat d'aprofitar al màxim el temps disponible, l'estació de treball va funcionar de manera continuada les \textbf{24 hores del dia durant diverses setmanes sense aturar-se}, acumulant un total aproximat de $X$ hores de còmput. La gestió d'aquesta despesa energètica es va estructurar de la següent manera:
+    \item \textbf{Temps d'execució i consum energètic 24/7 ($\approx 5,85$~€):} A causa de l'alta complexitat computacional de la matriu d'enfrontaments i la necessitat d'aprofitar al màxim el temps disponible, l'estació de treball va funcionar de manera continuada les \textbf{24 hores del dia durant 4 setmanes}, acumulant un total de \textbf{684,89 hores d'execució efectiva de màquina} (i 2.794,01 hores de processament acumulat per concurrència multiprocés) sobre més de \textbf{52,7 milions de batalles} (52.725.601 partides en 7.662 fitxers). El càlcul del temps d'execució, derivat de l'anàlisi dels registres temporals (\textit{timestamps}) ignorant intervals superiors a 24 hores entre execucions independents, es desglossa com segueix:
     \begin{itemize}
+        \item \textbf{Matriu final de \textit{benchmarks} Gen 9:} Localitzada a \path{data/benchmarks/all_10k/gen9randombattle}, representa els resultats definitius i oficials del torneig (785 cel·les d'enfrontament i 6.410.109 batalles). Va requerir \textbf{471,38 hores de còmput continu de màquina} (19,64 dies complets) i un temps acumulat de procés de 831,20 hores.
+        \item \textbf{Resta de dades del repositori:} Comprèn la totalitat de fitxers de \path{data/} restant, incloent-hi els \textit{benchmarks} multigeneracionals (Gen 1 a Gen 8 de 10.000 partides per cel·la), bateries de validació de minimax, MCTS, aprenentatge per imitació, smoke tests i registres de desenvolupament (6.877 fitxers i 46.315.492 batalles). Va acumular \textbf{213,66 hores de còmput continu de màquina} (8,90 dies complets) i 1.962,81 hores de procés acumulat.
         \item \textbf{Autoconsum solar diürn:} Durant les hores de sol, la instal·lació de \textbf{plaques solars domèstiques} va reduir dràsticament el cost energètic cobrint directament la demanda de la torre mitjançant energia renovable gratuïta.
-        \item \textbf{Consum nocturn de xarxa:} Durant les hores nocturnes i períodes sense insolació, el còmput continuat va requerir subministrament directe de la xarxa elèctrica convencional, generant un cost estimat en $Y$~€.
-        \item \textbf{Mode terminal headless:} Per tal de minimitzar el consum de potència (Watts/hora) durant el funcionament 24/7, l'estació de treball es va executar en mode purament terminal (sense entorn gràfic GUI) supervisada mitjançant \texttt{tmux}, mantenint actius únicament els processos strictly necessaris.
+        \item \textbf{Consum nocturn de xarxa:} Durant les hores nocturnes i períodes sense insolació, el còmput continuat va requerir subministrament de la xarxa elèctrica convencional. Amb una potència mitjana de 135~W per a les $\approx 685$~h de còmput (92,5~kWh totals, dels quals aproximadament el 50\% van ser de xarxa nocturna a la tarifa real contractada de $0{,}126561$~€/kWh), el cost directe es xifra en uns \textbf{5,85~€}.
+        \item \textbf{Mode terminal \textit{headless}:} Per tal de minimitzar el consum de potència (Watts/hora) durant el funcionament 24/7, l'estació de treball es va executar en mode purament terminal (sense entorn gràfic GUI) supervisada mitjançant \texttt{tmux}, mantenint actius únicament els processos estrictament necessaris.
     \end{itemize}
     \item \textbf{Models de llenguatge i eines de desenvolupament (0,00~€):} Les proves exploratòries amb models de llenguatge (\textit{PokéChamp} i \textit{PokéLLMon}) es van executar de manera 100\% local mitjançant el motor \textbf{Ollama}, sense consumir cap API comercial de pagament. Així mateix, l'ús d'eines de desenvolupament basades en IA (Antigravity, Cursor, PyCharm i VS Code) es va realitzar mitjançant llicències d'estudiant/pro, permetent accedir a models LLM d'altes capacitats sense cap despesa econòmica.
     \item \textbf{Infraestructura de programari i comunicacions (0,00~€):} Totes les eines de la cadena de valor (Pokémon Showdown, \textit{poke-env}, entorn de desenvolupament Python, Tailscale per a la xarxa privada virtual, Telegram Bot API per a la telemetria en temps real, i \LaTeX{} per a la redacció) són de codi obert (\emph{open-source}) o s'han utilitzat en les seves modalitats gratuïtes.
@@ -98,13 +151,13 @@ Els costos del projecte es resumeixen en quatre eixos principals:
 \textbf{Concepte} & \textbf{Estratègia d'optimització / Font} & \textbf{Cost Directe (€)} \\
 \midrule
 Maquinari i equips & Ús d'equips personals preexistents (sense adquisicions noves) & 0,00 \\
-Consum energètic & Execució 24/7 (setmanes continus, plaques solars de dia / xarxa de nit) & $Y$ \\
+Consum energètic 24/7 & 684,89~h efectives (471,38~h Gen 9 + 213,66~h resta; 0,126561~€/kWh) & 5,85 \\
 Inferència d'LLMs & Execució local amb Ollama i llicències d'estudiant (Cursor/PyCharm) & 0,00 \\
 Eines i Infraestructura & Programari de codi obert (\emph{open-source}) i serveis gratuïts & 0,00 \\
 \midrule
-\textbf{Cost Total Directe} & & \textbf{$Y$} \\
+\textbf{Cost Total Directe} & & \textbf{5,85} \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Aquesta combinació d'autoconsum solar diürn, optimització de còmput en mode terminal, execució local d'LLMs i llicències d'estudiant ha permès contenir el cost energètic de les setmanes d'execució ininterrompuda 24/7 i completar el projecte de manera altament eficient i sostenible.
+Aquesta combinació d'autoconsum solar diürn, optimització de còmput en mode terminal, execució local d'LLMs i llicències d'estudiant ha permès contenir el cost energètic de les 684,89 hores (més de 4 setmanes) d'execució ininterrompuda 24/7 i completar el projecte de manera altament eficient i sostenible.
