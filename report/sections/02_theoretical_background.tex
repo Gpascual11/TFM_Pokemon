@@ -615,7 +615,7 @@ La comparació empírica entre agents requereix un marc d'inferència que separi
           on $z = z_{1-\alpha/2} = 1{,}96$ per a un nivell de confiança del $95\%$ ($\alpha = 0{,}05$).
 
     \item \textbf{Model de Bradley--Terry i puntuació Elo per màxima versemblança (MLE):}
-          Per ordenar un conjunt d'agents en un llistat global 1D independent de la composició d'oponents, s'utilitza el model de comparació per parelles de Bradley--Terry~\cite{bradley_terry_1952} transformat a escala Elo~\cite{elo_rating}. La probabilitat esperada de victòria de l'agent $A_i$ enfront de l'agent $A_j$ amb puntuacions $R_i$ i $R_j$ s'expressa mitjançant la funció logística:
+          Per projectar un conjunt d'agents sobre una escala global unidimensional de força relativa independent de la composició d'oponents, s'utilitza el model de comparació per parelles de Bradley--Terry~\cite{bradley_terry_1952} transformat a escala Elo~\cite{elo_rating}. La probabilitat esperada de victòria de l'agent $A_i$ enfront de l'agent $A_j$ amb puntuacions $R_i$ i $R_j$ s'expressa mitjançant la funció logística:
           \begin{equation}
               P(A_i > A_j) = \frac{1}{1 + 10^{(R_j - R_i)/400}} = \sigma\left( \frac{\ln 10}{400} (R_i - R_j) \right)
               \label{eq:elo_expected}

@@ -865,9 +865,9 @@ Es vol un $n$ prou gran perquè les diferències de taxa no siguin soroll de la 
 
 La matriu (Taula~\ref{tab:taxonomy_design}) és dirigida de $28 \times 28 = 784$ cel·les: 6 referències, 14 heurístiques, 3 Minimax, 3 MCTS i 2 d'imitació. Es fa dirigida ---$A$ vs $B$ separat de $B$ vs $A$--- pel biaix de seient. L'execució equival a més de \textbf{6,4 milions de batalles} dirigides. El PPO queda fora d'aquesta matriu i s'avalua contra \texttt{v12}, pels motius de la Secció~\ref{subsec:disseny_curriculum_ppo}.
 
-\subsection{Orientacions recíproques, autojoc i rànquing Bradley--Terry}
+\subsection{Orientacions recíproques, autojoc i escala Bradley--Terry}
 
-Per controlar un possible biaix de seient, es generen de manera independent $A \text{ vs } B$ i $B \text{ vs } A$. La coherència es comprova amb taxes recíproques entorn del $100\%$ i autojoc entorn del $50\%$: si l'autojoc s'allunya del $50\%$, el protocol o el seient estan trencats. Sobre la matriu s'ajusta el model Bradley--Terry de la Secció~\ref{subsec:marc_estadistic}, ancorat a $\text{Random} = 1000$, per col·lapsar les 784 cel·les en un rànquing unidimensional: sense aquest col·lapse, comparar 28 agents exigiria llegir tota la matriu a ull.
+Per controlar un possible biaix de seient, es generen de manera independent $A \text{ vs } B$ i $B \text{ vs } A$. La coherència es comprova amb taxes recíproques entorn del $100\%$ i autojoc entorn del $50\%$: si l'autojoc s'allunya del $50\%$, el protocol o el seient estan trencats. Sobre la matriu s'ajusta el model Bradley--Terry de la Secció~\ref{subsec:marc_estadistic}, ancorat a $\text{Random} = 1000$, per sintetitzar les 784 cel·les en una escala unidimensional de força relativa: sense aquesta síntesi, comparar 28 agents exigiria llegir tota la matriu a ull, si bé la seva interpretació requereix cautela davant d'asimetries mostrals com les de l'MCTS.
 
 % ============================================================
 \section{Mètriques de rendiment i telemetria d'execució}
