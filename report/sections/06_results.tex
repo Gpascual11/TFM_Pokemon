@@ -620,14 +620,27 @@ La Taula~\ref{tab:paradigm_summary} utilitza \texttt{v12} com a comparador comú
 
 Fins a \texttt{v12}, cap heurística interna supera el 50\% contra Abyssal. \texttt{v7}--\texttt{v11} obtenen entre 41\% i 48\%; \texttt{v12} arriba a 59,91\%. \texttt{v14} obté 51,36\%, \texttt{v21} 46,98\%, \texttt{v20} 49,0\% amb $n=1.000$, \texttt{v17} 46,79\% i \texttt{v22} 22,90\%. El resultat de referència és, per tant, \textbf{\texttt{v12} contra Abyssal: 59,91\% $\pm 0{,}96$~pp, $n=10.000$}.
 
-\subsection{Elo Bradley--Terry}
+\subsection{Escala Bradley--Terry}
 
-\input{tables/elo_gen9}
+Com a complement a les taxes directes de victòria per parelles, s'ajusta el model de Bradley--Terry definit a la Secció~\ref{subsec:marc_estadistic} mitjançant regressió logística per màxima versemblança (MLE) sobre la matriu completa de 784 cel·les dirigides, ancorant l'escala a $\text{Random} = 1000$ (Figura~\ref{fig:elo_bars}). Aquesta representació condensa les preferències relatives empíriques en una dimensió latent contínua de força competitiva independent de la composició del calendari d'enfrontaments.
+
+Tal com s'observa a la Figura~\ref{fig:elo_bars}, \texttt{v12} (1812) i \texttt{v13} (1802) assoleixen les puntuacions latents superiors del conjunt, corroborant la seva consistència tant davant d'adversaris d'alt nivell com davant de la resta d'heurístiques. Immediatament per sota, es produeix una convergència al voltant dels 1755 punts entre \texttt{v14} (1755), \texttt{simple\_heuristic} (1755) i Abyssal (1755). Aquesta coincidència numèrica posa de manifest un altiplà competitiu compartit: les tres polítiques basades en regles expertes assoleixen un nivell de domini equivalent sobre el conjunt del ventall, i les diferències decimals entre elles ($<0{,}3$ punts) són estadísticament negligibles.
+
+Pel que fa a la resta de paradigmes, les seves variants més competitives s'estableixen en una franja intermèdia propera: \texttt{v20} (MCTS PUCT, 1742), \texttt{v21} (imitació híbrida XGBoost, 1729) i \texttt{v17} (minimax amb prior, 1722). A la banda inferior de l'escala, \texttt{v22} (imitació pura d'atributs sense proteccions de domini, 1529), \texttt{max\_power} (1383) i \texttt{random} (1000) delimiten la línia de base de l'entorn.
+
+\paragraph{Precaució interpretativa: per què no constitueix una classificació unificada.}
+Convé subratllar amb rigor que la Figura~\ref{fig:elo_bars} reflecteix una estimació global de força latent sobre la matriu observada i \textbf{no s'ha d'interpretar com una classificació lineal o un rànquing ordinal absolut}. Aquesta distinció és crítica per tres raons metodològiques:
+\begin{enumerate}
+    \item \textbf{Asimetria mostral i de pressupost en MCTS:} Mentre que els agents heurístics, minimax, imitació i referència aporten $n=10.000$ partides per cel·la (506.000 partides dirigides per agent al model), les variants d'MCTS (\texttt{v18}--\texttt{v20}) es van avaluar a $n=1.000$ per cel·la (56.000 partides) i sota un pressupost d'inferència estrictament acotat a 5 torns de desplegament. Aquesta diferència de volum mostral implica una variància d'estimació superior que desaconsella intercalar ordinalment MCTS amb la resta d'agents.
+    \item \textbf{Absència d'intervals de confiança en l'ajust MLE:} Les puntuacions reportades són estimacions puntuals del vector de coeficients de la regressió logística. La proximitat entre valors arrodonits (com 1755 entre \texttt{v14} i Abyssal, o 1730 entre \texttt{v9} i \texttt{v21}) no autoritza a proclamar superioritat estadística d'un agent sobre l'altre.
+    \item \textbf{Intransitivitat i dinàmiques de tipus (pedra-paper-tisores):} Tal com evidencia el mapa de calor dirigit (Figura~\ref{fig:heatmap}) i la inversió d'estils de la Secció~\ref{sec:res_inversion}, l'espai de joc de Pokémon Random Battles presenta cicles intransitius d'especialització que cap projecció unidimensional pot capturar íntegrament sense pèrdua d'informació estructural.
+\end{enumerate}
+Per aquest motiu, l'anàlisi comparativa interparadigma s'articula fonamentalment a través de l'oponent comú \texttt{v12} (Taula~\ref{tab:paradigm_summary}) i de les taxes agrupades per família (Taula~\ref{tab:overall_wr}), evitant tractar la matriu heterogènia com una lliga única.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.92\linewidth]{images/results/gen9_elo_bars.png}
-    \caption{Escala Bradley--Terry ancorada a \texttt{random}${}=1000$, amb les dues orientacions. \texttt{v12} i \texttt{v13} obtenen les puntuacions més altes. \texttt{v14}, Abyssal i Simple Heuristic comparteixen el mateix valor arrodonit. Les files MCTS aporten menys partides al model.}
+    \caption{Escala latent Bradley--Terry ancorada a \texttt{random}${}=1000$ ajustada sobre les dues orientacions de la matriu. \texttt{v12} i \texttt{v13} obtenen les puntuacions més altes; \texttt{v14}, Abyssal i Simple Heuristic comparteixen un altiplà a 1755 punts. Les files i columnes d'MCTS aporten una desena part de partides al model ($n=1.000$).}
     \label{fig:elo_bars}
 \end{figure}
 
