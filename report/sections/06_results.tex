@@ -30,25 +30,11 @@ La taxa global d'una fila no MCTS pondera els oponents MCTS deu vegades menys; e
 \section{Controls globals de la matriu}
 \label{sec:res_controls}
 
-Abans d'interpretar versions concretes, es comproven la cobertura, la distribució de taxes i la durada de les batalles. Aquests controls detecten cel·les incompletes, errors d'orientació i resultats extrems que podrien dominar una mitjana.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.9\linewidth]{images/results/tournament_coverage_heatmap.png}
-    \caption{Nombre de partides completades a les 784 cel·les. El bloc fosc correspon a 10.000 partides; les files i columnes clares de \texttt{v18}--\texttt{v20}, a 1.000. La creu no és un buit de dades, sinó el pressupost reduït de l'MCTS.}
-    \label{fig:tournament_coverage}
-\end{figure}
-
-La Figura~\ref{fig:tournament_coverage} confirma que la reducció de mostra segueix el paradigma i no l'agent que ocupa la primera orientació. Aquesta regularitat és important perquè evita comparar una cel·la MCTS parcial amb una cel·la no MCTS completa.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.88\linewidth]{images/results/win_rate_distribution.png}
-    \caption{Distribució de la taxa de victòries de les 784 cel·les dirigides. El centre prop del 50\% conté autojoc i enfrontaments equilibrats; les cues reflecteixen diferències grans, especialment davant de Random i MaxBasePower.}
-    \label{fig:wr_distribution}
-\end{figure}
-
-La distribució no és una campana estreta al voltant del 50\%. Hi ha massa a prop dels extrems perquè alguns agents de referència són molt febles i perquè cada cel·la té una orientació recíproca. Aquesta és una altra raó per no interpretar la taxa global com una habilitat absoluta: millorar contra un agent que ja es derrota en el 95--98\% de les partides té poc valor discriminant.
+Abans d'interpretar versions concretes, es comproven la cobertura, la distribució de taxes i la durada de les batalles sobre les 784 cel·les dirigides:
+\begin{itemize}
+    \item \textbf{Cobertura:} La reducció mostral segueix estrictament el paradigma (10.000 partides per cel·la al bloc general i 1.000 a MCTS pel cost computacional de les simulacions), assegurant la consistència del banc d'avaluació.
+    \item \textbf{Distribució de taxes:} La taxa de victòries es concentra al voltant del 50\% (autojoc i duels equilibrats) amb acumulacions als extrems (0\% i 100\%) degudes a referències febles (\texttt{random}, \texttt{max\_power}). Per aquest motiu, la taxa global no s'interpreta com una habilitat absoluta: millorar contra oponents febles té un valor discriminant molt limitat.
+\end{itemize}
 
 \begin{figure}[htbp]
     \centering
@@ -57,7 +43,7 @@ La distribució no és una campana estreta al voltant del 50\%. Hi ha massa a pr
     \label{fig:length_distribution}
 \end{figure}
 
-La durada complementa la taxa de victòries. Dues polítiques poden guanyar una proporció semblant, però una pot tancar abans mentre l'altra conserva més membres mitjançant canvis i recuperació. La cua dreta també fa que la mitjana sigui sensible a bucles o estratègies d'atrició; per això les seccions següents combinen torns, membres restants i motiu dels canvis.
+Pel que fa a la durada (Figura~\ref{fig:length_distribution}), la mediana se situa clarament en 17 torns (amb el gruix entre 10 i 25 torns) i presenta una cua dreta per atrició defensiva o bucles de canvis. Com que dues polítiques poden assolir una mateixa taxa tancant ràpidament o bé dilatant el combat per conservació de recursos, les anàlisis posteriors combinen sempre torns, supervivents finals i motiu dels canvis.
 
 % ============================================================
 \section{Fil conductor de \texttt{v1} a \texttt{v22}}
@@ -157,14 +143,7 @@ La complexitat creix de \texttt{v12} a \texttt{v14}, però la taxa global observ
 
 \input{tables/heur_h2h}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\linewidth]{images/heuristics/heur_inversion_h2h.png}
-    \caption{Enfrontaments directes, amb $n=10.000$ per orientació. \texttt{v12} i \texttt{v13} no presenten una separació concloent; \texttt{v14} obté 44,74\% contra \texttt{v12} i 41,60\% contra \texttt{v13}.}
-    \label{fig:heur_inversion}
-\end{figure}
-
-Les dues orientacions de \texttt{v12} i \texttt{v13} difereixen en 1,8~pp i no aporten una separació concloent. En canvi, \texttt{v14} queda per sota de tots dos en els enfrontaments directes.
+Tal com reflecteix la Taula~\ref{tab:heur_h2h}, les dues orientacions de \texttt{v12} i \texttt{v13} difereixen només en 1,8~pp (50,65\% i 48,85\%) i no aporten una separació concloent. En canvi, \texttt{v14} queda clarament per sota de tots dos en els enfrontaments directes (44,74\% davant \texttt{v12} i 41,60\% davant \texttt{v13}).
 
 \subsection{On \texttt{v13} encara guanya}
 
@@ -186,11 +165,9 @@ Altres heurístiques (bloc) & \textbf{67,01} & 64,71 & 58,58 \\
 \end{tabular}
 \end{center}
 
-\texttt{v13} acaba amb més Pokémon disponibles (\texttt{avg\_hp\_us}: 2,01, davant d'1,84 i 1,49) i juga partides més llargues (19,1 torns, davant de 17,9 i 18,5). El perfil és més conservador i orientat a l'atrició.
-
 \subsection{Per què no supera \texttt{v12} en global}
 
-En la telemetria de matriu, \texttt{v13} utilitza la Teracristal·lització 0,20 vegades per partida, davant de 0,96 a \texttt{v12}; també fa més canvis voluntaris (3,58 davant d'1,37) i més canvis per enfrontament (2,57 davant de 0,25). Aquest comportament preserva més membres de l'equip, però pot cedir torns contra oponents deterministes. Les dades són compatibles amb aquesta explicació, però no aïllen causalment cadascun dels mecanismes.
+En la telemetria de matriu, \texttt{v13} utilitza la Teracristal·lització 0,20 vegades per partida, davant de 0,96 a \texttt{v12}; també fa notablement més canvis voluntaris (3,58 davant d'1,37 a \texttt{v12}) i més canvis per enfrontament (2,57 davant de 0,25). Aquest comportament preserva més membres de l'equip al final de la batalla (2,01 Pokémon restants davant d'1,84 a \texttt{v12} i 1,49 a \texttt{v14}) i allarga la durada mitjana (19,1 torns enfront dels 17,9 de \texttt{v12} i 18,5 de \texttt{v14}). Tanmateix, la freqüència de canvi per si sola no mesura la qualitat de la política: pot cedir la iniciativa i regalar torns de dany gratuït contra oponents deterministes, explicant per què \texttt{v12} assoleix una taxa global superior malgrat acabar amb menys recursos. Les dades són compatibles amb aquesta explicació, però no aïllen causalment cadascun dels mecanismes.
 
 \subsection{Especialització de \texttt{v14} i pèrdua de rendiment local}
 
@@ -205,30 +182,9 @@ En la telemetria de matriu, \texttt{v13} utilitza la Teracristal·lització 0,20
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\linewidth]{images/heuristics/heur_key_matchups.png}
-    \caption{Enfrontaments de referència de \texttt{v12}, \texttt{v13} i \texttt{v14}. Cada color és l'agent avaluat. Les barres contra MCTS tenen $n=1.000$ i la resta, $n=10.000$. \texttt{v12} domina els agents de referència; \texttt{v13} és més fort contra cerca i \texttt{v21}.}
-    \label{fig:heur_key}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
     \includegraphics[width=0.95\linewidth]{images/heuristics/heur_wr_by_paradigm.png}
     \caption{Taxa de victòries de la inversió, agregada per paradigma d'oponent. \texttt{v12} és millor contra agents de referència i altres heurístiques; \texttt{v13}, contra minimax, MCTS i imitació híbrida.}
     \label{fig:heur_paradigm}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.95\linewidth]{images/heuristics/heur_switching_vs_wr.png}
-    \caption{Relació entre volum de canvis i taxa de victòries. La freqüència de canvi, per si sola, no mesura la qualitat de la política; cal distingir-ne el motiu.}
-    \label{fig:heur_switch}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.95\linewidth]{images/heuristics/heur_length_hp.png}
-    \caption{Durada i membres de l'equip disponibles al final. \texttt{v13} juga partides més llargues i conserva més Pokémon, mentre que \texttt{v12} obté una taxa de victòries superior.}
-    \label{fig:heur_length}
 \end{figure}
 
 En aquest banc de proves, afegir modelatge d'oponents humans redueix el rendiment agent-contra-agent. Això indica una possible especialització de domini i justifica mantenir separades la matriu local i l'avaluació pública.
@@ -268,13 +224,6 @@ La discrepància es manté al voltant del 67\%. Per tant, enriquir la fulla en a
 
 Aquest resultat és coherent amb una limitació d'horitzó: afegir una bonificació estàtica no equival a simular les conseqüències futures d'un moviment de preparació.
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.92\linewidth]{images/minimax/minimax_future_proxies.png}
-    \caption{Indicadors d'efectes diferits: preparació, perills d'entrada i Teracristal·lització. \texttt{v16} manté la preparació al voltant de 0,21 usos per partida, un nivell semblant al de \texttt{v14} i molt inferior al de \texttt{v12}.}
-    \label{fig:minimax_future}
-\end{figure}
-
 \subsection{\texttt{v17}: prior heurístic}
 
 \texttt{v17} afegeix 0,15 al valor de l'acció proposada per \texttt{v14}. La discrepància baixa del 67\% al 37\% i la taxa global augmenta 4,1~pp respecte de \texttt{v15}. En els enfrontaments directes obté 54,7\% i 54,3\% contra \texttt{v15} i \texttt{v16}. El resultat mostra que conservar un prior heurístic és més efectiu, en aquesta implementació, que substituir-lo per la matriu d'un torn.
@@ -304,36 +253,15 @@ Cap variant de minimax supera \texttt{v14} o \texttt{v12}. La variant amb millor
 
 \subsection{Canvis, durada i supervivència}
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.94\linewidth]{images/minimax/minimax_length_hp.png}
-    \caption{Distribució de la durada i dels Pokémon restants a minimax. Les tres variants duren aproximadament 19 torns, però \texttt{v17} conserva 1,39 membres de mitjana, davant d'1,28--1,29.}
-    \label{fig:minimax_length_hp}
-\end{figure}
+Pel que fa a la durada dels combats i l'estat final de l'equip, les tres variants de minimax presenten una durada pràcticament coincident, situada al voltant dels 19 torns de mitjana. La millora de \texttt{v17} no prové, per tant, d'allargar sistemàticament les batalles: el seu avantatge rau en una major conservació de recursos, ja que conserva de mitjana 1,39 membres de l'equip al final de la partida, enfront dels 1,28--1,29 membres de \texttt{v15} i \texttt{v16}. Aquesta diferència augmenta significativament la proporció de partides guanyades amb dos o tres membres restants, un patró coherent amb una reducció de decisions maximin agressives que exposaven innecessàriament el Pokémon actiu.
 
-La millora de \texttt{v17} no prové d'allargar sistemàticament les batalles: la durada mitjana pràcticament no canvia. Sí que augmenta la massa de resultats amb dos o tres membres restants. Aquesta observació és coherent amb menys decisions maximin agressives que exposen l'actiu, tot i que la figura no identifica per si sola quina acció evita cada debilitament.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.94\linewidth]{images/minimax/minimax_switching_box.png}
-    \caption{Distribució dels canvis voluntaris, dels canvis decidits pel maximin i de la fracció de decisions de cerca que són canvis. \texttt{v17} presenta una mediana superior de canvis tot i discrepar menys de \texttt{v14}.}
-    \label{fig:minimax_switching}
-\end{figure}
-
-La combinació «més canvis decidits per cerca» i «menys discrepància» no és contradictòria. Indica que, quan \texttt{v14} ja proposa un canvi, el prior de \texttt{v17} concentra el maximin en la mateixa direcció. El guany no sembla provenir del nombre brut de canvis, sinó de conservar el canvi heurístic en els estats on la matriu no disposa d'un horitzó suficient.
+D'altra banda, en la distribució de canvis, \texttt{v17} presenta una mediana superior de canvis voluntaris i de canvis decidits pel mòdul de cerca respecte de \texttt{v15} i \texttt{v16}, tot i discrepar menys de la política base de \texttt{v14}. Aquesta combinació de «més canvis decidits per cerca» i «menys discrepància» no és contradictòria: indica que, quan \texttt{v14} ja aconsella canviar de Pokémon, el prior de $+0{,}15$ afegit a \texttt{v17} reforça el maximin per consolidar aquesta mateixa decisió en lloc de forçar un atac de baix valor. El guany no prové d'un increment indiscriminat del volum brut de canvis, sinó de preservar el criteri de canvi heurístic en estats on una matriu de cerca d'un sol torn manca de la profunditat temporal necessària per ponderar l'atrició a llarg termini.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.92\linewidth]{images/minimax/minimax_fingerprint_bars.png}
     \caption{Empremta \texttt{v15}--\texttt{v17}: KO checks $\sim$14, cerca $\sim$16--18\% dels torns, Tera $\sim$0,39 (nivell \texttt{v14}, no \texttt{v12}).}
     \label{fig:minimax_fp}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.92\linewidth]{images/minimax/minimax_key_matchups.png}
-    \caption{Enfrontaments de referència del minimax d'un torn. Cada color és l'agent avaluat. Les barres contra MCTS tenen $n=1.000$. \texttt{v17} millora respecte de les altres variants, però no supera el 50\% contra \texttt{v14}.}
-    \label{fig:minimax_key}
 \end{figure}
 
 \begin{figure}[H]
@@ -410,12 +338,7 @@ Les freqüències de preparació i perills d'entrada es mantenen a nivells sembl
 
 \texttt{v20} presenta més \texttt{search\_switches} (aproximadament 36\% de les decisions de cerca, davant del 16\% a \texttt{v18}) i menys discrepància total. Això indica que PUCT reforça sovint els canvis ja proposats per \texttt{v14}.
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.92\linewidth]{images/mcts/mcts_future_proxies.png}
-    \caption{Indicadors d'efectes diferits a les simulacions de cinc torns. La preparació i els perills d'entrada es mantenen a nivells semblants als de \texttt{v14}.}
-    \label{fig:mcts_future}
-\end{figure}
+
 
 \subsection{Comparació amb els agents de referència}
 
@@ -445,36 +368,15 @@ L'MCTS ras amb 100 simulacions de cinc torns no supera \texttt{v12} ni aporta ev
 
 \subsection{Canvis, durada i supervivència}
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.94\linewidth]{images/mcts/mcts_length_hp.png}
-    \caption{Durada i Pokémon restants a MCTS. \texttt{v20} acaba lleugerament abans (18,33 torns) i conserva 1,40 membres de mitjana, davant d'1,21--1,22 a UCB1.}
-    \label{fig:mcts_length_hp}
-\end{figure}
+En l'anàlisi de la durada dels combats i la supervivència de l'equip, \texttt{v20} conclou les batalles lleugerament abans (18,33 torns de mitjana) i conserva 1,40 membres de l'equip al final de la partida, davant dels 1,21--1,22 membres que aconsegueixen preservar les variants d'UCB1 pur (\texttt{v18} i \texttt{v19}). El patró de \texttt{v20} no és, per tant, el d'una política excessivament defensiva que es limita a prolongar els enfrontaments: tanca les partides amb més rapidesa i preservant més recursos. Una explicació plausible és que el guiatge heurístic del prior desaconsella branques de simulació miops que opten per dany immediat a costa d'un enfrontament clarament desfavorable al torn següent.
 
-El patró de \texttt{v20} no és el d'una política més defensiva que simplement prolonga la partida. Acaba una mica abans i amb més recursos. Una explicació plausible és que el prior redueix simulacions que prefereixen dany immediat però deixen un mal enfrontament al torn següent. És una interpretació compatible amb la telemetria, no una prova causal del mecanisme intern de cada victòria.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.94\linewidth]{images/mcts/mcts_switching_box.png}
-    \caption{Distribució dels canvis a MCTS. PUCT augmenta la fracció de decisions de cerca que acaben en canvi i amplia la distribució de canvis voluntaris.}
-    \label{fig:mcts_switching}
-\end{figure}
-
-\texttt{v18} gairebé mai escull un canvi des de l'arrel en la mediana, mentre que \texttt{v20} arriba aproximadament a un terç de decisions de cerca orientades al canvi. Com que al mateix temps baixa \texttt{search\_diff}, aquests canvis solen coincidir amb la proposta de \texttt{v14}. El resultat reforça la lectura que PUCT preserva posició, més que descobrir una estratègia nova de llarg horitzó.
+Pel que fa a la dinàmica de canvis, l'algorisme PUCT augmenta de manera substancial la fracció de decisions de cerca que acaben en canvi i n'eixampla la distribució de canvis voluntaris. Mentre que \texttt{v18} gairebé mai escull un canvi des de l'arrel en la mediana de partides, a \texttt{v20} aproximadament un terç de les decisions preses pel mòdul de cerca corresponen a canvis de Pokémon. Com que al mateix temps la taxa de discrepància \texttt{search\_diff} cau fins al 18,7\%, aquests canvis solen coincidir amb la recomanació del coneixement expert de \texttt{v14}. Aquesta convergència reforça la interpretació que la millora de PUCT rau en consolidar i no degradar la posició tàctica proposada per l'heurística, més que en la descoberta d'estratègies noves en un horitzó de cinc torns.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.92\linewidth]{images/mcts/mcts_fingerprint_bars.png}
     \caption{Empremta MCTS. Cerca 16--18\% dels torns; KO $\sim$14/partida. \texttt{v20} busca menys i acaba amb més HP. $n=1.000$ per oponent.}
     \label{fig:mcts_fp}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.92\linewidth]{images/mcts/mcts_key_matchups.png}
-    \caption{Enfrontaments discriminants d'MCTS. Cada color és l'agent avaluat i totes les barres tenen $n=1.000$. \texttt{v20} s'acosta a Abyssal (49\%) i no supera \texttt{v12} (42,7\%).}
-    \label{fig:mcts_key}
 \end{figure}
 
 \begin{figure}[H]
@@ -549,7 +451,7 @@ La comparació mostra que la decisió d'alt nivell es pot integrar de manera út
 \begin{enumerate}
     \item \textbf{Semàntica de l'acció.} El primer model només prediu $\{\mathrm{atacar},\mathrm{canviar}\}$ i el segon puntua atributs de candidats sintetitzats. Es perd informació sobre la identitat i el context del moviment.
     \item \textbf{Biaix d'exposició.} Una decisió deficient pot portar la política a estats poc representats a les repeticions. La protecció de bucle s'activa en el \textbf{97\%} de les partides de \texttt{v22}, que també són més llargues i acaben amb menys Pokémon disponibles.
-    \item \textbf{Absència de restriccions tàctiques.} \texttt{v21} preserva els debilitaments garantits abans de consultar el model; \texttt{v22} no. La freqüència de Teracristal·lització de \texttt{v22} és alta, però la freqüència per si sola no informa de la qualitat del moment triat.
+    \item \textbf{Absència de restriccions tàctiques.} \texttt{v21} preserva els debilitaments garantits abans de consultar el model; \texttt{v22} no. La freqüència de Teracristal·lització de \texttt{v22} és alta (gairebé una vegada per partida, enfront de 0 a \texttt{v21}), però la freqüència per si sola no informa de la qualitat del moment triat.
 \end{enumerate}
 
 En aquesta implementació, el resultat depèn tant de \emph{què} s'imita ---la decisió atacar/canviar--- com de \emph{qui} executa l'acció concreta. Disposar d'1,1 milions de torns no compensa una representació que no modela directament la selecció completa de moviments i canvis.
@@ -558,30 +460,9 @@ El contrast entre \texttt{v21} i \texttt{v22} no compara únicament dos models d
 
 \subsection{Canvis, durada i supervivència}
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.94\linewidth]{images/il/il_length_hp.png}
-    \caption{Durada i Pokémon restants dels agents d'imitació. \texttt{v22} juga partides més llargues (20,07 torns) però acaba amb només 0,70 membres, davant d'1,33 a \texttt{v21}.}
-    \label{fig:il_length_hp}
-\end{figure}
+Pel que fa a la durada de les partides i l'estat final de l'equip, \texttt{v22} registra partides significativament més llargues (amb una mitjana de 20,07 torns) però conclou amb només 0,70 membres de l'equip disponibles de mitjana, en clar contrast amb els 1,33 membres que aconsegueix preservar \texttt{v21}. Aquesta major durada temporal de \texttt{v22} no és en cap cas indicativa de control tàctic o domini posicional: en anar acompanyada d'un nombre tan reduït de supervivents i d'una taxa global de victòria molt menor (33,49\%), reflecteix una dinàmica de canvis que retarda el debilitament inevitable sense arribar a estabilitzar mai la posició. Aquest patró concorda plenament amb el biaix d'exposició de l'aprenentatge per imitació: després d'un canvi subòptim o descontextualitzat, el model es veu obligat a prendre decisions successives en estats allunyats de la distribució de les trajectòries humanes d'entrenament.
 
-La durada més alta de \texttt{v22} no és senyal de control. Combinada amb menys membres restants i una taxa de victòries inferior, apunta a canvis que posposen el debilitament sense millorar la posició. Aquest patró concorda amb el biaix d'exposició: després d'un canvi deficient, el model torna a decidir en un estat allunyat de les trajectòries humanes.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.94\linewidth]{images/il/il_switching_box.png}
-    \caption{Distribució dels canvis a imitació. \texttt{v22} fa aproximadament el doble de canvis voluntaris i rep moltes més ordres de canvi del classificador.}
-    \label{fig:il_switching}
-\end{figure}
-
-Els canvis forçats són semblants perquè depenen sobretot del nombre de debilitaments. La diferència apareix en els canvis voluntaris i en les decisions d'XGBoost. \texttt{v22} concentra la distribució al voltant de tres o quatre canvis, mentre que \texttt{v21} n'executa habitualment un o dos. Juntament amb les proteccions de bucle en el 97\% de les partides, això suggereix que el problema no és «canviar poc», sinó no disposar d'un executor que valori adequadament el destí del canvi i el cost de tornar enrere.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.92\linewidth]{images/il/il_tactical_proxies.png}
-    \caption{Indicadors tàctics de \texttt{v21} i \texttt{v22}. \texttt{v22} utilitza la Teracristal·lització gairebé una vegada per partida, una freqüència semblant a la de \texttt{v12} a la Figura~\ref{fig:heur_fingerprint}, però obté un resultat molt inferior; la freqüència no mesura la qualitat de la decisió.}
-    \label{fig:il_tac}
-\end{figure}
+Aquesta dinàmica es reflecteix directament en la distribució dels canvis. Mentre que els canvis forçats presenten volums similars entre totes dues variants (en dependre primordialment dels debilitaments soferts), la diferència fonamental rau en els canvis voluntaris i en les consultes a XGBoost: \texttt{v22} executa aproximadament el doble de canvis voluntaris que \texttt{v21} i rep moltes més instruccions de canvi del classificador. La distribució de \texttt{v22} es concentra al voltant de 3 o 4 canvis voluntaris per partida, mentre que \texttt{v21} en realitza habitualment entre 1 i 2. Si es combina aquest patró amb el fet que el mecanisme de protecció contra bucles de canvis s'activa en el 97\% de les partides de \texttt{v22}, l'evidència suggereix que el factor limitant no és la manca de propensió al canvi, sinó l'absència d'un executor capaç de ponderar el destí de la transició i el cost tàctic de revertir-la.
 
 \begin{figure}[H]
     \centering
@@ -690,28 +571,7 @@ A la matriu, \texttt{v8} obté \textbf{32,9\%} contra \texttt{v12} ($n=10.000$).
 
 \subsection{Currículum}
 
-La Taula~\ref{tab:ppo_curriculum_eval} i la Figura~\ref{fig:ppo_curriculum_curves} separen artefactes d'entrenament (Capítol~\ref{chap:implementacio}) i validació congelada. Les dues primeres etapes compleixen el criteri operatiu; la fase~2 no, i la fase~3 s'executa com a prova de continuació.
-
-\begin{table}[htbp]
-    \centering
-    \caption{Validació congelada del currículum PPO. Els artefactes i hiperparàmetres són la Taula~\ref{tab:ppo_curriculum_impl}.}
-    \label{tab:ppo_curriculum_eval}
-    \small
-    \renewcommand{\arraystretch}{1.2}
-    \begin{tabularx}{\textwidth}{clcc>{\raggedright\arraybackslash}X}
-        \toprule
-        \textbf{Fase} & \textbf{Oponent} & $n$ & \textbf{TV} & \textbf{Porta} \\
-        \midrule
-        1   & Random       & 1.000  & 91,8\% & $\ge 90\%$: superada \\
-        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        1.5 & MaxBP        & 1.000  & 70,5\% & $>70\%$: superada per estimació puntual \\
-        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        2   & \texttt{v8}  & 1.000  & 40,6\% & $>55\%$: no superada \\
-        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        3   & \texttt{v12} & 10.000 & 34,1\% & mesura final (model A) \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
+La Taula~\ref{tab:ppo_head} i la Figura~\ref{fig:ppo_curriculum_curves} separen artefactes d'entrenament (Capítol~\ref{chap:implementacio}) i validació congelada. Les dues primeres etapes compleixen el criteri operatiu; la fase~2 no, i la fase~3 s'executa com a prova de continuació.
 
 No és correcte descriure el currículum com quatre graduacions reeixides. Una configuració amb taxa $1{,}5\times 10^{-4}$ i 16 entorns obté 32,6\% contra \texttt{v12} amb $n=1.000$. L'extensió a 346 dimensions, inicialitzada amb \texttt{v14}, es va interrompre amb una taxa d'entrenament aproximada del 33,5\%. Aquests valors són diagnòstics i no substitueixen l'avaluació del model A.
 

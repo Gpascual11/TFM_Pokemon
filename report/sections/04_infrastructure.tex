@@ -9,7 +9,7 @@ Cal distingir dos volums. La \textbf{matriu dirigida} de 28 agents suma \textbf{
 \section{Organització del projecte i gestió amb Kanban}
 \label{sec:kanban}
 
-El desenvolupament del projecte s'ha organitzat mitjançant una metodologia àgil basada en un tauler \textbf{Kanban} (Figura~\ref{fig:kanban}), dividit en sis seccions funcionals per controlar l'abast i prioritzar el treball:
+El desenvolupament del projecte s'ha organitzat mitjançant una metodologia àgil basada en un tauler \textbf{Kanban}, dividit en sis seccions funcionals per controlar l'abast i prioritzar el treball:
 
 \begin{itemize}
     \item \textbf{\textit{Aim of the study}:} Defineix els objectius principals, hipòtesis de recerca i el disseny dels 5 paradigmes.
@@ -21,13 +21,6 @@ El desenvolupament del projecte s'ha organitzat mitjançant una metodologia àgi
 \end{itemize}
 
 Aquesta estructura ha permès controlar l'abast (heurístiques, cerca, imitació, PPO, LLM i redacció) i traçar-lo amb el repositori (Secció~\ref{sec:git_metrics}).
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\linewidth]{diagrams/kanban.png}
-    \caption{Tauler Kanban del projecte dividit en les sis seccions d'organització del treball.}
-    \label{fig:kanban}
-\end{figure}
 
 \section{Evolució de l'arquitectura}
 
@@ -162,25 +155,6 @@ La Taula~\ref{tab:telegram_commands} recull les comandes que el dimoni interpret
 
 El mòbil exposa progrés i temperatures, permet pausar o reprendre la matriu i, si cal, dispara l'apagat tèrmic o el reinici de Showdown sense SSH. Aquesta capa és el que ha fet viable l'execució 24/7. El llançador de la Secció~\ref{sec:matrix_launcher} hi afegeix els avisos de cada cel·la i la recuperació de fils bloquejats.
 
-\begin{figure}[H]
-    \centering
-    \begin{subfigure}[b]{0.48\linewidth}
-        \centering
-        \includegraphics[width=\linewidth]{diagrams/telegram_sample1.jpeg}
-        \caption{Menú de comandes interactives.}
-        \label{fig:telegram_sample_jpeg}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\linewidth}
-        \centering
-        \includegraphics[width=\linewidth]{diagrams/telegram_sample1.png}
-        \caption{Execució de \texttt{/now}, resum diari i alertes.}
-        \label{fig:telegram_sample_png}
-    \end{subfigure}
-    \caption{Captures de la interfície del bot de Telegram: (a) mostra del menú complet de comandes interactives disponibles; (b) flux real de notificacions amb l'execució de \texttt{/now}, el resum diari automàtic de les 09:00 AM i les alertes automàtiques de finalització, reinici o aturada per bloqueig.}
-    \label{fig:telegram_samples}
-\end{figure}
-
 \section{Dependències}
 
 El gestor de paquets és \textbf{uv}~\cite{uv} amb Python \textbf{3.12} i \texttt{pyproject.toml}. Node.js~\cite{nodejs} construeix Pokémon Showdown. Resum:
@@ -233,10 +207,11 @@ L'avaluació econòmica d'un projecte d'investigació aplicada i enginyeria de d
 \subsection{Estimació de dedicació de l'equip i costos de personal}
 \label{subsec:costos_personal}
 
-L'equip humà responsable de l'execució del projecte es compon de dos perfils professionals diferenciats:
+L'equip humà responsable de l'execució del projecte es compon de tres perfils diferenciats:
 \begin{itemize}
     \item \textbf{Investigador Principal / Desenvolupador (Gerard Pascual Fontanilles --- Perfil Junior Data Scientist):} Responsable directe de la implementació de la base de codi (\path{src/}, més de 42.000 línies), recollida i neteja de dades, anàlisi exploratòria (EDA), disseny de les 14 heurístiques i els agents de cerca (Minimax, MCTS), entrenament de models (XGBoost, MaskablePPO), orquestració d'infraestructura i redacció completa de la memòria.
-    \item \textbf{Director del Treball / Professor Ponent (Jordi Peralta Dolz --- Perfil Senior Data Scientist):} Responsable de la supervisió acadèmica i metodològica, orientació en la formulació teòrica (POSG i POMDP), assessorament en el disseny experimental i inferència estadística (Bradley--Terry, Wilson), revisió crítica continuada i validació de la memòria.
+    \item \textbf{Coordinadora del TFM / Ponent Oficial (Laura Serra Roig --- Perfil Senior Data Scientist / Coordinadora Acadèmica):} Responsable de la ponència oficial del Treball de Final de Màster i coordinació institucional de l'assignatura; va contribuir en la concepció de la idea fundacional del treball, l'orientació sobre l'enfocament i directrius del TFM, i la revisió final global de la memòria prèvia a la presentació davant del tribunal.
+    \item \textbf{Director Tècnic del Treball / Tutor Metodològic (Jordi Peralta Dolz --- Perfil Senior Data Scientist):} Responsable de la direcció tècnica i supervisió pràctica continuada del projecte, orientació en la formulació teòrica (POSG i POMDP), assessorament en el disseny experimental i inferència estadística (Bradley--Terry, Wilson), revisió crítica continuada i validació de les implementacions.
 \end{itemize}
 
 \subsubsection{Estudi salarial de mercat a Espanya (2026)}
@@ -244,43 +219,43 @@ L'equip humà responsable de l'execució del projecte es compon de dos perfils p
 D'acord amb els estudis del mercat laboral tecnològic a Espanya (guies salarials sectorials de consultores com Michael Page~\cite{michael_page_tech_2025} i Hays~\cite{hays_guia_salarial_2025}):
 \begin{itemize}
     \item \textbf{Junior Data Scientist (0--2 anys d'experiència):} La forquilla salarial de mercat se situa entre 28.000~€ i 35.000~€ bruts anuals. S'adopta una retribució bruta de referència de \textbf{32.000~€/any}. Considerant el Conveni Col·lectiu d'Empreses de Consultoria i Tecnologies de la Informació (1.760 hores laborables anuals), s'obté un salari brut horari de \textbf{18,18~€/h}. Computant les cotitzacions a la Seguretat Social a càrrec de l'empresa ($\approx 31{,}5\%$, cost anual d'empresa de $\approx 42.080$~€), la tarifa horària d'imputació empresarial és de \textbf{24,00~€/h}.
-    \item \textbf{Senior Data Scientist / Director de Projecte ($>6$ anys d'experiència):} La banda salarial de mercat oscil·la entre 60.000~€ i 80.000~€ bruts anuals. S'estableix una retribució mitjana de referència de \textbf{68.000~€/any}, equivalent a un salari brut horari de \textbf{38,64~€/h}. Amb les quotes patronals corresponents (aplicant el topall de base màxima de cotització a Espanya, cost empresa de $\approx 88.000$~€/any), la tarifa horària d'imputació a projecte és de \textbf{50,00~€/h}.
+    \item \textbf{Senior Data Scientist / Direcció i Coordinació ($>6$ anys d'experiència):} La banda salarial de mercat oscil·la entre 60.000~€ i 80.000~€ bruts anuals. S'estableix una retribució mitjana de referència de \textbf{68.000~€/any}, equivalent a un salari brut horari de \textbf{38,64~€/h}. Amb les quotes patronals corresponents (aplicant el topall de base màxima de cotització a Espanya, cost empresa de $\approx 88.000$~€/any), la tarifa horària d'imputació a projecte és de \textbf{50,00~€/h}.
 \end{itemize}
 
 \subsubsection{Imputació d'hores per fase de treball}
 
 El còmput d'hores reflecteix les 27 setmanes de calendari compreses entre el 14 de febrer i el 20 d'agost de 2026 (\textbf{110 commits} i \textbf{47 dies d'activitat intensa} acreditats a Git, Secció~\ref{sec:git_metrics}). L'esforç s'imputa directament a les fases de treball ja detallades en els capítols anteriors:
 \begin{itemize}
-    \item \textbf{Recerca teòrica (\emph{Research}):} 75~h totals (60~h Junior, 15~h Senior) per a l'estudi de POSG/POMDP i la literatura existent (Capítol~\ref{chap:marc_teoric}).
-    \item \textbf{Enginyeria de dades (\emph{Data}):} 78~h totals (70~h Junior, 8~h Senior) per a l'adquisició i preparació del conjunt de repeticions d'alt nivell Elo~$1800+$ (Capítol~\ref{chap:metodologia}).
-    \item \textbf{Anàlisi exploratòria i telemetria (\emph{EDA}):} 75~h totals (65~h Junior, 10~h Senior) per als 16 quaderns d'EDA i l'especificació de les 70 columnes de telemetria (\texttt{StatsBattle}, Secció~\ref{sec:metriques}).
-    \item \textbf{Modelització d'agents (\emph{Modeling}):} 208~h totals (190~h Junior, 18~h Senior) que concentren la implementació de les 14 heurístiques, minimax, MCTS, XGBoost i MaskablePPO (Capítols~\ref{chap:metodologia} i \ref{chap:implementacio}).
-    \item \textbf{Infraestructura i MLOps (\emph{Infrastructure}):} 97~h totals (90~h Junior, 7~h Senior) per a l'arquitectura concurrent, VPN i el bot de monitoratge tèrmic (Capítol~\ref{chap:infraestructura}).
-    \item \textbf{Avaluació experimental (\emph{Evaluation}):} 55~h totals (45~h Junior, 10~h Senior) per a l'execució de la matriu de 28 agents i l'ajust del model Bradley--Terry (Capítol~\ref{chap:resultats}).
-    \item \textbf{Redacció de la memòria (\emph{Redaction}):} 142~h totals (120~h Junior, 22~h Senior) d'escriptura tècnica i maquetació en \LaTeX{} (Secció~\ref{sec:perque_latex}).
+    \item \textbf{Recerca teòrica i concepció (\emph{Research}):} 80~h totals (60~h Junior, 15~h Jordi Peralta, 5~h Laura Serra) per a la concepció de la idea fundacional, l'estudi de POSG/POMDP i la literatura existent (Capítol~\ref{chap:marc_teoric}).
+    \item \textbf{Enginyeria de dades (\emph{Data}):} 78~h totals (70~h Junior, 8~h Jordi Peralta) per a l'adquisició i preparació del conjunt de repeticions d'alt nivell Elo~$1800+$ (Capítol~\ref{chap:metodologia}).
+    \item \textbf{Anàlisi exploratòria i telemetria (\emph{EDA}):} 75~h totals (65~h Junior, 10~h Jordi Peralta) per als 16 quaderns d'EDA i l'especificació de les 70 columnes de telemetria (\texttt{StatsBattle}, Secció~\ref{sec:metriques}).
+    \item \textbf{Modelització d'agents (\emph{Modeling}):} 208~h totals (190~h Junior, 18~h Jordi Peralta) que concentren la implementació de les 14 heurístiques, minimax, MCTS, XGBoost i MaskablePPO (Capítols~\ref{chap:metodologia} i \ref{chap:implementacio}).
+    \item \textbf{Infraestructura i MLOps (\emph{Infrastructure}):} 97~h totals (90~h Junior, 7~h Jordi Peralta) per a l'arquitectura concurrent, VPN i el bot de monitoratge tèrmic (Capítol~\ref{chap:infraestructura}).
+    \item \textbf{Avaluació experimental (\emph{Evaluation}):} 55~h totals (45~h Junior, 10~h Jordi Peralta) per a l'execució de la matriu de 28 agents i l'ajust de l'escala Bradley--Terry (Capítol~\ref{chap:resultats}).
+    \item \textbf{Redacció, coordinació i revisió de la memòria (\emph{Redaction}):} 167~h totals (120~h Junior, 22~h Jordi Peralta, 25~h Laura Serra) per a la resolució de consultes estructurals, orientació acadèmica continuada, redacció tècnica en \LaTeX{} i revisió final de la memòria (Secció~\ref{sec:perque_latex}).
 \end{itemize}
 
-La Taula~\ref{tab:costos_personal} en sintetitza la dedicació total (730~h) i el cost econòmic imputat.
+La Taula~\ref{tab:costos_personal} en sintetitza la dedicació total (760~h: 640~h Junior i 120~h Senior) i el cost econòmic imputat.
 
 \begin{table}[htbp]
     \centering
     \caption{Desglossament d'hores de treball i costos laborals de l'equip per fase del projecte.}
     \label{tab:costos_personal}
     \small
-    \setlength{\tabcolsep}{5pt}
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X rrrrr}
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X rrrrrr}
         \toprule
-        \textbf{Fase de treball} & \textbf{Jr.~(h)} & \textbf{Sr.~(h)} & \textbf{Total~(h)} & \textbf{Brut (€)} & \textbf{Empresa (€)} \\
+        \textbf{Fase de treball} & \textbf{Jr.~(h)} & \textbf{Jordi~(h)} & \textbf{Laura~(h)} & \textbf{Total~(h)} & \textbf{Brut (€)} & \textbf{Empresa (€)} \\
         \midrule
-        Recerca teòrica (\emph{Research})           & 60  & 15 & 75  & 1.670,40  & 2.190,00  \\
-        Enginyeria de dades (\emph{Data})          & 70  & 8  & 78  & 1.581,72  & 2.080,00  \\
-        Anàlisi exploratòria (\emph{EDA})          & 65  & 10 & 75  & 1.568,10  & 2.060,00  \\
-        Modelització d'agents (\emph{Modeling})    & 190 & 18 & 208 & 4.149,72  & 5.460,00  \\
-        Infraestructura i MLOps (\emph{Infrastr.}) & 90  & 7  & 97  & 1.906,68  & 2.510,00  \\
-        Avaluació i estadística (\emph{Evaluation})& 45  & 10 & 55  & 1.204,50  & 1.580,00  \\
-        Redacció de la memòria (\emph{Redaction})  & 120 & 22 & 142 & 3.031,68  & 3.980,00  \\
+        Recerca teòrica (\emph{Research})           & 60  & 15 & 5  & 80  & 1.863,60  & 2.440,00  \\
+        Enginyeria de dades (\emph{Data})          & 70  & 8  & 0  & 78  & 1.581,72  & 2.080,00  \\
+        Anàlisi exploratòria (\emph{EDA})          & 65  & 10 & 0  & 75  & 1.568,10  & 2.060,00  \\
+        Modelització d'agents (\emph{Modeling})    & 190 & 18 & 0  & 208 & 4.149,72  & 5.460,00  \\
+        Infraestructura i MLOps (\emph{Infrastr.}) & 90  & 7  & 0  & 97  & 1.906,68  & 2.510,00  \\
+        Avaluació i estadística (\emph{Evaluation})& 45  & 10 & 0  & 55  & 1.204,50  & 1.580,00  \\
+        Redacció i coordinació (\emph{Redaction})  & 120 & 22 & 25 & 167 & 3.997,68  & 5.230,00  \\
         \midrule
-        \textbf{Total Dedicació}                   & \textbf{640} & \textbf{90} & \textbf{730} & \textbf{15.112,80} & \textbf{19.860,00} \\
+        \textbf{Total Dedicació}                   & \textbf{640} & \textbf{90} & \textbf{30} & \textbf{760} & \textbf{16.272,00} & \textbf{21.360,00} \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -294,16 +269,9 @@ A diferència de les hores d'equip, el cost \emph{marginal} directe del treball 
     \item \textbf{Maquinari i equips (0,00~€):} Tant el portàtil inicial com l'estació de treball són equips de propietat personal preexistents del desenvolupador. No s'ha realitzat cap adquisició dedicada.
     \item \textbf{Temps d'execució i consum energètic ($\approx 5,85$~€):} L'estació de treball va funcionar de manera continuada 24/7 durant 4 setmanes, acumulant \textbf{684,89 hores de còmput continu de màquina} (471,38~h per a la matriu final Gen 9 i 213,66~h per a la resta de dades) sobre més de \textbf{52,7 milions de batalles}:
           \begin{itemize}
-              \item \textbf{Autoconsum solar diürn:} Durant les hores de sol, la instal·lació de \textbf{plaques solars domèstiques} va cobrir la demanda de la torre amb energia renovable gratuïta. Com s'il·lustra a la Figura~\ref{fig:solar_panels}, la producció fotovoltaica va cobrir el consum elèctric global de l'habitatge (incloent-hi la torre de còmput) durant les hores d'alta insolació.
+              \item \textbf{Autoconsum solar diürn:} Durant les hores de sol, la instal·lació de \textbf{plaques solars domèstiques} va cobrir la demanda de la torre amb energia renovable gratuïta, abastint el consum elèctric global de l'habitatge (incloent-hi la màquina de còmput) durant les hores d'alta insolació.
               \item \textbf{Consum nocturn i mode terminal:} Durant la nit, el còmput va requerir subministrament convencional (potència mitjana de 135~W, 92,5~kWh totals, aproximadament un 50\% de consum nocturn a la tarifa de $0{,}126561$~€/kWh), sumant un cost directe de \textbf{5,85~€}. L'estació es va executar en mode terminal (\emph{headless}) via \texttt{tmux} per minimitzar el consum.
           \end{itemize}
-
-          \begin{figure}[H]
-              \centering
-              \includegraphics[width=0.45\linewidth]{diagrams/solar_panels.jpeg}
-              \caption{Captura del sistema de monitoratge energètic de la llar, mostrant la producció solar i el consum elèctric global de l'habitatge durant l'execució del TFM.}
-              \label{fig:solar_panels}
-          \end{figure}
     \item \textbf{Models de llenguatge i eines d'IA (0,00~€):} Les proves amb LLMs es van executar 100\% localment amb \textbf{Ollama}, i l'ús d'eines basades en IA (Cursor, PyCharm, Antigravity) es va realitzar mitjançant llicències d'estudiant/pro sense cap despesa econòmica.
     \item \textbf{Programari i comunicacions (0,00~€):} Totes les eines de la cadena de valor (Showdown, \textit{poke-env}, Tailscale, Telegram Bot API i \LaTeX{}) són de codi obert (\emph{open-source}) o en modalitat gratuïta.
 \end{enumerate}
@@ -342,14 +310,15 @@ La integració dels costos de personal i dels costos materials permet quantifica
         \textbf{Partida pressupostària} & \textbf{Descripció / Desglossament} & \textbf{Cost Brut (€)} & \textbf{Cost Imputat (€)} \\
         \midrule
         Recursos Humans (Junior)        & 640~h d'investigació i enginyeria (Gerard Pascual Fontanilles) & 11.635,20 & 15.360,00 \\
-        Recursos Humans (Senior)        & 90~h de direcció i supervisió metodològica (Jordi Peralta Dolz) & 3.477,60  & 4.500,00  \\
+        Recursos Humans (Senior)        & 90~h de direcció tècnica i supervisió (Jordi Peralta Dolz)     & 3.477,60  & 4.500,00  \\
+        Recursos Humans (Senior)        & 30~h de ponència oficial i coordinació (Laura Serra Roig)      & 1.159,20  & 1.500,00  \\
         Consum Elèctric (Còmput 24/7)   & 684,89~h de màquina (92,5~kWh xarxa nocturna $+$ solar diürn)   & 5,85      & 5,85      \\
         Maquinari i Equips              & Estació de treball i portàtil de desenvolupament preexistents  & 0,00      & 0,00      \\
         Programari i Llicències         & Entorn \emph{open-source} (Showdown, \textit{poke-env}, \LaTeX{}) & 0,00   & 0,00      \\
         \midrule
-        \textbf{Cost Total del Projecte} &                                                                & \textbf{15.118,65} & \textbf{19.865,85} \\
+        \textbf{Cost Total del Projecte} &                                                                & \textbf{16.277,85} & \textbf{21.365,85} \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-Com es desprèn de l'anàlisi econòmica consolidada, el cost de personal representa el \textbf{99,97\%} del valor total del projecte (\textbf{19.860,00~€} en cost d'empresa imputat o \textbf{15.112,80~€} en retribució bruta directa). L'eficiència en el disseny d'infraestructura, la decisió estratègica d'apostar per programari lliure i l'aprofitament de l'energia solar domèstica van permetre contenir la despesa material directa en un valor testimonial de \textbf{5,85~€}, demostrant la viabilitat tècnica i econòmica d'executar un projecte de ciència de dades d'alta intensitat computacional amb una inversió de capital físic nul·la.
+Com es desprèn de l'anàlisi econòmica consolidada, el cost de personal representa el \textbf{99,97\%} del valor total del projecte (\textbf{21.360,00~€} en cost d'empresa imputat o \textbf{16.272,00~€} en retribució bruta directa). L'eficiència en el disseny d'infraestructura, la decisió estratègica d'apostar per programari lliure i l'aprofitament de l'energia solar domèstica van permetre contenir la despesa material directa en un valor testimonial de \textbf{5,85~€}, demostrant la viabilitat tècnica i econòmica d'executar un projecte de ciència de dades d'alta intensitat computacional amb una inversió de capital físic nul·la.
