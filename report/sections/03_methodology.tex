@@ -31,26 +31,38 @@ Comparar cinc paradigmes i sis controls exigeix el producte cartesià de parelle
 
 \begin{figure}[htbp]
     \centering
-    \begin{tikzpicture}[
-            node distance=0.8cm and 1.0cm,
-            box/.style={rectangle, rounded corners, draw, align=center, minimum height=0.9cm, text width=3.2cm},
-            arr/.style={->, thick, >=stealth},
-            font=\small
+    \begin{adjustbox}{max width=\linewidth}
+        \begin{tikzpicture}[
+            >=Stealth,
+            font=\small,
+            box/.style={rectangle, rounded corners=4pt, draw=#1!75!black, fill=#1!7, thick, align=center, minimum height=1.1cm, text width=2.6cm, inner sep=4pt},
+            box/.default=blue,
+            arr/.style={->, thick, >=Stealth, draw=gray!70!black}
         ]
-        \node[box, fill=blue!8] (families) {Cinc paradigmes\\d'agents};
-        \node[box, fill=green!8, right=of families] (manager) {Gestor conceptual\\d'enfrontaments};
-        \node[box, fill=orange!10, right=of manager] (sim) {Simulador comú\\Random Battle};
-        \node[box, fill=purple!8, below=of manager] (telemetry) {Resultat i\\telemetria};
-        \node[box, fill=gray!10, below=of sim] (analysis) {Intervals, comparacions\\i interpretació};
-        \node[box, fill=red!8, below=of families] (ppo) {Experiment PPO\\separat vs \texttt{v12}};
-        \draw[arr] (families) -- (manager);
-        \draw[arr] (manager) -- (sim);
-        \draw[arr] (sim) -- (telemetry);
-        \draw[arr] (telemetry) -- (analysis);
-        \draw[arr, dashed] (analysis) -- (families);
-        \draw[arr, dashed] (ppo) -- (sim);
-    \end{tikzpicture}
-    \caption{Disseny conceptual de l'estudi. La mateixa infraestructura avalua polítiques diferents i retorna tant el resultat com el comportament. El PPO comparteix simulador, però no entra a la matriu $28\times 28$.}
+            % Column 1: Polítiques i paradigmes
+            \node[box=blue] (agents) {\textbf{Cinc paradigmes}\\28 agents (matriu)};
+            \node[box=red, below=0.7cm of agents] (ppo) {\textbf{Experiment DRL}\\PPO vs \texttt{v12}};
+
+            % Column 2: Orquestració
+            \node[box=green!70!black, right=1.5cm of agents] (manager) {\textbf{Gestor d'execució}\\Orquestració de partides};
+
+            % Column 3: Motor de simulació
+            \node[box=orange!85!black, right=1.5cm of manager] (showdown) {\textbf{Pokémon Showdown}\\{\scriptsize\texttt{gen9randombattle}}};
+
+            % Column 4: Telemetria i anàlisi
+            \node[box=purple, right=1.5cm of showdown] (data) {\textbf{Telemetria i logs}\\Torns, victòries, HP};
+            \node[box=teal, below=0.7cm of data] (stats) {\textbf{Anàlisi estadística}\\Bootstrap BCa i H2H};
+
+            % Fluxos de dades
+            \draw[arr] (agents) -- node[midway, above=2pt, font=\scriptsize] {Polítiques} (manager);
+            \draw[arr] (ppo) -| node[pos=0.25, below=2pt, font=\scriptsize] {Validació} (manager);
+            \draw[arr] (manager) -- node[midway, above=2pt, font=\scriptsize] {Ordres} (showdown);
+            \draw[arr] (showdown) -- node[midway, above=2pt, font=\scriptsize] {Resultats} (data);
+            \draw[arr] (data) -- (stats);
+
+        \end{tikzpicture}
+    \end{adjustbox}
+    \caption{Disseny metodològic i flux experimental de l'estudi: orquestració d'agents sobre el simulador comú, extracció de telemetria i validació estadística mitjançant Bootstrap BCa.}
     \label{fig:disseny_general}
 \end{figure}
 
@@ -119,7 +131,7 @@ L'agent mai no llegeix $S$: si un paradigma «mirés» l'equip ocult, deixaria d
 La Figura~\ref{fig:pokeenv_arch} resumeix aquestes tres capes. El que canvia entre paradigmes és només el bloc central ---com es calcula l'acció a partir de \texttt{Battle}---. Heurístiques i minimax operen directament sobre l'objecte; l'imitació el projecta a una fila tabular; MaskablePPO el projecta a un vector i a una màscara. El Showdown que resol el torn és sempre el mateix.
 
 \begin{figure}[htbp]
-    \centering
+    \hspace*{4cm}%
     \begin{tikzpicture}[
             node distance=0.45cm, font=\footnotesize,
             box/.style={rectangle, draw=#1!70!black, fill=#1!8, rounded corners=4pt, text width=5.0cm, align=center, minimum height=0.85cm, inner sep=5pt},

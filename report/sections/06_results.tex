@@ -109,7 +109,7 @@ La taxa global recorre \textbf{1,61~pp} (44,25--45,86\%). Els enfrontaments inte
 
 En aquestes versions, afinar la fórmula de dany després d'incorporar efectivitat i STAB mostra rendiments decreixents. Els increments posteriors apareixen quan s'afegeixen decisions posicionals i recursos específics del format.
 
-En el subconjunt de cinc oponents utilitzat per a aquesta telemetria (\texttt{abyssal}, \texttt{v12}, \texttt{v14}, \texttt{v21} i \texttt{random}), registren aproximadament 1,04 canvis voluntaris per partida, cap Teracristal·lització i uns 4,3 recursos de reserva. Aquest perfil correspon a una política principalment ofensiva amb poca gestió posicional.
+En el conjunt de la matriu (253.000 partides per fila; mitjanes ponderades per nombre de partides), registren aproximadament 1,02 canvis voluntaris per partida, cap Teracristal·lització i uns 4,6 recursos de reserva. Aquest perfil correspon a una política principalment ofensiva amb poca gestió posicional.
 
 \subsection{Primer salt: \texttt{v7} (i \texttt{v8}/\texttt{v10})}
 
@@ -131,21 +131,21 @@ Amb \texttt{v9}, els perills d'entrada i els moviments de preparació només s'u
 
 \texttt{v12} combina Teracristal·lització i selecció del substitut després d'un debilitament. La taxa global és \textbf{69,01\%}. És el primer agent intern que supera Abyssal i Simple Heuristic: \textbf{59,91\%} i \textbf{59,75\%}, respectivament ($n=10.000$).
 
-En el subconjunt amb telemetria, utilitza la Teracristal·lització \textbf{0,96 vegades per partida}, registra només \textbf{0,01} accions de reserva i conserva \textbf{1,84} Pokémon, davant d'1,44 a \texttt{v11}. El canvi de comportament és substancial.
+En la mateixa telemetria de matriu, utilitza la Teracristal·lització \textbf{0,96 vegades per partida}, registra només \textbf{0,01} accions de reserva i conserva \textbf{1,84} Pokémon, davant d'1,44 a \texttt{v11}. El canvi de comportament és substancial.
 
 En \texttt{gen9randombattle}, el bloc format per la Teracristal·lització i la selecció del substitut s'associa amb l'increment més gran de la seqüència. Com que totes dues modificacions s'introdueixen alhora, l'experiment no en separa l'efecte individual.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\linewidth]{images/heuristics/heur_vs_baselines.png}
-    \caption{\texttt{v1}--\texttt{v14} contra els sis agents de referència ($n=10.000$ per cel·la). \texttt{v12} és el primer que deixa Abyssal i Simple Heuristic clarament per sota del 50\%. Contra \texttt{random}, totes les heurístiques arriben al 97--98\% i la columna deixa de ser discriminant.}
+    \caption{\texttt{v1}--\texttt{v14} contra els quatre agents de referència discriminants ($n=10.000$ per cel·la): Abyssal, Simple Heuristic, \texttt{one\_step} i \texttt{safe\_one\_step}. \texttt{v12} és el primer que deixa Abyssal i Simple Heuristic clarament per sota del 50\%. Random i MaxBasePower s'ometen: contra Random totes les heurístiques arriben al 97--98\% i la columna no discrimina.}
     \label{fig:heur_vs_baselines}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\linewidth]{images/heuristics/heur_fingerprint_bars.png}
-    \caption{Empremta tàctica de la seqüència heurística. \texttt{v12} utilitza la Teracristal·lització gairebé una vegada per partida; \texttt{v13}, 0,20 vegades. \texttt{ko\_checks} augmenta fins a aproximadament 15 a \texttt{v14}; la preparació i els perills d'entrada apareixen a partir de \texttt{v9}.}
+    \caption{Empremta tàctica de la seqüència heurística (mitjanes ponderades de la matriu). \texttt{v12} utilitza la Teracristal·lització gairebé una vegada per partida; \texttt{v13}, 0,20 vegades. \texttt{ko\_checks} augmenta fins a aproximadament 15 a \texttt{v14}; la preparació i els perills d'entrada apareixen a partir de \texttt{v9}.}
     \label{fig:heur_fingerprint}
 \end{figure}
 
@@ -190,7 +190,7 @@ Altres heurístiques (bloc) & \textbf{67,01} & 64,71 & 58,58 \\
 
 \subsection{Per què no supera \texttt{v12} en global}
 
-En el subconjunt amb telemetria, \texttt{v13} utilitza la Teracristal·lització 0,20 vegades per partida, davant de 0,96 a \texttt{v12}; també fa més canvis voluntaris (3,58 davant d'1,37) i més canvis per enfrontament (2,57 davant de 0,25). Aquest comportament preserva més membres de l'equip, però pot cedir torns contra oponents deterministes. Les dades són compatibles amb aquesta explicació, però no aïllen causalment cadascun dels mecanismes.
+En la telemetria de matriu, \texttt{v13} utilitza la Teracristal·lització 0,20 vegades per partida, davant de 0,96 a \texttt{v12}; també fa més canvis voluntaris (3,58 davant d'1,37) i més canvis per enfrontament (2,57 davant de 0,25). Aquest comportament preserva més membres de l'equip, però pot cedir torns contra oponents deterministes. Les dades són compatibles amb aquesta explicació, però no aïllen causalment cadascun dels mecanismes.
 
 \subsection{Especialització de \texttt{v14} i pèrdua de rendiment local}
 
@@ -206,7 +206,7 @@ En el subconjunt amb telemetria, \texttt{v13} utilitza la Teracristal·lització
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\linewidth]{images/heuristics/heur_key_matchups.png}
-    \caption{Enfrontaments de referència de \texttt{v12}, \texttt{v13} i \texttt{v14}. Les files representen l'agent avaluat. Les cel·les MCTS tenen $n=1.000$ i la resta, $n=10.000$. \texttt{v12} domina els agents de referència; \texttt{v13} és més fort contra cerca i \texttt{v21}.}
+    \caption{Enfrontaments de referència de \texttt{v12}, \texttt{v13} i \texttt{v14}. Cada color és l'agent avaluat. Les barres contra MCTS tenen $n=1.000$ i la resta, $n=10.000$. \texttt{v12} domina els agents de referència; \texttt{v13} és més fort contra cerca i \texttt{v21}.}
     \label{fig:heur_key}
 \end{figure}
 
@@ -251,12 +251,12 @@ Es registren aproximadament 14 comprovacions de debilitament i 4,5 decisions max
 Un agent \texttt{v14} que prioritza debilitaments garantits i aplica una anàlisi maximin d'un torn a les decisions restants.
 \end{quote}
 
-Aquest patró és comparable al de \texttt{v21}, que consulta XGBoost en aproximadament el 15\% dels torns, i al de les variants MCTS.
+Aquest patró és comparable al de \texttt{v21}, que consulta XGBoost en aproximadament el 15\% dels torns, i al de les variants MCTS. Les partides perdudes presenten una discrepància mitjana superior (taxa de \texttt{search\_diff} per torn); és una associació, no una prova causal.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.92\linewidth]{images/minimax/minimax_override.png}
-    \caption{Taxa de discrepància respecte de \texttt{v14} en els torns en què s'executa el maximin. \texttt{v15}/\texttt{v16} discrepen aproximadament en el 67\% dels casos; \texttt{v17}, amb prior $+0{,}15$, en el 37\%. Les derrotes presenten una discrepància mitjana superior, una associació que no implica causalitat.}
+    \caption{Taxa de discrepància respecte de \texttt{v14} en els torns en què s'executa el maximin. \texttt{v15}/\texttt{v16} discrepen aproximadament en el 67\% dels casos; \texttt{v17}, amb prior $+0{,}15$, en el 37\%.}
     \label{fig:minimax_override}
 \end{figure}
 
@@ -332,7 +332,7 @@ La combinació «més canvis decidits per cerca» i «menys discrepància» no �
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.92\linewidth]{images/minimax/minimax_key_matchups.png}
-    \caption{Enfrontaments de referència del minimax d'un torn. Les cel·les contra MCTS tenen $n=1.000$. \texttt{v17} millora respecte de les altres variants, però no supera el 50\% contra \texttt{v14}.}
+    \caption{Enfrontaments de referència del minimax d'un torn. Cada color és l'agent avaluat. Les barres contra MCTS tenen $n=1.000$. \texttt{v17} millora respecte de les altres variants, però no supera el 50\% contra \texttt{v14}.}
     \label{fig:minimax_key}
 \end{figure}
 
@@ -366,7 +366,7 @@ Quan s'activa una drecera prèvia, les 100 simulacions no s'executen. Per tant, 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.92\linewidth]{images/mcts/mcts_override.png}
-    \caption{Taxa de discrepància respecte de \texttt{v14} entre les decisions de cerca. UCB1 (\texttt{v18}/\texttt{v19}) discrepa aproximadament en el 71\% dels casos i PUCT (\texttt{v20}), en el 19\%. Les derrotes mostren més discrepància mitjana, una associació que no estableix causalitat.}
+    \caption{Taxa de discrepància respecte de \texttt{v14} entre les decisions de cerca. UCB1 (\texttt{v18}/\texttt{v19}) discrepa aproximadament en el 71\% dels casos i PUCT (\texttt{v20}), en el 19\%.}
     \label{fig:mcts_override}
 \end{figure}
 
@@ -473,7 +473,7 @@ El patró de \texttt{v20} no és el d'una política més defensiva que simplemen
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.92\linewidth]{images/mcts/mcts_key_matchups.png}
-    \caption{Enfrontaments discriminants d'MCTS. Les files representen l'agent avaluat i totes les cel·les tenen $n=1.000$. \texttt{v20} s'acosta a Abyssal (49\%) i no supera \texttt{v12} (42,7\%).}
+    \caption{Enfrontaments discriminants d'MCTS. Cada color és l'agent avaluat i totes les barres tenen $n=1.000$. \texttt{v20} s'acosta a Abyssal (49\%) i no supera \texttt{v12} (42,7\%).}
     \label{fig:mcts_key}
 \end{figure}
 
@@ -497,7 +497,7 @@ Les dues variants comparteixen el classificador XGBoost i el llindar $\tau=0{,}5
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.92\linewidth]{images/il/il_fingerprint_bars.png}
-    \caption{Empremta dels agents d'imitació. \texttt{v21} registra aproximadament 14 proteccions de debilitament per partida i consulta XGBoost en el 15\% dels torns. \texttt{v22} no té aquestes proteccions, consulta XGBoost en el 80\% dels torns i activa la protecció de bucle en el 97\% de les partides.}
+    \caption{Empremta dels agents d'imitació. \texttt{v21} registra aproximadament 14 proteccions de debilitament per partida; \texttt{v22} no. El panell dret mostra que \texttt{v22} consulta XGBoost moltes més vegades i activa més sovint la protecció de bucle.}
     \label{fig:il_fp}
 \end{figure}
 
@@ -579,7 +579,7 @@ Els canvis forçats són semblants perquè depenen sobretot del nombre de debili
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.92\linewidth]{images/il/il_tactical_proxies.png}
-    \caption{Indicadors tàctics. \texttt{v22} i \texttt{v12} utilitzen la Teracristal·lització amb freqüències similars, però obtenen resultats molt diferents; la freqüència no mesura la qualitat de la decisió.}
+    \caption{Indicadors tàctics de \texttt{v21} i \texttt{v22}. \texttt{v22} utilitza la Teracristal·lització gairebé una vegada per partida, una freqüència semblant a la de \texttt{v12} a la Figura~\ref{fig:heur_fingerprint}, però obté un resultat molt inferior; la freqüència no mesura la qualitat de la decisió.}
     \label{fig:il_tac}
 \end{figure}
 
@@ -593,7 +593,7 @@ Els canvis forçats són semblants perquè depenen sobretot del nombre de debili
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\linewidth]{images/il/il_wr_scatter.png}
-    \caption{Taxa de victòries de \texttt{v21} i \texttt{v22} per oponent. Tots els punts queden sobre la diagonal: \texttt{v21} obté el valor superior en 28 de 28 enfrontaments. La diferència màxima és de 32,6~pp contra \texttt{safe\_one\_step}.}
+    \caption{Taxa de victòries de \texttt{v21} i \texttt{v22} per oponent. Tots els punts queden \emph{per sobre} de la diagonal $y=x$: \texttt{v21} obté el valor superior en 28 de 28 enfrontaments. La diferència màxima és de 32,6~pp contra \texttt{safe\_one\_step}.}
     \label{fig:il_scatter}
 \end{figure}
 
@@ -640,21 +640,14 @@ Fins a \texttt{v12}, cap heurística interna supera el 50\% contra Abyssal. \tex
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.92\linewidth]{images/results/ladder_wr_elo.png}
-    \caption{Taxa de victòries i Elo de \texttt{v14} a la classificació pública: 431 partides entre el 9 i el 10 de juny de 2026, 39,44\% $\pm 4,6$~pp i Elo de 1085 a 1038 (màxim 1263).}
+    \caption{Taxa de victòries acumulada i Elo de \texttt{v14} a la classificació pública: 431 partides entre el 9 i el 10 de juny de 2026, 39,44\% $\pm 4,6$~pp i Elo de 1085 a 1038 (màxim 1263). Una instantània prefixa de 98 partides, presa prop del màxim d'Elo, no representa el resultat final.}
     \label{fig:ladder_wr}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.92\linewidth]{images/results/live_ladder_evolution.png}
-    \caption{Evolució de l'Elo al llarg de les 431 partides. Una mostra prefixa de 98 partides, presa prop del màxim, no representa el resultat final.}
-    \label{fig:ladder_evo}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
     \includegraphics[width=0.92\linewidth]{images/results/ladder_win_vs_loss.png}
-    \caption{Victòries i derrotes segons la durada. El subconjunt de partides amb almenys 10 torns és descriptiu; la taxa principal utilitza les 431 partides sense filtrar.}
+    \caption{Telemetria de \texttt{v14} al \emph{ladder}, separada per victòria i derrota: durada i membres debilitats, canvis, i tàctiques (\texttt{ko\_checks} $\sim$16 per partida; preparació, perills i Teracristal·lització molt baixos). El perfil tàctic s'assembla al de la matriu local.}
     \label{fig:ladder_wl}
 \end{figure}
 
@@ -768,7 +761,7 @@ El patró no demostra que qualsevol arquitectura híbrida sigui superior. Les va
 
 \begin{itemize}
     \item Les taxes globals inclouen oponents fàcils, autojoc i etiquetes duplicades, i la ponderació difereix entre files MCTS i no MCTS.
-    \item La telemetria detallada de les heurístiques prové d'un subconjunt de cinc oponents; la de minimax, MCTS i imitació cobreix la matriu completa.
+    \item La telemetria heurística de les figures d'aquesta secció és la mitjana ponderada de la matriu completa (253.000 partides per fila); la de minimax, MCTS i imitació també cobreix tota la matriu.
     \item \texttt{endgame\_solves} de \texttt{v18} pot incloure activitat de la sonda \texttt{v14} posterior a la cerca.
     \item \texttt{LocalSim} no és el mateix motor que Showdown; un desajust de mecàniques pot introduir soroll en les simulacions.
     \item L'avaluació pública de \texttt{v14} és una mostra no controlada de 431 partides.

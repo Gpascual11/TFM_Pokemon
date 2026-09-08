@@ -4,11 +4,13 @@
 
 \section{Resposta a la pregunta de recerca}
 
-Aquest treball ha comparat cinc paradigmes d'agents en Pokémon Showdown Random Battle de la Generació~IX. Heurístiques, minimax d'un torn, MCTS ras i aprenentatge per imitació formen, amb sis agents de referència, una matriu dirigida de $28\times 28$. MaskablePPO s'ha avaluat separadament contra \texttt{v12}. La comparació comparteix simulador i format, però no és completament simètrica.
+La pregunta que vertebra el treball és aquesta: \emph{sota un mateix simulador, format i protocol, quin dels cinc paradigmes ---heurístiques, minimax d'un torn, MCTS ras, imitació i MaskablePPO--- obté millor rendiment observat a \texttt{gen9randombattle}, i què explica les diferències?}
 
-Sota les implementacions i els pressupostos estudiats, les heurístiques obtenen el millor resultat observat. \texttt{v12} assoleix 69,01\% en la seva mitjana global descriptiva i 59,91\% contra Abyssal. Amb \texttt{v12} com a comparador comú, \texttt{v17} (minimax), \texttt{v20} (MCTS), \texttt{v21} (imitació) i el model PPO obtenen 40,94\%, 42,7\%, 41,28\% i 34,1\%, respectivament. La cel·la MCTS té $n=1.000$; les altres, $n=10.000$.
+Heurístiques, minimax, MCTS ras i imitació, amb sis agents de referència, formen una matriu dirigida de $28\times 28$. MaskablePPO s'avalua a part, contra \texttt{v12}. La comparació comparteix Showdown i el format, però no és simètrica: l'MCTS té $n=1.000$ per cel·la i el PPO no entra a la lliga.
 
-La conclusió no és que les heurístiques siguin universalment superiors. És que, en aquest entorn, el coneixement explícit sobre Teracristal·lització, selecció del substitut, debilitaments garantits i control del ritme no queda recuperat per la cerca rasa ni pels models apresos amb els recursos utilitzats.
+Resposta: sota les implementacions i els pressupostos d'aquest experiment, les heurístiques obtenen el millor resultat observat. \texttt{v12} assoleix 69,01\% de mitjana global descriptiva i 59,91\% contra Abyssal. Contra el mateix comparador \texttt{v12}, \texttt{v17} (minimax) obté 40,94\%, \texttt{v20} (MCTS) 42,7\%, \texttt{v21} (imitació) 41,28\% i el model PPO 34,1\% ($n=10.000$ tret de l'MCTS).
+
+Això no afirma que les heurístiques siguin universalment superiors. Afirma que, aquí, el coneixement explícit sobre Teracristal·lització, selecció del substitut, debilitaments garantits i control del ritme no el recuperen ni la cerca rasa ni els models apresos amb els recursos utilitzats.
 
 \subsection{Grau d'acompliment dels objectius específics}
 
@@ -47,11 +49,11 @@ A partir dels resultats empírics obtinguts, es pot verificar el compliment dels
 
 \section{Limitacions}
 
-Els cinc paradigmes no participen en una mateixa lliga: MaskablePPO només s'avalua contra \texttt{v12} i l'MCTS utilitza una mostra menor ($n=1.000$ per cel·la). Les taxes globals tenen ponderacions diferents; no hi ha equips o llavors aparellats; es fan moltes comparacions exploratòries; i les millors variants es seleccionen després d'observar la matriu. Algunes versions heurístiques introdueixen diversos canvis alhora, el llindar d'imitació es tria sobre la partició retinguda, i no s'han repetit els entrenaments complets d'IL i PPO amb diverses llavors. La mostra del \emph{ladder} (431 partides, 39,44\% $\pm$ 4,6~pp) és insuficient per estimar un Elo estable. Finalment, els resultats només descriuen \texttt{gen9randombattle} i les versions de programari utilitzades: un POSG de torns simultanis, per equips, amb informació imperfecta. No es transfereixen automàticament a formats amb equips tancats, a Dobles, ni a combats en temps real.
+Els cinc paradigmes no participen en una mateixa lliga: MaskablePPO només s'avalua contra \texttt{v12} i l'MCTS utilitza una mostra menor ($n=1.000$ per cel·la). Les taxes globals tenen ponderacions diferents; no hi ha equips o llavors aparellats; es fan moltes comparacions exploratòries; i les millors variants es seleccionen després d'observar la matriu. Algunes versions heurístiques introdueixen diversos canvis alhora, el llindar d'imitació es tria sobre la partició retinguda, i no s'han repetit els entrenaments complets d'IL i PPO amb diverses llavors. La mostra del \emph{ladder} (431 partides, 39,44\% $\pm$ 4,6~pp) és insuficient per estimar un Elo estable. Finalment, els resultats només descriuen \texttt{gen9randombattle} i les versions de programari utilitzades: un POSG de torns simultanis, per equips, amb informació imperfecta. No es transfereixen automàticament a formats amb equips tancats ni a Dobles.
 
 \section{Línies futures}
 
-Les continuacions prioritàries s'organitzen en quatre eixos. Els tres primers tanquen forats de l'experiment actual. El quart situa el POSG estudiat dins de l'evolució anunciada del combat oficial.
+Les continuacions prioritàries s'organitzen en tres eixos que tanquen forats de l'experiment actual.
 
 \subsection{Cerca, creences i priors}
 
@@ -71,59 +73,40 @@ La cerca d'aquest treball és rasa: profunditat~$d=1$ i \emph{rollouts} de cinc 
     \item Completar una matriu simètrica que inclogui PPO i models de llenguatge sota pressupostos de còmput equivalents, mesurant el cost temporal i financer per decisió. Sense aquesta lliga, la taxa del 34,1\% de PPO contra \texttt{v12} no és comparable amb les taxes globals de la matriu de 28.
 \end{itemize}
 
-\subsection{Avaluació: llavors, persones i plataforma competitiva}
+\subsection{Avaluació: llavors i persones}
 
 \begin{itemize}
     \item Utilitzar equips i llavors aleatòries aparellades (\emph{paired seed benchmarks}) per reduir la variabilitat de la generació procedural.
     \item Ampliar l'avaluació al \emph{ladder} públic amb diversos agents ---inclosa \texttt{v12}--- i finestres temporals més llargues, per obtenir rànquings Elo estables i no una mostra de 431 partides d'un sol bot.
-    \item Tractar \textit{Pokémon Champions} com a laboratori complementari del combat clàssic per torns: The Pokémon Company l'ha situat com a plataforma competitiva oficial a mesura que la sèrie principal experimenta amb altres mecàniques~\cite{middler_vgc_champions_2026}. Showdown continua sent el simulador adequat per a \texttt{gen9randombattle}; Champions seria el candidat natural si l'objectiu passés a ser el circuit oficial de VGC amb les regles clàssiques preservades.
 \end{itemize}
-
-\subsection{Evolució del combat oficial: validesa externa del POSG estudiat}
-
-El format \texttt{gen9randombattle} és un POSG de torns simultanis, amb menús d'acció discrets i informació oculta que es revela per evidència. Aquest model ha estat el nucli de la sèrie principal durant tres dècades. L'agost de 2026, Game Freak ha dit explícitament que ja no el dona per garantit a cada nou títol.
-
-En un vídeo oficial, Kazumasa Iwao (director de \textit{Pokémon Champions}) i Shigeki Morimoto (director històric del combat) argumenten que les regles de combat de la sèrie \enquote{poden començar a canviar gradualment} i que no els semblava just dir als jugadors de dècades que, d'ara endavant, \enquote{tot ha canviat}~\cite{gamefreak_champions_video_2026,middler_vgc_champions_2026}. Champions existeix, en part, per conservar indefinidament l'estil per torns, mentre que títols com \textit{Pokémon Legends: Arceus} i \textit{Pokémon Legends: Z-A} ja n'han sortit: el combat hi és més continu, amb posicionament, temporització i iniciativa del jugador, i no un intercanvi simultani de decisions de menú. The Pokémon Company ha situat Champions com a seu del joc competitiu oficial, independentment dels títols principals que es publiquin després~\cite{middler_vgc_champions_2026}. Quin sistema tindrà el pròxim joc principal anunciat (\textit{Pokémon Winds and Waves}) encara no està confirmat; els rumors sobre combats amb múltiples rivals o mecàniques heretades de Z-A s'han de tractar com a rumors, no com a especificació.
-
-Aquesta divergència no invalida els resultats del treball: els situa. La comparació de paradigmes respon a la pregunta \emph{dins del POSG clàssic}. Si la sèrie principal es desplaça cap a combat en temps real, la decisió deixa de ser un torn simultani discret i passa a ser una política contínua de moviment, timing i objectiu. Heurístiques de tipus, minimax d'un torn i MCTS ras sobre Showdown no es transfereixen a aquest règim; caldria una formalització diferent (POSG en temps continu o híbrid, creences espacials, control reactiu) i un altre simulador. El valor residual de l'experiment és doble: (i)~Showdown ---i, en el circuit oficial, Champions--- romanen el laboratori del combat clàssic, que no desapareix sinó que se segrega; (ii)~qualsevol agent futur \enquote{proactiu} amb el jugador haurà de resoldre, a més de la informació imperfecta, la coordinació temporal que aquest TFM ha deixat deliberadament fora.
 
 % ============================================================
 \section{Consideracions ètiques, socials i d'impacte ambiental}
 \label{sec:etica_impacte}
 
-El desenvolupament de sistemes d'intel·ligència artificial i la seva avaluació en entorns oberts exigeix una reflexió sobre la responsabilitat ètica, l'impacte social de la tecnologia i la sostenibilitat ambiental dels processos de còmput.
+Aquest treball toca tres qüestions que no es resolen amb el rànquing de la matriu: si era just posar un agent al \emph{ladder} públic, què queda d'útil fora de Random Battle, i quina energia ha calgut per mesurar-ho.
 
 \subsection{Ètica i fair play en entorns de joc en línia}
 
-El desplegament d'agents autònoms en servidors públics competitius (com el \emph{ladder} de Pokémon Showdown) planteja reptes d'ètica interactiva. Durant aquest treball s'han definit les següents directrius de comportament:
+Les 6.409.000 batalles de la matriu es van jugar entre agents, en servidors Showdown propis. No ocupen la infraestructura pública ni mouen l'Elo de ningú. El problema ètic, si n'hi ha un, és la mostra externa: 431 partides de \texttt{v14} contra persones, els dies 9 i 10 de juny de 2026, amb el compte \texttt{SirPThesis} (Seccions~\ref{sec:disseny_experiments} i~\ref{sec:deployment}).
 
-\begin{itemize}
-    \item \textbf{Respecte als termes de servei:} L'agent públic (\texttt{v14}) s'ha identificat mitjançant un compte dedicat (\texttt{SirPThesis}), complint les polítiques del servidor públic de Showdown per a la recerca acadèmica.
-    \item \textbf{Absència d'interferència disruptiva:} Es va evitar participar en torneigs oficials humans o enfrontaments de classificació crítica que poguessin alterar les puntuacions de jugadors competitius en fases finals de lliga.
-    \item \textbf{Control de freqüència i recursos:} L'execució de batalles va integrar mecanismes de \emph{rate limiting} i temporitzadors d'espera per no sobrecarregar la infraestructura de servidors comunitaris mantinguts de forma altruista per la comunitat de codi obert.
-\end{itemize}
+Qui s'hi enfrontava no havia donat un consentiment informat. El bot pot alterar-li la puntuació i, si no llegeix el nom del compte, pot prendre'l per un jugador. Pokémon Showdown no té un registre per a bots de combat ---el rang \emph{Global Bot} és per a moderació de xat---, de manera que l'agent entra pel mateix WebSocket que qualsevol usuari. Això no és un permís en blanc.
+
+S'ha parlat amb l'equip de Showdown i Smogon abans del desplegament. El compte indica que es tracta d'una tesi; no s'ha participat en tornejos; s'ha respectat el límit de 12 partides cada 3 minuts; i la plataforma ja exclou el tràfic de bots de les estadístiques d'ús del format. El nom redueix l'asimetria, però no l'elimina: no s'ha anunciat a cada sala que l'adversari era un programa. Per a un TFM, n'hi ha prou amb ser identificable i no interferir en la competició oficial. No n'hi ha prou per afirmar que un agent autònom al \emph{ladder} sigui inofensiu en general.
 
 \subsection{Impacte social i transferibilitat científica}
 
-Més enllà de l'àmbit dels videojocs, el combat clàssic de Pokémon és un POSG de dos jugadors amb informació imperfecta, accions simultànies i transicions estocàstiques; els agents d'aquest treball operen sota la reducció a POMDP. Les tècniques d'explicabilitat conductual, telemetria per torn i combinació d'heurístiques amb cerca tenen aplicabilitat directa en:
+L'impacte social directe és modest, i convé dir-ho sense envoltar-ho d'aplicacions inventades. Aquest treball no millora un servei públic. Afecta, de manera puntual, qui es va trobar \texttt{SirPThesis} a la cua i, de manera més duradora, qui vulgui reproduir o estendre el benchmark: el protocol, els 28 agents i la telemetria queden documentats.
 
-\begin{itemize}
-    \item \textbf{Gestió de riscos i negociació automatitzada:} presa de decisions simultànies sota incertesa sobre la intenció de la contrapart.
-    \item \textbf{Logística i planificació adaptativa:} selecció d'accions optant entre mantenir l'estat actiu o executar canvis de ruta en entorns dinàmics.
-    \item \textbf{Democratització del codi obert:} la publicació de la infraestructura de \emph{benchmark} i dels 28 agents en codi obert afavoreix la reproduïbilitat i l'accés lliure a eines d'investigació en IA.
-\end{itemize}
+El que es pot portar a un altre POSG de dos jugadors ---accions simultànies, observació parcial--- no és el catàleg de regles de la Generació~IX. És la manera de comparar: un mateix contracte d'entorn per a tots els paradigmes, comptadors per torn que distingeixen \emph{què} fa l'agent de \emph{si} guanya, i el patró residual de conservar restriccions de domini en lloc de substituir-les d'entrada per cerca rasa o per una política apresa. Les taxes 69,01\% i 34,1\% no viatgen: descriuen \texttt{gen9randombattle} sota els pressupostos d'aquest experiment.
 
 \subsection{Impacte ambiental i petjada de carboni}
 
-L'execució d'experiments d'intel·ligència artificial intensius en còmput genera un consum d'electricitat amb impacte directe en les emissions de gasos d'efecte d'hivernacle. Per tal de quantificar la petjada de carboni d'aquest Treball de Final de Màster:
+El còmput és el del Capítol~\ref{chap:infraestructura} (Secció~\ref{sec:cost_economic}): 684,89~hores de màquina, 135~W de mitjana i \textbf{92,5~kWh} en total, de les quals 471,38~h corresponen a la matriu de Generació~IX. Aproximadament la meitat de l'energia ha vingut de la xarxa, de nit (5,85~€); l'altra meitat, de l'autoconsum solar de l'habitatge. Amb un factor conservador de 0,21~kg $\mathrm{CO}_2$/kWh, la porció de xarxa ($\approx 46$~kWh) equival a uns \textbf{9,7~kg $\mathrm{CO}_2$e}. Si s'atribuís tot el 92,5~kWh al mix, el sostre seria 19,4~kg. Són xifres d'electricitat d'operació, no un cicle de vida del maquinari.
 
-\begin{itemize}
-    \item \textbf{Consum elèctric acumulat:} L'execució de la matriu de 6.409.000 batalles i l'entrenament de MaskablePPO van requerir aproximadament $60$~kWh d'energia elèctrica.
-    \item \textbf{Emissions estimades de $\text{CO}_2$:} Prenent com a referència la intensitat mitjana d'emissió del mix elèctric a Espanya ($0{,}21$~kg $\text{CO}_2$/kWh), la petjada de carboni total associada al còmput del TFM s'estima en \textbf{12{,}6~kg de $\mathrm{CO}_2$ equivalent}.
-    \item \textbf{Estratègia de mitigació:} La decisió metodològica d'utilitzar una cerca rasa de 5 torns en memòria (\texttt{LocalSim}) i algorismes heurístics paral·lels en lloc d'entrenar grans xarxes neuronals des de zero o executar MCTS de gran profunditat ha permès reduir l'impacte ambiental en més d'un 85\% respecte als enfocaments de reforç profund tradicional.
-\end{itemize}
+No s'ha repetit l'experiment en un clúster de GPU, així que no es pot parlar d'un percentatge d'estalvi. El que sí que pesa, ambientalment i metodològicament, és haver comparat els cinc paradigmes amb cerca rasa i un sol lloc de treball: el cost queda en desenes de quilowatts-hora, no en l'escala habitual de l'aprenentatge per reforç a gran escala.
 
 % ============================================================
 \section{Tancament}
 
-El resultat central és metodològic i tècnic: comparar paradigmes exigeix fer explícits el coneixement incorporat, el pressupost de còmput, la representació de l'estat i el protocol d'avaluació. En aquest experiment, conservar coneixement específic de Random Battle és més efectiu que substituir-lo per cerca rasa o per una política apresa. Una comparació futura més simètrica permetrà determinar fins a quin punt aquesta conclusió depèn dels límits de les implementacions actuals. Alhora, el POSG clàssic deixa de ser l'únic combat de la franquícia: el valor d'aquesta memòria és haver-lo mesurat amb rigor abans que la sèrie principal el segregui cap a Champions i n'explori d'altres.
+El resultat central és metodològic i tècnic: comparar paradigmes exigeix fer explícits el coneixement incorporat, el pressupost de còmput, la representació de l'estat i el protocol d'avaluació. En aquest experiment, conservar coneixement específic de Random Battle és més efectiu que substituir-lo per cerca rasa o per una política apresa. Una comparació futura més simètrica permetrà determinar fins a quin punt aquesta conclusió depèn dels límits de les implementacions actuals.

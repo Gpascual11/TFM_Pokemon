@@ -24,31 +24,36 @@ El nucli \texttt{p00\_core} implementa el gestor (Secció~\ref{sec:disseny_gener
 
 \begin{figure}[htbp]
     \centering
-    \resizebox{\textwidth}{!}{%
+    \begin{adjustbox}{max width=0.82\linewidth}
         \begin{tikzpicture}[
-                font=\small,
-                box/.style={rectangle, rounded corners, draw, align=center, minimum height=1.05cm, text width=2.05cm},
-                arr/.style={->, thick, >=stealth}
-            ]
-            \node[box, fill=gray!18] (p00) {\texttt{p00\_core}\\ports, CSV,\\fàbrica};
-            \node[box, fill=blue!12, right=0.35cm of p00] (p01) {\texttt{p01}\\\texttt{v1}--\texttt{v14}};
-            \node[box, fill=green!12, right=0.35cm of p01] (p03) {\texttt{p03}\\minimax};
-            \node[box, fill=orange!12, right=0.35cm of p03] (p04) {\texttt{p04}\\MCTS};
-            \node[box, fill=yellow!20, below=0.5cm of p01] (p02) {\texttt{p02}\\imitació};
-            \node[box, fill=red!12, below=0.5cm of p04] (p05) {\texttt{p05}\\PPO};
-            \node[box, fill=purple!12, below=0.5cm of p00] (bot) {\texttt{online\_bot}\\\texttt{v14} ladder};
+            >=Stealth,
+            font=\footnotesize,
+            box/.style={rectangle, rounded corners=4pt, draw=#1!75!black, fill=#1!7, thick, align=center, minimum height=0.95cm, text width=2.3cm, inner sep=4pt},
+            box/.default=gray,
+            arr/.style={->, thick, >=Stealth, draw=gray!70!black}
+        ]
+            % Core & Online Bot
+            \node[box=gray] (p00) {\textbf{\texttt{p00\_core}}\\Ports, CSV, Fàbrica};
+            \node[box=purple, below=0.6cm of p00] (bot) {\textbf{\texttt{online\_bot}}\\\texttt{v14} Ladder};
+
+            % Paradigms
+            \node[box=blue, right=0.8cm of p00] (p01) {\textbf{\texttt{p01\_heuristics}}\\\texttt{v1}--\texttt{v14}};
+            \node[box=green!70!black, right=0.8cm of p01] (p03) {\textbf{\texttt{p03\_minmax}}\\Minimax};
+            \node[box=orange!85!black, right=0.8cm of p03] (p04) {\textbf{\texttt{p04\_mcts}}\\MCTS};
+
+            \node[box=yellow!80!black, below=0.6cm of p01] (p02) {\textbf{\texttt{p02\_imitation}}\\Imitació};
+            \node[box=red, below=0.6cm of p04] (p05) {\textbf{\texttt{p05\_ppo\_drl}}\\MaskablePPO};
+
+            % Connections without crossing lines
             \draw[arr] (p00) -- (p01);
-            \draw[arr] (p00) -- (p03);
-            \draw[arr] (p00) -- (p04);
-            \draw[arr] (p00) -- (p02);
-            \draw[arr] (p00) -- (p05);
             \draw[arr] (p00) -- (bot);
             \draw[arr] (p01) -- (p03);
-            \draw[arr] (p01) -- (p04);
+            \draw[arr] (p03) -- (p04);
             \draw[arr] (p01) -- (p02);
-        \end{tikzpicture}%
-    }
-    \caption{Mapa de mòduls. \texttt{p00} concentra simulació i persistència sobre l'entorn del Capítol~\ref{chap:infraestructura}. Minimax, MCTS i imitació reutilitzen \texttt{v14} (\texttt{p01}); PPO i el \emph{ladder} tenen protocols d'avaluació apartats.}
+            \draw[arr] (p04) -- (p05);
+        \end{tikzpicture}
+    \end{adjustbox}
+    \caption{Mapa modular del repositori. \texttt{p00\_core} centralitza simulació i persistència; Minimax, MCTS i imitació reutilitzen \texttt{v14} (\texttt{p01}); PPO i el \emph{ladder} públic disposen d'entorns d'execució dedicats.}
     \label{fig:module_map}
 \end{figure}
 
@@ -82,27 +87,34 @@ El prototip \texttt{core/battle\_manager.py} valida el cicle de la Figura~\ref{f
 
 \begin{figure}[htbp]
     \centering
-    \resizebox{0.98\textwidth}{!}{%
+    \begin{adjustbox}{max width=0.82\linewidth}
         \begin{tikzpicture}[
-                font=\small,
-                box/.style={rectangle, rounded corners, draw, align=center, minimum height=1.05cm, text width=2.35cm},
-                arr/.style={->, thick, >=stealth}
-            ]
-            \node[box, fill=blue!12] (bench) {\texttt{benchmark.py}\\$n_{\mathrm{to\_run}}$};
-            \node[box, fill=gray!18, right=0.4cm of bench] (q) {Cua ports\\8000--8007};
-            \node[box, fill=green!12, right=0.4cm of q] (w) {\texttt{worker.py}\\\texttt{spawn}};
-            \node[box, fill=orange!12, below=0.5cm of w] (sd) {Showdown\\port $p$};
-            \node[box, fill=yellow!20, left=0.4cm of sd] (tmp) {CSV temporal\\per port};
-            \node[box, fill=blue!18, left=0.4cm of tmp] (csv) {CSV final\\fusió};
+            >=Stealth,
+            font=\footnotesize,
+            box/.style={rectangle, rounded corners=4pt, draw=#1!75!black, fill=#1!7, thick, align=center, minimum height=0.95cm, text width=2.4cm, inner sep=4pt},
+            box/.default=blue,
+            arr/.style={->, thick, >=Stealth, draw=gray!70!black}
+        ]
+            % Row 1: Dispatch
+            \node[box=blue] (bench) {\textbf{\texttt{benchmark.py}}\\Càlcul $n_{\mathrm{to\_run}}$};
+            \node[box=gray, right=0.8cm of bench] (q) {\textbf{Cua de ports}\\8000--8007};
+            \node[box=green!70!black, right=0.8cm of q] (w) {\textbf{\texttt{worker.py}}\\\texttt{multiprocessing}};
+
+            % Row 2: Execution & Persistence
+            \node[box=orange!85!black, below=0.6cm of w] (sd) {\textbf{Showdown}\\Instància port $p$};
+            \node[box=yellow!80!black, below=0.6cm of q] (tmp) {\textbf{CSV temporal}\\Per procés / port};
+            \node[box=purple, below=0.6cm of bench] (csv) {\textbf{CSV final}\\Fusió atòmica};
+
+            % Flow
             \draw[arr] (bench) -- (q);
             \draw[arr] (q) -- (w);
             \draw[arr] (w) -- (sd);
-            \draw[arr] (w) -- (tmp);
+            \draw[arr] (sd) -- (tmp);
             \draw[arr] (tmp) -- (csv);
-            \draw[arr, dashed] (csv.north) |- (bench.south);
-        \end{tikzpicture}%
-    }
-    \caption{Cicle d'execució de la matriu. El traç discontinu és la represa: el coordinador compta files al CSV final i només llança $n_{\mathrm{objectiu}}-k$. Contrasta amb el diagrama conceptual de la Figura~\ref{fig:master_worker_full}.}
+            \draw[arr, dashed, blue!70!black] (csv) -- node[left, font=\tiny\bfseries] {Represa} (bench);
+        \end{tikzpicture}
+    \end{adjustbox}
+    \caption{Cicle d'execució de la matriu. El traç discontinu indica la represa incremental: el coordinador llegeix les files ja existents al CSV final i només programa les batalles pendents.}
     \label{fig:runtime_pipeline}
 \end{figure}
 
@@ -111,7 +123,7 @@ Constants per cel·la les fixa el llançador (Secció~\ref{sec:matrix_launcher})
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.95\linewidth]{images/diagrams/ram_usage_singles1.png}
-    \caption{Monitoratge durant una execució al prototip de 16~GB. La memòria creix mentre s'acumulen batalles i cau després de reiniciar processos; el patró va motivar els blocs curts, la recollida de memòria i els reinicis de Showdown.}
+    \caption{Monitoratge durant una execució al prototip de 16~GB. La memòria creix mentre s'acumulen batalles i cau després de reiniciar processos.}
     \label{fig:ram_usage}
 \end{figure}
 
@@ -132,24 +144,31 @@ Els lots són de 25 partides (heurístiques/IL/baselines) o de 5 (minimax/MCTS),
 
 \begin{figure}[htbp]
     \centering
-    \resizebox{0.98\textwidth}{!}{%
+    \begin{adjustbox}{max width=0.80\linewidth}
         \begin{tikzpicture}[
-                font=\small,
-                box/.style={rectangle, rounded corners, draw, align=center, minimum height=0.95cm, text width=2.4cm},
-                arr/.style={->, thick, >=stealth}
-            ]
-            \node[box, fill=orange!12] (sb) {\texttt{StatsBattle}\\protocol};
-            \node[box, fill=blue!12, right=0.35cm of sb] (ag) {Diccionaris\\agent / rival};
-            \node[box, fill=gray!18, right=0.35cm of ag] (id) {ID, format,\\timestamp};
-            \node[box, fill=green!12, below=0.45cm of ag] (row) {Fila 70 col.\\zeros si no aplica};
-            \node[box, fill=yellow!20, below=0.45cm of row] (tmp) {\texttt{\_tmp\_*.csv}\\per port};
-            \draw[arr] (sb) -- (row);
-            \draw[arr] (ag) -- (row);
-            \draw[arr] (id) -- (row);
+            >=Stealth,
+            font=\footnotesize,
+            box/.style={rectangle, rounded corners=4pt, draw=#1!75!black, fill=#1!7, thick, align=center, minimum height=0.95cm, text width=2.4cm, inner sep=4pt},
+            box/.default=blue,
+            arr/.style={->, thick, >=Stealth, draw=gray!70!black}
+        ]
+            % 3 Input sources
+            \node[box=orange!85!black] (sb) {\textbf{\texttt{StatsBattle}}\\Protocol i estat};
+            \node[box=blue, right=0.7cm of sb] (ag) {\textbf{Diccionaris}\\Agent i rival};
+            \node[box=gray, right=0.7cm of ag] (id) {\textbf{Metadades}\\ID, format, data};
+
+            % Output row & file
+            \node[box=teal, below=0.6cm of ag, text width=3.8cm] (row) {\textbf{Fila 70 columnes}\\Normalització amb zeros};
+            \node[box=purple, below=0.5cm of row, text width=3.8cm] (tmp) {\textbf{CSV temporal del port}\\\texttt{\_tmp\_*.csv}};
+
+            % Connections
+            \draw[arr] (sb.south) |- (row.west);
+            \draw[arr] (ag.south) -- (row.north);
+            \draw[arr] (id.south) |- (row.east);
             \draw[arr] (row) -- (tmp);
-        \end{tikzpicture}%
-    }
-    \caption{Captura d'una partida acabada. El protocol i l'estat final són comuns; els comptadors de paradigma només són no nuls si aquella classe els incrementa.}
+        \end{tikzpicture}
+    \end{adjustbox}
+    \caption{Captura i consolidació de la telemetria per partida. Les tres fonts s'integren en un esquema rígid de 70 columnes per garantir la compatibilitat amb eines d'anàlisi columnar.}
     \label{fig:csv_sources}
 \end{figure}
 
@@ -224,27 +243,34 @@ amb $N$ i $C$ adaptats al paradigma (Taula~\ref{tab:launcher_budget}). Un codi d
 
 \begin{figure}[htbp]
     \centering
-    \resizebox{0.98\textwidth}{!}{%
+    \begin{adjustbox}{max width=0.85\linewidth}
         \begin{tikzpicture}[
-                font=\small,
-                box/.style={rectangle, rounded corners, draw, align=center, minimum height=1.0cm, text width=2.45cm},
-                arr/.style={->, thick, >=stealth}
-            ]
-            \node[box, fill=purple!12] (launch) {\texttt{run\_paradigm}\\\texttt{\_comparison\_10k.sh}};
-            \node[box, fill=blue!12, right=0.4cm of launch] (bench) {\texttt{benchmark.py}\\una cel·la};
-            \node[box, fill=green!12, right=0.4cm of bench] (w) {\texttt{worker.py}};
-            \node[box, fill=orange!12, below=0.45cm of w] (sd) {Showdown};
-            \node[box, fill=yellow!20, below=0.45cm of launch] (tg) {Telegram\\API};
-            \node[box, fill=gray!18, below=0.45cm of bench] (sec) {\texttt{seguretat\_tfm.sh}\\comandes};
+            >=Stealth,
+            font=\footnotesize,
+            box/.style={rectangle, rounded corners=4pt, draw=#1!75!black, fill=#1!7, thick, align=center, minimum height=0.95cm, text width=2.7cm, inner sep=4pt},
+            box/.default=blue,
+            arr/.style={->, thick, >=Stealth, draw=gray!70!black}
+        ]
+            % Top row: Execution orchestration
+            \node[box=purple] (launch) {\textbf{Llançador matriu}\\{\scriptsize\texttt{run\_paradigm\_10k.sh}}};
+            \node[box=blue, right=0.8cm of launch] (bench) {\textbf{\texttt{benchmark.py}}\\Cel·la activa};
+            \node[box=green!70!black, right=0.8cm of bench] (w) {\textbf{\texttt{worker.py}}\\Treballador efímer};
+
+            % Bottom row: Monitoring & Telegram
+            \node[box=yellow!80!black, below=0.6cm of launch] (tg) {\textbf{Telegram API}\\Alertes \emph{push}};
+            \node[box=gray, below=0.6cm of bench] (sec) {\textbf{Dimoni seguretat}\\{\scriptsize\texttt{seguretat\_tfm.sh}}};
+            \node[box=orange!85!black, below=0.6cm of w] (sd) {\textbf{Showdown}\\Port $p$};
+
+            % Connectors
             \draw[arr] (launch) -- (bench);
             \draw[arr] (bench) -- (w);
             \draw[arr] (w) -- (sd);
             \draw[arr] (launch) -- (tg);
             \draw[arr] (sec) -- (tg);
-            \draw[arr, dashed] (sec) -- node[right, font=\scriptsize] {\texttt{/pause}} (bench);
-        \end{tikzpicture}%
-    }
-    \caption{Dues capes sobre el coordinador. El llançador recorre les 784 cel·les i envia avisos \emph{push}; el dimoni de la Secció~\ref{sec:telegram_bot} escolta comandes i vigila el maquinari. Tots dos comparteixen el mateix bot i els mateixos CSV.}
+            \draw[arr, dashed, blue!70!black] (sec) -- node[right, font=\tiny\bfseries] {\texttt{/pause}} (bench);
+        \end{tikzpicture}
+    \end{adjustbox}
+    \caption{Arquitectura de control i monitoratge. El llançador orquestra les 784 cel·les i emet notificacions \emph{push}; el dimoni vigila el maquinari i atén comandes interactives.}
     \label{fig:launcher_telegram}
 \end{figure}
 
