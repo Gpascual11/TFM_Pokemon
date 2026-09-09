@@ -23,10 +23,13 @@ S'implementen i s'avaluen cinc formes de decidir sobre el mateix simulador i for
 
 Les quatre primeres famílies, juntament amb sis agents de referència, formen una matriu dirigida de \textbf{28 agents}. El PPO no hi entra: s'avalua en un experiment separat contra \texttt{v12}, l'agent amb millor resultat observat a la lliga. Models de llenguatge com \textit{PokéChamp} i \textit{PokéLLMon} s'integren de manera exploratòria.
 
-\section{Objectius del treball}
+\section{Objectius del treball i hipòtesis de recerca}
 \label{sec:objectius}
 
 L'objectiu principal d'aquest treball és avaluar i comparar empíricament el rendiment relatiu de les heurístiques expertes, la cerca adversària d'un torn, l'MCTS ras, l'aprenentatge per imitació i MaskablePPO en batalles \texttt{gen9randombattle}, sota pressupostos computacionals explícits i un protocol experimental rigorós.
+
+\subsection{Objectius específics}
+\label{subsec:objectius_especifics}
 
 Aquest objectiu general es concreta en els següents objectius específics:
 \begin{enumerate}
@@ -38,6 +41,18 @@ Aquest objectiu general es concreta en els següents objectius específics:
     \item \textbf{Avaluació externa al ladder públic:} Desplegar l'heurística terminal de servei (\texttt{v14}) a la classificació pública oficial (\emph{ladder}) de Pokémon Showdown per obtenir una mostra externa contra jugadors humans.
 \end{enumerate}
 
+\subsection{Hipòtesis de recerca}
+\label{subsec:hipotesis}
+
+Per articular l'avaluació empírica sota el mètode científic, es formulen cinc hipòtesis de recerca falsables, cadascuna vinculada a un experiment i capítol específic:
+\begin{itemize}
+    \item \textbf{$\mathbf{H_1}$ (Monotonicitat de l'ablació heurística):} La incorporació acumulativa i progressiva de regles de domini expertes (càlcul de dany, tipus, \emph{hazards}, preparació, estats alterats i Teracristal·lització) en la sèrie \texttt{v1}--\texttt{v14} produirà una millora monòtona en la taxa de victòries global sobre el conjunt d'adversaris de la matriu (avaluada a la Secció~\ref{sec:res_heur}).
+    \item \textbf{$\mathbf{H_2}$ (Superació de la política de base mitjançant cerca en línia):} La planificació cap endavant mitjançant cerca adversària d'un torn (minimax \texttt{v15}--\texttt{v17}) o cerca en arbre de Monte Carlo rasa a cinc torns (MCTS \texttt{v18}--\texttt{v20}) millorarà la qualitat decisional i superarà en taxa de victòries l'heurística utilitzada com a fulla o prior (\texttt{v14}) i l'heurística líder (\texttt{v12}) (avaluada a les Seccions~\ref{sec:res_mm} i~\ref{sec:res_mcts}).
+    \item \textbf{$\mathbf{H_3}$ (Eficàcia del guiatge per priors a l'MCTS ras):} Sota observabilitat parcial i pressupost de simulació estricte, l'algorisme PUCT guiat per distribucions a priori d'heurística experta (\texttt{v14}) reduirà de forma significativa la taxa de discrepància d'accions i millorarà la taxa de victòries enfront de la selecció uniforme no informada UCB1 (avaluada a la Secció~\ref{sec:res_mcts}).
+    \item \textbf{$\mathbf{H_4}$ (Andamiatge de domini en aprenentatge per imitació):} Un model d'imitació basat en XGBoost entrenat sobre repeticions humanes d'elit (Elo~$1800+$) requereix regles expertes de microexecució per ser competitiu (agent híbrid \texttt{v21}), superant de manera estadísticament significativa un model d'imitació dual purament basat en dades (\texttt{v22}) (avaluada a la Secció~\ref{sec:res_il}).
+    \item \textbf{$\mathbf{H_5}$ (Aproximació a l'heurística d'elit mitjançant currículum i DRL):} La inicialització neuronal per clonatge conductual (BC) sobre una heurística intermèdia (\texttt{v8}) combinada amb l'emmascarament d'accions invàlides permetrà a MaskablePPO superar les etapes d'un currículum d'adversaris i assolir un rendiment competitiu comparable al de l'heurística experta de referència (\texttt{v12}) (avaluada a la Secció~\ref{sec:res_ppo}).
+\end{itemize}
+
 \section{Estructura de la memòria}
 
 La resta d'aquesta memòria s'organitza en sis capítols:
@@ -48,5 +63,5 @@ La resta d'aquesta memòria s'organitza en sis capítols:
     \item El \textbf{Capítol~\ref{chap:infraestructura} (Entorn de desenvolupament i infraestructura de còmput)} documenta el maquinari, l'orquestració de servidors Showdown, la persistència, el monitoratge i el cost de còmput que fan viable l'execució del Capítol~\ref{chap:implementacio}, a més de l'organització del projecte i les dependències de programari.
     \item El \textbf{Capítol~\ref{chap:implementacio} (Implementació dels cinc paradigmes)} tradueix a codi el disseny del Capítol~\ref{chap:metodologia}: coordinador, heurístiques, minimax, MCTS, imitació, MaskablePPO, LLM i el connector amb el \emph{ladder} públic.
     \item El \textbf{Capítol~\ref{chap:resultats} (Resultats)} analitza l'escala heurística, la cerca, la imitació, l'experiment PPO contra \texttt{v12}, la mostra de \texttt{v14} al \emph{ladder} i els patrons residuals.
-    \item El \textbf{Capítol~\ref{chap:conclusions} (Conclusions i línies futures)} respon a la pregunta de recerca, sintetitza les troballes, exposa contribucions, limitacions, treball futur i consideracions ètiques i ambientals.
+    \item El \textbf{Capítol~\ref{chap:conclusions} (Conclusions i línies futures)} respon a la pregunta de recerca, avalua les cinc hipòtesis plantejades, sintetitza les troballes, exposa contribucions, limitacions, treball futur i consideracions ètiques i ambientals.
 \end{itemize}

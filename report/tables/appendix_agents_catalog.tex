@@ -1,0 +1,85 @@
+\begin{table}[htbp]
+\centering
+\caption{Catàleg complet i fitxa tècnica dels agents de referència (\emph{baselines}) i heurístics (\texttt{v1}--\texttt{v14}). Totes les classes hereten de \texttt{Player} de \textit{poke-env} i operen a la matriu $28\times 28$ amb $n=10.000$ partides per cel·la.}
+\label{tab:app_agents_heuristics}
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{lp{4.0cm}>{\raggedright\arraybackslash}X r}
+\toprule
+\textbf{Agent} & \textbf{Classe Python} & \textbf{Mecànica diferencial / Coneixement de domini} & \textbf{Latència} \\
+\midrule
+\texttt{random} & \texttt{RandomPlayer} & Trie uniforme entre totes les accions legals. Control inferior agnòstic. & $<0{,}1$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{max\_power} & \texttt{MaxBasePowerPlayer} & Selecció de l'atac amb major potència base nominal. Mai realitza canvis. & $<0{,}1$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{simple\_heuristic} & \texttt{TrueSimpleHeuristics-}\newline\texttt{Player} & Heurística de \textit{poke-env} adaptada amb càlcul bàsic de tipus i Teracristal·lització. & $\approx 0{,}2$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{abyssal} & \texttt{AbyssalPlayer} & Heurística de PokéChamp: ponderació d'avantatge de tipus i revisió de banqueta. & $\approx 0{,}3$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{one\_step} & \texttt{SafeOneStepPlayer} & Lookahead determinista d'un pas: dany esperat ponderat per precisió i STAB. & $\approx 0{,}4$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{safe\_one\_step} & \texttt{SafeOneStepPlayer} & Àlies segur de \texttt{one\_step} sense dependència del mòdul \texttt{LocalSim}. & $\approx 0{,}4$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v1} & \texttt{HeuristicV1} & Dany \textit{greedy} directe: potència base $\times$ efectivitat $\times$ STAB. Mai canvia. & $\approx 0{,}1$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v2} & \texttt{HeuristicV2} & Càlcul de dany amb estadístiques reals (Atk/Def, cremada) i pivots defensius. & $\approx 0{,}2$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v3} & \texttt{HeuristicV3} & Nucli idèntic a \texttt{v2} amb instrumentació de telemetria per freqüència de moviments. & $\approx 0{,}2$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v4} & \texttt{HeuristicV4} & Consciència de clima/terreny, precisió/prioritat i selecció de substitut per tipus. & $\approx 0{,}3$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v5} & \texttt{HeuristicV5} & Extensió de \texttt{v4} conscient dels modificadors d'etapa acumulats ($-6$ a $+6$). & $\approx 0{,}3$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v6} & \texttt{HeuristicV6} & Consolidació lleugera sobre \texttt{v3}: clima, terreny i prioritat amb pivot primitiu. & $\approx 0{,}2$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v7} & \texttt{HeuristicV7} & Punt d'inflexió: reescriptura amb suma ponderada de matchup; canvis voluntaris. & $\approx 0{,}4$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v8} & \texttt{HeuristicV8} & Detecció de KO garantit amb prioritat i filtrat d'immunitats conegudes revelades. & $\approx 0{,}4$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v9} & \texttt{HeuristicV9} & Gestió de tempo en torns lliures: perills d'entrada (\emph{hazards}) i moviments de \emph{setup}. & $\approx 0{,}5$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v10} & \texttt{HeuristicV10} & Tàctica sobre \texttt{v8}: condicions d'estat, sacrifici defensiu a baix HP i pivots actius. & $\approx 0{,}5$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v11} & \texttt{HeuristicV11} & Fusió integral dels blocs ortogonals de tempo (\texttt{v9}) i de tàctica (\texttt{v10}). & $\approx 0{,}6$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v12} & \texttt{HeuristicV12} & Mecàniques Gen~IX: Teracristal·lització ofensiva/defensiva i selecció de capdavanter. & $\approx 0{,}7$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v13} & \texttt{HeuristicV13} & Inferència amb atacs vistos, recuperació, explotació de bloqueig \emph{Choice} i \emph{phazing}. & $\approx 0{,}8$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v14} & \texttt{HeuristicV14} & Model de rival (predictiu/conservador), sondeig, interval de dany i solver de finals. & $\approx 0{,}8$~ms \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Catàleg complet dels agents de cerca adversarial (\texttt{v15}--\texttt{v20}), aprenentatge per imitació (\texttt{v21}--\texttt{v22}), aprenentatge per reforç profund (MaskablePPO) i models de llenguatge (LLM).}
+\label{tab:app_agents_advanced}
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{lp{4.0cm}>{\raggedright\arraybackslash}X rr}
+\toprule
+\textbf{Agent} & \textbf{Classe Python} & \textbf{Mecànica diferencial / Arquitectura} & \textbf{$n$} & \textbf{Latència} \\
+\midrule
+\texttt{v15} & \texttt{HeuristicV15Minimax} & Maximin analític pur d'un torn sobre matriu $M_{ij}$ (criteri HP, penalització $\times 1{,}5$). & 10.000 & $\approx 2{,}1$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v16} & \texttt{HeuristicV16Minimax} & Maximin d'un torn amb fulla enriquida (perills, \emph{setup}, estats i recuperació). & 10.000 & $\approx 2{,}8$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v17} & \texttt{HeuristicV17Minimax-}\newline\texttt{Hybrid} & Maximin híbrid amb prior heurístic ($+0{,}15$ afegit a la recomanació de \texttt{v14}). & 10.000 & $\approx 3{,}2$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v18} & \texttt{HeuristicV18MCTS} & MCTS ras ($d=1$): UCB1 ($C=1{,}4$), 100 simulacions de 5 torns amb \texttt{LocalSim}. & 1.000 & $\approx 48$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v19} & \texttt{HeuristicV19MCTS} & MCTS amb selecció UCB1 i fulla enriquida amb rols estratègics (Win-Con, Vital Wall). & 1.000 & $\approx 55$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v20} & \texttt{HeuristicV20MCTSHybrid} & MCTS amb selecció PUCT i prior concentrat ($P=0{,}70$ a l'acció de \texttt{v14}). & 1.000 & $\approx 62$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v21} & \texttt{HeuristicV21XGBoost} & Imitació híbrida: dreceres de \texttt{v14}, macro XGBoost (Elo $\ge 1800$), micro \texttt{v14}. & 10.000 & $\approx 1{,}4$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{v22} & \texttt{HeuristicV22PureIL} & Imitació pura dual: macro XGBoost, micro canvi contrafactual i micro atac après. & 10.000 & $\approx 2{,}6$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{MaskablePPO} & \texttt{MaskablePPO} & DRL Actor-Critic MLP $2\times 256$, obs 328-d, inicialització BC i currículum de 4 fases. & 10.000 & $\approx 0{,}8$~ms \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{PokéChamp} & \texttt{LLMPlayer} & Inferència LLM Ollama (Qwen 3 8B / Qwen 2.5 7B) amb serialització d'estat i CoT. & Explor. & $\sim 3$--$8$~s \\
+\bottomrule
+\end{tabularx}
+\end{table}

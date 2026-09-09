@@ -84,7 +84,7 @@ El contracte reutilitza l'àrbitre de la Figura~\ref{fig:mdp_pomdp}d: Showdown~\
 \begin{itemize}
     \item \textbf{Petició d'acció (\texttt{|request|}).} JSON privat per jugador: bàndol propi, accions legals i, del rival, només el que el protocol ja ha revelat. Aquest paquet \emph{és} $o_i$: el filtre $O$ el fa Showdown abans d'enviar el missatge (Figura~\ref{fig:json_request_example}).
 
-          \begin{figure}[H]
+          \begin{figure}[htbp]
               \centering
               \begin{minipage}{0.70\linewidth}
                   \begin{scriptsize}
@@ -778,7 +778,7 @@ La família d'aprenentatge per reforç profund representa l'enfocament autonomit
 
 L'aprenentatge per reforç és l'únic paradigma que no parteix de regles ni de repeticions etiquetades: ha d'aprendre $A$ i $T$ interactuant. La Secció~\ref{subsec:teoria_drl} ha situat MaskablePPO i l'emmascarament (Equació~\ref{eq:masked_softmax_sec24}) com a resposta a un espai d'accions variable ---sense màscara, l'agent malgasta gradient en ordres que Showdown rebutja i la batalla es bloqueja.
 
-L'aprenentatge frontal contra l'heurística més forta pateix recompensa escassa: gairebé totes les partides es perden abans d'aprendre legalitat. Per això no s'adopta autojoc ni un únic oponent difícil, sinó un \textbf{currículum progressiu} amb portes de validació congelades, independents de la corba d'entrenament (Taula~\ref{tab:ppo_curriculum_design} i Figura~\ref{fig:ppo_curriculum_design}). Si una porta intermèdia no es supera, el currículum \emph{continua} cap a \texttt{v12}: es vol mesurar la distància real, no aturar l'experiment per no haver «aprovat» una fase.
+L'aprenentatge frontal contra l'heurística més forta pateix recompensa escassa: gairebé totes les partides es perden abans d'aprendre legalitat. Per això no s'adopta autojoc ni un únic oponent difícil, sinó un \textbf{currículum progressiu}~\cite{bengio_curriculum} amb portes de validació congelades, independents de la corba d'entrenament (Taula~\ref{tab:ppo_curriculum_design} i Figura~\ref{fig:ppo_curriculum_design}). Si una porta intermèdia no es supera, el currículum \emph{continua} cap a \texttt{v12}: es vol mesurar la distància real, no aturar l'experiment per no haver «aprovat» una fase.
 
 \begin{table}[htbp]
     \centering

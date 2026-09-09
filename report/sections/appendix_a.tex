@@ -1,0 +1,271 @@
+% !TEX root = ../main.tex
+\chapter{Material complementari}
+\label{chap:appendix}
+
+Aquest annex recull material complementari que dona suport als capítols principals de la memòria.
+
+% ============================================================
+\section{Detalls operatius de la infraestructura}
+\label{sec:app_infra}
+
+\subsection{Configuració de xarxa Tailscale}
+
+Per treballar de manera remota des del portàtil sobre l'estació de treball sense comprometre la seguretat del sistema, s'ha configurat una xarxa privada virtual (\emph{VPN}) basada en \textbf{Tailscale} (protocol \textit{WireGuard}):
+
+\begin{itemize}
+    \item \textbf{Xarxa privada xifrada:} El portàtil i la torre formen una xarxa en malla (\emph{mesh network}) privada. El servei SSH opera exclusivament dins d'aquesta xarxa, evitant obrir el port 22 a Internet (WAN) i aïllant l'estació de treball d'atacs externs.
+    \item \textbf{Desenvolupament remot transparent:} Mitjançant l'extensió \textit{Remote-SSH} de l'editor (Cursor / VS Code), el desenvolupament es fa des del portàtil mentre l'execució de codi, el processament de CSVs i la inferència CUDA tenen lloc directament a la torre.
+    \item \textbf{Continuïtat de sessions amb \texttt{tmux}:} Les execucions de la matriu i els entrenaments PPO s'executen dins de sessions persistents de \textbf{tmux}. Així, qualsevol tancament del portàtil o desconnexió de xarxa no interromp els processos de fons.
+\end{itemize}
+
+\subsection{Bot de Telegram: detalls de les comandes}
+
+\subsubsection{Creació del bot i credencials}
+
+El bot es crea amb el \textit{BotFather} oficial. El token (\texttt{TELEGRAM\_TOKEN}) i l'identificador de xat (\texttt{TELEGRAM\_CHAT\_ID}) viuen a \texttt{.env}, fora de Git. Tots dos scripts el carreguen i envien missatges amb \texttt{curl} a l'endpoint \texttt{sendMessage} de l'API de Telegram. El dimoni, a més, escolta el xat amb \textit{long polling} natiu (\texttt{getUpdates?timeout=25}): la connexió dorm als servidors de Telegram (CPU local $\approx 0\%$) fins que arriba una comanda; l'\texttt{update\_id} es persisteix a \path{~/.telegram_last_update_id} per no reprocessar missatges.
+
+\subsubsection{Dimoni de seguretat}
+
+\texttt{seguretat\_tfm.sh} corre en una sessió \texttt{tmux} independent de la matriu. Llegeix \texttt{lm-sensors} en bucle: CPU (\texttt{Tctl} de \texttt{k10temp}), RAM (\texttt{jc42}) i NVMe (\texttt{Composite}).
+
+\begin{table}[htbp]
+    \centering
+    \caption{Llindars del dimoni \texttt{seguretat\_tfm.sh}. L'avís espera 15 minuts abans de repetir-se; el pànic apaga la màquina (\texttt{poweroff}).}
+    \label{tab:telegram_thresholds_app}
+    \small
+    \begin{tabularx}{\textwidth}{lXX}
+        \toprule
+        \textbf{Senyal} & \textbf{Avís} & \textbf{Acció crítica} \\
+        \midrule
+        CPU (\texttt{Tctl}) & $85^\circ$C & $92^\circ$C: apagat \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        RAM / NVMe (temp.) & $70^\circ$C & $80^\circ$C: apagat \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        RAM usada & $27{,}5$~GB: \texttt{vm.drop\_caches=3} & $29$~GB: \texttt{pkill} Showdown \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsubsection{Comandes interactives}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Comandes del bot de Telegram (dimoni \texttt{seguretat\_tfm.sh}).}
+    \label{tab:telegram_commands_app}
+    \small
+    \renewcommand{\arraystretch}{1.15}
+    \begin{tabularx}{\textwidth}{lX}
+        \toprule
+        \textbf{Comanda} & \textbf{Efecte} \\
+        \midrule
+        \texttt{/now}, \texttt{/status} & Enfrontament actiu (\texttt{A\_vs\_B}), partides fetes / objectiu i temperatures. \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        \texttt{/summary} & Cel·les CSV tancades i total aproximat de partides al directori de la matriu. \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        \texttt{/session}, \texttt{/runtime} & Hores des de l'arrencada del dimoni i cel·les tancades en aquesta sessió. \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        \texttt{/log} & Últimes 10 línies de \texttt{paradigm\_eval.log}. \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        \texttt{/pause} & \texttt{SIGSTOP} a \texttt{benchmark.py} i \texttt{worker.py} (sospèn sense matar). \\
+        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+        \texttt{/resume} & \texttt{SIGCONT} als mateixos processos. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsection{Congelació de versions dels repositoris externs}
+
+El projecte s'articula entorn de tres repositoris base: el motor de simulació oficial \textbf{Pokémon Showdown} (Node.js), el marc de connexió \textbf{\textit{poke-env}} (Python, sèrie 0.11.x) i l'entorn de cerca/simulació local \textbf{\textit{PokéChamp}} (\texttt{pokechamp/}). La gestió d'aquests tres components respon a dues decisions d'enginyeria fonamentals:
+
+\begin{enumerate}
+    \item \textbf{Congelació estricta de versions i immutabilitat del motor:}
+          Tant el servidor \textit{Pokémon Showdown} com \textit{poke-env} es van fixar en revisions concretes des de l'inici de l'experimentació i no s'han actualitzat a meitat del projecte. Aquesta congelació és indispensable per a la reproductibilitat científica.
+
+    \item \textbf{Evolució de submòduls a integració directa al repositori:}
+          En les primeres etapes del desenvolupament, els tres repositoris es van incorporar mitjançant \textit{forks} i submòduls de Git externs. Tanmateix, a mesura que avançava el projecte, es van integrar directament com a directoris locals al repositori principal per permetre modificacions directes i assegurar portabilitat entre equips.
+\end{enumerate}
+
+% ============================================================
+\section{Glossari de terminologia i acrònims}
+\label{sec:app_glossari}
+
+Atesa la confluència entre la teoria de jocs, l'aprenentatge automàtic i el domini competitiu de Pokémon, la memòria empra termes especialitzats provinents de la literatura anglosaxona i de la comunitat competitiva. Aquesta secció en recull les definicions i correspondències per assegurar la màxima claredat terminològica.
+
+\subsection{Terminologia de combat competitiu i teoria de jocs}
+
+\begin{itemize}
+    \item \textbf{\emph{Hazards} (Perills d'entrada):} Trampes passives dipositades sobre el camp del contrincant (\emph{Stealth Rock}, \emph{Spikes}, \emph{Toxic Spikes}) que infligeixen un percentatge de dany o estats alterats cada cop que un Pokémon entra en combat.
+    \item \textbf{\emph{Setup} (Preparació / Amplificació):} Execució de moviments d'estat que augmenten els modificadors d'etapa d'estadístiques pròpies (\emph{Swords Dance}, \emph{Dragon Dance}, \emph{Calm Mind}) a canvi de cedir un torn ofensiu.
+    \item \textbf{\emph{Sweep} / \emph{Sweeper}:} Maniobra ofensiva mitjançant la qual un Pokémon preparat és capaç de debilitar consecutivament múltiples rivals fins a tancar la partida.
+    \item \textbf{\emph{Win condition} (\emph{Win-Con} / Condició de victòria):} Estat o recurs clau de la partida (p. ex., preservar un determinat atacant o desgastar una muralla concreta) que garanteix estratègicament la victòria si es manté.
+    \item \textbf{\emph{Tempo} (Iniciativa tàctica):} Pressió exercida sobre l'adversari que l'obliga a respondre defensivament, impedint-li desenvolupar el seu pla de joc lliurement.
+    \item \textbf{\emph{Speed tie} (Empat de velocitat):} Situació en què els dos Pokémon actius presenten exactament la mateixa estadística de velocitat efectiva; l'ordre d'execució del torn es resol mitjançant un sorteig uniforme (50\% de probabilitat).
+    \item \textbf{\emph{Pivot} (Canvi tàctic / Retirada):} Maniobra de canvi de Pokémon orientada a recuperar l'avantatge posicional o de tipus, sovint acompanyada d'atacs com \emph{U-turn} o \emph{Volt Switch}.
+    \item \textbf{\emph{Phazing} (Expulsió forçada):} Forçar el canvi del Pokémon rival mitjançant moviments com \emph{Roar} o \emph{Whirlwind}, dissipant automàticament tots els seus increments d'etapa estadística.
+    \item \textbf{STAB (\emph{Same-Type Attack Bonus}):} Bonificació passiva del $\times 1{,}5$ al dany final quan el tipus elemental del moviment utilitzat coincideix amb el tipus del Pokémon atacant.
+    \item \textbf{\emph{Ladder} (Classificació pública):} Sistema oficial de rànquing competitiu en línia de la plataforma Pokémon Showdown, basat en el sistema de puntuació Elo/Glicko-1.
+\end{itemize}
+
+\subsection{Agents de referència (\emph{Baselines})}
+
+\begin{itemize}
+    \item \textbf{\texttt{random} (\texttt{RandomPlayer}):} Agent de control inferior que escull uniformement a l'atzar entre totes les accions legals del torn.
+    \item \textbf{\texttt{max\_power} (\texttt{MaxBasePowerPlayer}):} Agent heurístic ingenu que executa sempre l'atac amb la potència base nominal més gran, ignorant tipus i debilitats.
+    \item \textbf{\texttt{simple\_heuristic} (\texttt{SimpleHeuristicsPlayer}):} Heurística de referència de la llibreria \textit{poke-env}, adaptada amb suport bàsic per a Teracristal·lització.
+    \item \textbf{\texttt{abyssal} (\texttt{AbyssalPlayer}):} Controlador basat en regles expertes de la literatura científica procedent del projecte \textit{PokéChamp}.
+    \item \textbf{\texttt{safe\_one\_step} / \texttt{one\_step}:} Algorisme de cerca prospectiva determinista d'un pas basat en el mòdul de cerca de \textit{PokéChamp}.
+\end{itemize}
+
+\subsection{Acrònims metodològics i algorítmics}
+
+\begin{itemize}
+    \item \textbf{POSG (\emph{Partially Observable Stochastic Game}):} Joc estocàstic amb informació parcialment observable, formalització matemàtica del combat Pokémon.
+    \item \textbf{POMDP (\emph{Partially Observable Markov Decision Process}):} Procés de decisió de Màrkov parcialment observable.
+    \item \textbf{DRL (\emph{Deep Reinforcement Learning}):} Aprenentatge per reforç profund.
+    \item \textbf{PPO (\emph{Proximal Policy Optimization}):} Algorisme d'optimització de polítiques proximals per a aprenentatge per reforç.
+    \item \textbf{MaskablePPO:} Variant de PPO amb emmascarament d'accions invàlides en la capa de sortida de la política.
+    \item \textbf{BC (\emph{Behavioral Cloning}):} Clonatge conductual supervisat per transferir demostracions expertes cap a una xarxa neuronal.
+    \item \textbf{MCTS (\emph{Monte Carlo Tree Search}):} Cerca en arbre de Monte Carlo amb simulació prospectiva.
+    \item \textbf{UCB1 / PUCT:} Criteris de selecció per al balanç entre exploració i explotació en nodes d'arbres de cerca.
+    \item \textbf{MLE (\emph{Maximum Likelihood Estimation}):} Estimació de màxima versemblança emprada per a l'ajust dels paràmetres de força en el model Bradley--Terry.
+\end{itemize}
+
+% ============================================================
+\section{Catàleg complet i fitxa tècnica dels agents}
+\label{sec:app_agents_catalog}
+
+Per facilitar la consulta ràpida durant la lectura de la memòria i la defensa del treball, aquesta secció sintetitza la totalitat dels agents implementats i avaluats al llarg de la investigació. La Taula~\ref{tab:app_agents_heuristics} recull els sis agents de referència (\emph{baselines}) i la seqüència incremental de les catorze variants heurístiques (\texttt{v1}--\texttt{v14}). Totes aquestes polítiques s'avaluen en la matriu creuada completa de $28 \times 28$ cel·les dirigides amb una mida mostral de $n=10.000$ enfrontaments per cel·la.
+
+D'altra banda, la Taula~\ref{tab:app_agents_advanced} documenta els agents pertanyents a les famílies de cerca adversarial (Minimax i MCTS), aprenentatge per imitació jeràrquica (XGBoost), aprenentatge per reforç profund (MaskablePPO) i models generatius de llenguatge (LLM). Cal destacar que:
+\begin{itemize}
+    \item Els agents de cerca (\texttt{v15}--\texttt{v20}) i d'imitació híbrida (\texttt{v21}) reutilitzen el nucli de \texttt{v14} com a avaluador de fulla o prior d'acció, garantint que les diferències observades s'atribueixin exclusivament a l'algorisme de decisió i no a un biaix en el coneixement de domini.
+    \item La família MCTS (\texttt{v18}--\texttt{v20}) s'avalua a $n=1.000$ a causa de l'elevat cost de la simulació estocàstica local (\texttt{LocalSim}), mentre que les heurístiques i el Minimax analític operen a $n=10.000$.
+    \item L'agent de reforç profund MaskablePPO s'avalua en un experiment independent de $n=10.000$ partides contra l'oponent terminal del currículum (\texttt{v12}).
+    \item Els agents basats en LLM (\textbf{PokéChamp} i \textbf{PokéLLMon}) s'executen com a estudi exploratori de viabilitat mitjançant inferència local amb Ollama.
+\end{itemize}
+
+\input{tables/appendix_agents_catalog}
+
+% ============================================================
+\section{Diccionari complet de dades de la telemetria (\texttt{StatsBattle})}
+\label{sec:app_data_dictionary}
+
+Com s'ha descrit a la Secció~\ref{sec:metriques} i a la Secció~\ref{sec:csv_capture}, la captura de dades es realitza mitjançant la classe \texttt{StatsBattle}, que intercepta de forma asíncrona el flux WebSocket de Pokémon Showdown. Cada partida genera exactament un registre tabular estructurat en un esquema rígid de \textbf{70 columnes CSV}. Aquesta invariància és indispensable per al processament columnar d'alta velocitat sobre els 6,4 milions de partides de la matriu i per als 16 quaderns d'anàlisi exploratòria (EDA).
+
+A continuació, les Taules~\ref{tab:app_telemetry_part1}, \ref{tab:app_telemetry_part2} i \ref{tab:app_telemetry_part3} detallen la totalitat de les 70 variables agrupades en sis blocs funcionals:
+\begin{enumerate}
+    \item \textbf{Bloc 1: Identificació i resultat del combat (8 variables):} Identifica la sala, els agents implicats, la durada en torns i el desenllaç de la partida.
+    \item \textbf{Bloc 2: Robustesa, errors i decisions (6 variables):} Registra la consistència del flux d'ordres, comptabilitzant accions per defecte (\emph{fallbacks}) i ordres rebutjades pel protocol.
+    \item \textbf{Bloc 3: Salut, composició d'equips i supervivència (10 variables):} Mesura el desgast dels conjunts de Pokémon, la salut percentual agregada i la llista d'espècies en joc.
+    \item \textbf{Bloc 4: Mobilitat, condicions de camp i atzar RNG (14 variables):} Distingeix els canvis voluntaris dels forçats (debilitament o expulsió via \texttt{|drag|}), els efectes de camp actius, l'ús de Teracristal·lització i els esdeveniments estocàstics de cops crítics, fallades i efectivitats.
+    \item \textbf{Bloc 5: Activació de regles heurístiques i ablació de domini (12 variables):} Quantifica l'impacte marginal de cada bloc de regles (col·locació de trampes, moviments d'amplificació \emph{setup}, filtres de KO garantit i canvis per aparellament).
+    \item \textbf{Bloc 6: Telemetria de cerca i models d'aprenentatge (20 variables):} Registra el diagnòstic intern dels algorismes avançats, incloent-hi dreceres de seguretat (\texttt{ko\_guards}, \texttt{loop\_guards}), decisions macro d'XGBoost, decisions de cerca (Minimax/MCTS), resolucions de finals i la mètrica de discrepància respecte a \texttt{v14}.
+\end{enumerate}
+
+\input{tables/appendix_telemetry_dictionary}
+
+% ============================================================
+\section{Especificació de prompts, serialització i raonament CoT dels agents LLM}
+\label{sec:app_llm_prompts}
+
+La integració dels agents basats en models de llenguatge de gran escala (\textbf{PokéChamp} i \textbf{PokéLLMon}) s'articula mitjançant el paquet \path{src/p01_heuristics/agents/llm/} i el submòdul \path{pokechamp/}. Aquesta secció documenta el protocol de comunicació, el prompt de sistema, el format de serialització de l'estat i l'estructura del raonament en cadena de pensament (\textit{Chain-of-Thought}, CoT).
+
+\subsection{Arquitectura d'inferència local}
+
+Per tal de garantir la reproductibilitat sense dependre d'APIs de pagament externes ni exposar dades fora de l'estació de treball, la inferència s'executa localment mitjançant el motor \textbf{Ollama} accelerat per GPU amb la targeta NVIDIA GeForce RTX 2080 (8~GB VRAM). El model de referència emprat és \textbf{Qwen 3 (8B)} (i alternativament \textit{Qwen 2.5 7B}), seleccionat per la seva relació òptima entre capacitat de raonament estructurat, seguiment estricte d'instruccions en format JSON i contenció de memòria VRAM ($\approx 6{,}5$~GB en ús efectiu, evitant l'intercanvi lent amb memòria RAM).
+
+\subsection{Prompt de sistema (\emph{System Prompt})}
+
+Tots els missatges dirigits al model s'encapçalen amb una instrucció de rol persistent que fixa les prioritats estratègiques del combat segons les regles de Pokémon Showdown:
+
+\begin{quote}
+\small\ttfamily\raggedright
+You are a pokemon battler that targets to win the pokemon battle. You can choose to take a move or switch in another pokemon. Here are some battle tips: \\
+- Use status-boosting moves like swordsdance, calmmind, dragondance, nastyplot strategically. The boosting will be reset when pokemon switch out. \\
+- Set traps like stickyweb, spikes, toxicspikes, stealthrock strategically. \\
+- When face to a opponent is boosting or has already boosted its attack/special attack/speed, knock it out as soon as possible, even sacrificing your pokemon. \\
+- If choose to switch, you forfeit to take a move this turn and the opposing pokemon will definitely move first. Therefore, you should pay attention to speed, type-resistance and defense of your switch-in pokemon to bear the damage from the opposing pokemon. \\
+- And if the switch-in pokemon has a slower speed then the opposing pokemon, the opposing pokemon will move twice continuously.
+\end{quote}
+
+\subsection{Esquema de serialització textual de l'estat del combat}
+
+A cada torn, el mòdul extractor llegeix l'estat del combat des de \textit{poke-env} i construeix un prompt d'instrucció que sintetitza l'historial recent de torns, les condicions de camp, el Pokémon actiu, l'adversari i la llista filtrada d'accions legals:
+
+\begin{quote}
+\small\ttfamily\raggedright
+Historical turns: \\
+Turn 12: Opponent Dragapult used Shadow Ball! You took 52\% damage. You used Ice Beam! Opponent Dragapult took 88\% damage. \\
+Current battle state: \\
+Opponent team's side condition: stealth rock \\
+Your team's side condition: none \\
+Your current pokemon: Lapras, Type: Water and Ice, HP: 48\%, Status: healthy, Ability: Water Absorb, Item: Leftovers (Restores 1/16 max HP each turn) \\
+Opponent current pokemon: Dragapult, Type: Dragon and Ghost, HP: 12\%, Status: healthy, Ability: Infiltrator \\
+Your available moves: \\
+\text{[<move\_name>]} = ['icebeam', 'surf', 'thunderbolt', 'protect'] \\
+Your available switches: \\
+\text{[<switch\_pokemon\_name>]} = ['corviknight', 'tinglu', 'ironvaliant']
+\end{quote}
+
+\subsection{Protocol d'acció JSON i traça de raonament CoT}
+
+El model està configurat amb sortida en mode JSON estricte (\texttt{json\_format=True}) i temperatura $\tau = 0{,}3$. La resposta ha de contenir exclusivament una de les dues claus: \texttt{\{"move": "<nom>"}\} o \texttt{\{"switch": "<nom>"\}}. En el mode amb raonament explícit (\textit{Chain-of-Thought}), el model genera una reflexió preliminar abans d'emetre l'ordre definitiva, avaluant seqüencialment:
+\begin{enumerate}
+    \item \textbf{Anàlisi de velocitat relativa:} Dragapult presenta una velocitat base de 142 davant la velocitat de 60 de Lapras; per tant, el rival atacarà primer amb total seguretat.
+    \item \textbf{Càlcul d'amenaça i supervivència:} Amb Lapras al 48\% d'HP, un segon atac de Dragapult té una probabilitat elevada d'aconseguir el debilitament abans que Lapras pugui rematar-lo amb \emph{Ice Beam}.
+    \item \textbf{Avaluació de banqueta:} Ting-Lu disposa del tipus Dark/Ground (immunitat a atacs elèctrics i resistència a Ghost) amb un valor defensiu superior al 90\% d'HP restant per absorbir l'impacte d'entrada.
+    \item \textbf{Decisió final emesa:} \texttt{\{"switch": "tinglu"\}}.
+\end{enumerate}
+
+Aquest procés de generació textual autoregressiva requereix entre $3$ i $8$ segons per torn en una GPU dedicada, fet que confirma la impossibilitat pràctica d'executar-lo en la matriu massiva de 6,4 milions de partides, però demostra la coherència estratègica del raonament en llenguatge natural.
+
+% ============================================================
+\section{Hiperparàmetres de Machine Learning (XGBoost i MaskablePPO)}
+\label{sec:app_ml_hyperparameters}
+
+Aquesta secció recull de manera unificada tots els paràmetres d'entrenament, arquitectures i funcions d'objectiu dels models d'aprenentatge automàtic supervisat (XGBoost) i d'aprenentatge per reforç profund (MaskablePPO). Les Taules~\ref{tab:app_hyperparameters_il} i \ref{tab:app_hyperparameters_ppo} en consoliden la fitxa tècnica completa.
+
+\subsection{Classificador macro i avaluador micro XGBoost}
+
+El model macro d'aprenentatge per imitació s'entrena a partir d'aproximadament $1{,}12$ milions de torns extrets de les repeticions d'usuaris d'elit a Pokémon Showdown ($\text{Elo} \ge 1800$). Per evitar fuites de dades entre torns d'un mateix enfrontament, la partició s'agrupa estrictament per identificador de combat (\textit{GroupShuffleSplit} amb un 20\% de test independent).
+
+Atès que l'acció d'atacar és aproximadament 2,88 vegades més habitual que la de canviar en la distribució empírica humana, s'aplica el paràmetre \texttt{scale\_pos\_weight=2.88}. El llindar de decisió final per a la classe canvi ($y=1$) es fixa en $\tau = 0{,}3500$, valor calibrat en validació creuada que equilibra la puntuació $F_1$ amb la concordança exacta de freqüència d'execució respecte als experts humans.
+
+Per a l'agent d'imitació pura (\texttt{v22}), l'avaluador micro de moviments s'entrena sobre 11 atributs sintetitzats de candidats ofensius (potència base, STAB, efectivitat elemental de tipus, prioritat, condició d'estat i percentatge de salut restant), desvinculant-se de les identitats nominals de les repeticions per no patir inestabilitat semàntica.
+
+\subsection{Configuració i funció de recompensa de MaskablePPO}
+
+L'agent MaskablePPO s'implementa sobre la llibreria \texttt{sb3-contrib} amb PyTorch sota una política \texttt{MaskableActorCriticPolicy}. La xarxa neuronal utilitza dues capes ocultes de 256 unitats compartides (\texttt{[256, 256]}) que processen un vector continu dens de 328 característiques d'estat.
+
+\subsubsection{Formulació de la recompensa amb modelatge de potencial}
+
+Durant les fases d'entrenament del currículum, la funció de recompensa total per torn $r_t$ combina un component base de victòria i desgast amb un modelatge de recompensa basat en potencial (\textit{Potential-Based Reward Shaping}, PBRS) i una penalització de pas:
+\begin{equation}
+    r_t = R_{\mathrm{base}}(s_t, a_t, s_{t+1}) + \Delta \Phi(s_t, s_{t+1}) - 0{,}02
+    \label{eq:ppo_reward_formula}
+\end{equation}
+
+El component base $R_{\mathrm{base}}$ es defineix com:
+\begin{equation}
+    R_{\mathrm{base}} = 30{,}0 \cdot \mathbf{1}_{\mathrm{win}} + 2{,}0 \cdot \Delta N_{\mathrm{fainted}} + 1{,}0 \cdot \Delta \mathrm{HP}
+\end{equation}
+on $\mathbf{1}_{\mathrm{win}} \in \{+1, -1, 0\}$ indica victòria, derrota o partida no conclosa; $\Delta N_{\mathrm{fainted}}$ és la diferència neta de Pokémon rivals respecte als propis debilitats; i $\Delta \mathrm{HP}$ és la diferència de percentatge de salut restant entre tots dos bàndols.
+
+El potencial tàctic $\Phi(s)$ s'avalua sobre l'estat del combat $s$:
+\begin{align}
+    \Phi(s) ={} & 0{,}3 \sum_{k \in \{\mathrm{atk,spa,spe}\}} \max(0, \text{boost}_k) 
+    - 0{,}1 \sum_{j \in \{\mathrm{atk,def,spa,spd,spe}\}} |\min(0, \text{boost}_j)| \nonumber \\
+    & {} + 0{,}3 \cdot \mathbf{1}_{\mathrm{opp\_status}} 
+    + 0{,}5 \cdot N_{\mathrm{opp\_hazards}} 
+    - 1{,}0 \cdot W_{\mathrm{own\_hazards}}
+\end{align}
+on $\mathbf{1}_{\mathrm{opp\_status}}$ indica si el Pokémon actiu rival pateix un estat alterat greu (\emph{sleep}, \emph{burn}, \emph{toxic}, \emph{paralysis}, \emph{freeze}); $N_{\mathrm{opp\_hazards}}$ és el nombre de perills d'entrada col·locats al camp rival; i $W_{\mathrm{own\_hazards}}$ és el pes ponderat dels perills que afecten el camp propi. 
+
+La recompensa derivada del potencial es computa exclusivament com la diferència temporal $\Delta \Phi = \Phi(s_{t+1}) - \Phi(s_t)$, garantint que no s'alteri la política òptima del POSG subjacent d'acord amb el teorema de conservació de potencial de Ng et al.~\cite{ng_reward_shaping}. El cost de pas $-0{,}02$ penalitza la inacció i incentiva l'agent a cloure la partida de manera resolutiva.
+
+\subsubsection{Inicialització per Clonatge Conductual (BC)}
+
+A la Fase~2 del currículum, la xarxa s'inicialitza mitjançant Clonatge Conductual (\emph{Behavioral Cloning}) supervisat sobre 400 partides d'enfrontament entre instàncies de l'heurística \texttt{v8}. La pèrdua d'entropia creuada s'optimitza exclusivament sobre els paràmetres de l'actor mitjançant l'optimitzador Adam ($\eta = 10^{-3}$, 15 èpoques), transferint el coneixement de domini abans de reprendre l'ajust fi mitjançant descens de gradient proximal a taxa reduïda ($\eta = 5 \times 10^{-5}$).
+
+\input{tables/appendix_hyperparameters}
+

@@ -1,0 +1,95 @@
+\begin{table}[htbp]
+\centering
+\caption{Diccionari de dades de telemetria (\texttt{StatsBattle}): blocs 1 (Identificació i resultat), 2 (Robustesa i decisions) i 3 (Salut, equips i supervivència).}
+\label{tab:app_telemetry_part1}
+\footnotesize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\textwidth}{lp{1.8cm}>{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Columna (Camp CSV)} & \textbf{Tipus} & \textbf{Descripció semàntica i procedència} \\
+\midrule
+\multicolumn{3}{l}{\textbf{Bloc 1: Identificació i resultat del combat (8 variables)}} \\
+\midrule
+\texttt{battle\_id} & \texttt{string} & Identificador únic de la sala de combat assignat per Pokémon Showdown. \\
+\texttt{format} & \texttt{string} & Modalitat de combat oficial (\texttt{gen9randombattle}). \\
+\texttt{heuristic} & \texttt{string} & Etiqueta de l'agent protagonista avaluat (p. ex., \texttt{v14}, \texttt{v21}, \texttt{random}). \\
+\texttt{opponent} & \texttt{string} & Etiqueta de l'agent contrincant que s'enfronta al protagonista. \\
+\texttt{winner} & \texttt{string} & Nom d'usuari de l'agent victoriós registrat en tancar la sala. \\
+\texttt{won} & \texttt{boolean} & Indicador binari de victòria ($1$ si el protagonista guanya, $0$ si perd). \\
+\texttt{turns} & \texttt{integer} & Nombre total de torns transcorreguts fins al final del combat. \\
+\texttt{timestamp} & \texttt{string} & Marca horària d'enregistrament de la fila en format ISO 8601. \\
+\midrule
+\multicolumn{3}{l}{\textbf{Bloc 2: Robustesa, errors i decisions d'acció (6 variables)}} \\
+\midrule
+\texttt{decisions\_us} / \texttt{\_opp} & \texttt{integer} & Total de sol·licituds de decisió d'acció emeses pel simulador a cada jugador. \\
+\texttt{fallback\_moves\_us} / \texttt{\_opp} & \texttt{integer} & Vegades que l'agent ha recorregut a una acció de reserva en fallar el criteri principal. \\
+\texttt{error\_moves\_us} / \texttt{\_opp} & \texttt{integer} & Ordres invàlides o no permeses rebutjades pel protocol del servidor Showdown. \\
+\midrule
+\multicolumn{3}{l}{\textbf{Bloc 3: Salut, composició d'equips i supervivència (10 variables)}} \\
+\midrule
+\texttt{fainted\_us} / \texttt{\_opp} & \texttt{integer} & Nombre de Pokémon debilitats al llarg de la batalla (escala $0$ a $6$). \\
+\texttt{remaining\_pokemon\_us} / \texttt{\_opp} & \texttt{integer} & Membres vius restants al final del combat ($6 - \text{fainted}$). \\
+\texttt{total\_hp\_us} / \texttt{\_opp} & \texttt{float} & Suma percentual dels punts de vida (HP) de tot l'equip (escala $0$ a $600{,}0\%$). \\
+\texttt{hp\_perc\_us} / \texttt{\_opp} & \texttt{float} & Percentatge mitjà de vida restant respecte a la salut nominal d'inici de combat. \\
+\texttt{team\_us} / \texttt{\_opp} & \texttt{string} & Llista serialitzada de les 6 espècies que componen l'equip generat per Showdown. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Diccionari de dades de telemetria (\texttt{StatsBattle}): blocs 4 (Mobilitat, condicions de camp i RNG) i 5 (Ablació de domini).}
+\label{tab:app_telemetry_part2}
+\footnotesize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\textwidth}{lp{1.8cm}>{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Columna (Camp CSV)} & \textbf{Tipus} & \textbf{Descripció semàntica i procedència} \\
+\midrule
+\multicolumn{3}{l}{\textbf{Bloc 4: Mobilitat, condicions de camp i atzar RNG (14 variables)}} \\
+\midrule
+\texttt{voluntary\_switches\_us} / \texttt{\_opp} & \texttt{integer} & Nombre de canvis iniciats per decisió tàctica pròpia de la política. \\
+\texttt{forced\_switches\_us} / \texttt{\_opp} & \texttt{integer} & Canvis forçats per debilitament o per moviments d'expulsió (\emph{phazing} via \texttt{|drag|}). \\
+\texttt{side\_conditions\_us} / \texttt{\_opp} & \texttt{string} & Trampes d'entrada (\emph{Stealth Rock}, \emph{Spikes}) i efectes de camp actius. \\
+\texttt{move\_stats\_us} / \texttt{\_opp} & \texttt{string} & Diccionari serialitzat de la freqüència d'ús individual de cada moviment (\texttt{nom:compte}). \\
+\texttt{crit\_us} / \texttt{\_opp} & \texttt{integer} & Recompte d'atacs crítics infligits (interceptats mitjançant \texttt{|-crit|}). \\
+\texttt{miss\_us} / \texttt{\_opp} & \texttt{integer} & Nombre d'atacs fallats per imprecisió pròpia (missatges \texttt{|-miss|}). \\
+\texttt{supereffective\_us} / \texttt{\_opp} & \texttt{integer} & Cops molt efectius connectats (interceptats via \texttt{|-supereffective|}). \\
+\texttt{terastallized\_us} / \texttt{\_opp} & \texttt{boolean} & Indicador de si l'agent ha consumit el seu ús de Teracristal·lització en la partida. \\
+\midrule
+\multicolumn{3}{l}{\textbf{Bloc 5: Activació de regles heurístiques i ablació de domini (12 variables)}} \\
+\midrule
+\texttt{hazard\_sets\_us} / \texttt{\_opp} & \texttt{integer} & Torns dedicats a col·locar perills d'entrada (operatiu a partir de \texttt{v9}). \\
+\texttt{hazard\_removals\_us} / \texttt{\_opp} & \texttt{integer} & Accions dedicades a dissipar trampes pròpies (\emph{Rapid Spin}, \emph{Defog}). \\
+\texttt{setup\_uses\_us} / \texttt{\_opp} & \texttt{integer} & Execució de moviments d'amplificació d'estadístiques (\emph{Swords Dance}, \emph{Calm Mind}). \\
+\texttt{ko\_checks\_us} / \texttt{\_opp} & \texttt{integer} & Activacions del filtre de KO garantit de l'adversari (a partir de \texttt{v8}). \\
+\texttt{matchup\_switches\_us} / \texttt{\_opp} & \texttt{integer} & Canvis motivats per la puntuació de l'aparellament de tipus (a partir de \texttt{v7}). \\
+\texttt{total\_turns\_us} / \texttt{\_opp} & \texttt{integer} & Torns efectius computats en combat per a cada jugador. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Diccionari de dades de telemetria (\texttt{StatsBattle}): bloc 6 (Telemetria de cerca adversarial i aprenentatge automàtic).}
+\label{tab:app_telemetry_part3}
+\footnotesize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\textwidth}{lp{1.8cm}>{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Columna (Camp CSV)} & \textbf{Tipus} & \textbf{Descripció semàntica i procedència} \\
+\midrule
+\multicolumn{3}{l}{\textbf{Bloc 6: Telemetria de cerca adversarial i aprenentatge automàtic (20 variables)}} \\
+\midrule
+\texttt{ko\_guards\_us} / \texttt{\_opp} & \texttt{integer} & Drecera de KO immediat abans de cridar el classificador XGBoost (a \texttt{v21}). \\
+\texttt{loop\_guards\_us} / \texttt{\_opp} & \texttt{integer} & Mecanisme de protecció contra bucles: força atacar si l'agent demana canviar 2 cops. \\
+\texttt{xgb\_switches\_us} / \texttt{\_opp} & \texttt{integer} & Decisions macro de canvi ordenades pel model après XGBoost ($p \ge \tau$). \\
+\texttt{xgb\_stays\_us} / \texttt{\_opp} & \texttt{integer} & Decisions macro d'atacar ordenades pel model XGBoost ($p < \tau$). \\
+\texttt{xgb\_prob\_sum\_us} / \texttt{\_opp} & \texttt{float} & Suma acumulada de la probabilitat predita $p(\text{canvi})$ al llarg del combat. \\
+\texttt{search\_switches\_us} / \texttt{\_opp} & \texttt{integer} & Decisions de canvi seleccionades pels mòduls de cerca (Minimax o MCTS). \\
+\texttt{search\_moves\_us} / \texttt{\_opp} & \texttt{integer} & Decisions d'atac seleccionades pels mòduls de cerca adversarial. \\
+\texttt{endgame\_solves\_us} / \texttt{\_opp} & \texttt{integer} & Disparador del solver de finals exhaustiu quan queden $\le 2$ Pokémon per bàndol. \\
+\texttt{search\_diff\_us} / \texttt{\_opp} & \texttt{integer} & Discrepància: vegades que la cerca tria una acció diferent de la de \texttt{v14}. \\
+\bottomrule
+\end{tabularx}
+\end{table}

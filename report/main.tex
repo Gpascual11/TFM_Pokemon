@@ -19,6 +19,11 @@
 \usepackage{float}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{placeins}
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.85}
+\renewcommand{\textfraction}{0.15}
+\renewcommand{\floatpagefraction}{0.80}
 \usepackage{tikz}
 \usepackage{multirow}
 \usetikzlibrary{shapes,shapes.geometric,shapes.symbols,arrows,arrows.meta,positioning,calc,fit,decorations.pathreplacing,chains}
@@ -70,6 +75,10 @@
 \include{sections/05_implementation}
 \include{sections/06_results}
 \include{sections/07_conclusion_future_work}
+
+% --- Appendices ---
+\appendix
+\include{sections/appendix_a}
 
 \bibliographystyle{unsrt}
 \bibliography{bibliography}

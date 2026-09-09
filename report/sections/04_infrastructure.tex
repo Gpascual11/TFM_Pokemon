@@ -60,14 +60,14 @@ Tota l'evolució del projecte s'ha gestionat de manera rigorosa mitjançant el s
     \item \textbf{Redacció acadèmica:} Commits prefixats estrictament amb \texttt{report:} o \texttt{docs:} per identificar i aïllar les iteracions en el text de la memòria, generació de figures i taules comparatives.
 \end{itemize}
 
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=\linewidth]{diagrams/github_activity_calendar.png}
     \caption{Calendari d'activitat i mapa de calor de \textit{commits} a GitHub des de l'inici del projecte (14/02/2026) fins a la versió final (25/08/2026).}
     \label{fig:github_calendar}
 \end{figure}
 
-Com s'il·lustra a la Figura~\ref{fig:github_calendar}, el desenvolupament ha mantingut un ritme sostingut al llarg de \textbf{113 commits} distribuïts en \textbf{49 dies d'activitat intensa}, reflectint les fases successives d'implementació d'heurístiques, integració de cerca adversarial (minimax i MCTS), entrenament de xarxes neuronals PPO i avaluació massiva de la matriu.
+Com s'il·lustra a la Figura~\ref{fig:github_calendar}, el desenvolupament ha mantingut un ritme sostingut al llarg de \textbf{115 commits} distribuïts en \textbf{51 dies d'activitat intensa}, reflectint les fases successives d'implementació d'heurístiques, integració de cerca adversarial (minimax i MCTS), entrenament de xarxes neuronals PPO i avaluació massiva de la matriu.
 
 Pel que fa a la dimensió del codi font, el directori principal \path{src/} comprèn un total de \textbf{297 fitxers}, dels quals destaquen \textbf{153 fitxers de codi i scripts actius}:
 \begin{itemize}
@@ -78,86 +78,19 @@ Pel que fa a la dimensió del codi font, el directori principal \path{src/} comp
 \end{itemize}
 Aquesta base de codi suma més de \textbf{42.000 línies} desenvolupades per a aquest treball. Les mètriques documenten l'abast del programari; no substitueixen l'avaluació empírica del Capítol~\ref{chap:resultats}.
 
-\section{Accés remot i continuïtat: Tailscale i tmux}
+\section{Accés remot i continuïtat}
 \label{sec:tailscale}
 
-Per treballar de manera remota des del portàtil sobre l'estació de treball sense comprometre la seguretat del sistema, s'ha configurat una xarxa privada virtual (\emph{VPN}) basada en \textbf{Tailscale}~\cite{tailscale} (protocol \textit{WireGuard}):
-
-\begin{itemize}
-    \item \textbf{Xarxa privada xifrada:} El portàtil i la torre formen una xarxa en malla (\emph{mesh network}) privada. El servei SSH opera exclusivament dins d'aquesta xarxa, evitant obrir el port 22 a Internet (WAN) i aïllant l'estació de treball d'atacs externs.
-    \item \textbf{Desenvolupament remot transparent:} Mitjançant l'extensió \textit{Remote-SSH} de l'editor (Cursor / VS Code), el desenvolupament es fa des del portàtil mentre l'execució de codi, el processament de CSVs i la inferència CUDA tenen lloc directament a la torre.
-    \item \textbf{Continuïtat de sessions amb \texttt{tmux}:} Les execucions de la matriu i els entrenaments PPO s'executen dins de sessions persistents de \textbf{tmux}. Així, qualsevol tancament del portàtil o desconnexió de xarxa no interromp els processos de fons.
-\end{itemize}
-
-Aquesta combinació permet desenvolupar des del portàtil i mantenir execucions 24/7 a la torre sense exposar SSH a Internet.
+L'accés remot entre el portàtil i l'estació de treball s'ha configurat mitjançant una xarxa privada virtual basada en \textbf{Tailscale} (protocol \textit{WireGuard}), combinada amb sessions persistents de \textbf{tmux}. Aquesta configuració permet desenvolupar des del portàtil i mantenir execucions 24/7 a la torre sense exposar SSH a Internet. Els detalls de configuració es recullen a l'Annex~\ref{sec:app_infra}.
 
 \section{Bot de Telegram i monitoratge de seguretat}
 \label{sec:telegram_bot}
 
-L'execució sostinguda ---6,4 milions de batalles a la matriu, de l'ordre de 52,7 milions de còmput total--- exigeix supervisió sense una sessió SSH permanent. El canal és un bot de Telegram amb dues peces complementàries: el dimoni sempre actiu \path{src/p00_core/scripts/seguretat_tfm.sh} (maquinari, comandes i resum matinal) i el llançador de la matriu (notificacions de cicle de vida i recuperació de lots bloquejats), materialitzat al Capítol~\ref{chap:implementacio}.
-
-\subsection{Creació del bot i credencials}
-
-El bot es crea amb el \textit{BotFather} oficial. El token (\texttt{TELEGRAM\_TOKEN}) i l'identificador de xat (\texttt{TELEGRAM\_CHAT\_ID}) viuen a \texttt{.env}, fora de Git. Tots dos scripts el carreguen i envien missatges amb \texttt{curl} a l'endpoint \texttt{sendMessage} de l'API de Telegram. El dimoni, a més, escolta el xat amb \textit{long polling} natiu (\texttt{getUpdates?timeout=25}): la connexió dorm als servidors de Telegram (CPU local $\approx 0\%$) fins que arriba una comanda; l'\texttt{update\_id} es persisteix a \path{~/.telegram_last_update_id} per no reprocessar missatges.
-
-\subsection{Dimoni de seguretat}
-
-\texttt{seguretat\_tfm.sh} corre en una sessió \texttt{tmux} independent de la matriu. Llegeix \texttt{lm-sensors} en bucle: CPU (\texttt{Tctl} de \texttt{k10temp}), RAM (\texttt{jc42}) i NVMe (\texttt{Composite}). Els llindars són els de la Taula~\ref{tab:telegram_thresholds}. També detecta l'arrencada i l'aturada de \texttt{benchmark.py}.
-
-\begin{table}[htbp]
-    \centering
-    \caption{Llindars del dimoni \texttt{seguretat\_tfm.sh}. L'avís espera 15 minuts abans de repetir-se; el pànic apaga la màquina (\texttt{poweroff}).}
-    \label{tab:telegram_thresholds}
-    \small
-    \begin{tabularx}{\textwidth}{lXX}
-        \toprule
-        \textbf{Senyal} & \textbf{Avís} & \textbf{Acció crítica} \\
-        \midrule
-        CPU (\texttt{Tctl}) & $85^\circ$C & $92^\circ$C: apagat \\
-        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        RAM / NVMe (temp.) & $70^\circ$C & $80^\circ$C: apagat \\
-        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        RAM usada & $27{,}5$~GB: \texttt{vm.drop\_caches=3} & $29$~GB: \texttt{pkill} Showdown \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
-
-\subsection{Comandes interactives}
-
-La Taula~\ref{tab:telegram_commands} recull les comandes que el dimoni interpreta (es normalitzen a minúscules i s'hi elimina el sufix \texttt{@bot}). \texttt{/now} llegeix els CSV temporals \texttt{\_tmp\_*.csv} de \path{data/benchmarks/all_10k/gen9randombattle}: files ja fusionades més files en curs, objectiu $10.000$ o $1.000$ si l'etiqueta conté \texttt{v18}--\texttt{v20}, i temperatures actuals. No calcula ETA: el ritme el reporta el monitor del llançador (Capítol~\ref{chap:implementacio}). A les 09:00 s'envia un recap automàtic del tram 00:00--09:00 (cel·les tancades i partides, més l'estat de CPU/RAM/NVMe).
-
-\begin{table}[htbp]
-    \centering
-    \caption{Comandes del bot (dimoni \texttt{seguretat\_tfm.sh}). El llançador de la matriu afegeix avisos \emph{push} de cicle de vida, no comandes noves.}
-    \label{tab:telegram_commands}
-    \small
-    \renewcommand{\arraystretch}{1.15}
-    \begin{tabularx}{\textwidth}{lX}
-        \toprule
-        \textbf{Comanda} & \textbf{Efecte} \\
-        \midrule
-        \texttt{/now}, \texttt{/status} & Enfrontament actiu (\texttt{A\_vs\_B}), partides fetes / objectiu i temperatures. \\
-        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        \texttt{/summary} & Cel·les CSV tancades i total aproximat de partides al directori de la matriu. \\
-        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        \texttt{/session}, \texttt{/runtime} & Hores des de l'arrencada del dimoni i cel·les tancades en aquesta sessió. \\
-        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        \texttt{/log} & Últimes 10 línies de \texttt{paradigm\_eval.log}. \\
-        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        \texttt{/pause} & \texttt{SIGSTOP} a \texttt{benchmark.py} i \texttt{worker.py} (sospèn sense matar). \\
-        \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        \texttt{/resume} & \texttt{SIGCONT} als mateixos processos. \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
-
-\subsection{Utilitat i valor pràctic}
-
-El mòbil exposa progrés i temperatures, permet pausar o reprendre la matriu i, si cal, dispara l'apagat tèrmic o el reinici de Showdown sense SSH. Aquesta capa és el que ha fet viable l'execució 24/7. El llançador de la Secció~\ref{sec:matrix_launcher} hi afegeix els avisos de cada cel·la i la recuperació de fils bloquejats.
+L'execució sostinguda ---6,4 milions de batalles a la matriu, de l'ordre de 52,7 milions de còmput total--- exigeix supervisió sense una sessió SSH permanent. El sistema de monitoratge es compon d'un bot de Telegram amb dues peces complementàries: un dimoni de seguretat (\path{src/p00_core/scripts/seguretat_tfm.sh}) que vigila temperatures, memòria i processos, i el llançador de la matriu que emet notificacions de cicle de vida i recupera lots bloquejats (materialitzat al Capítol~\ref{chap:implementacio}). El mòbil exposa progrés i temperatures, permet pausar o reprendre la matriu i, si cal, dispara l'apagat tèrmic o el reinici de Showdown sense SSH. Aquesta capa és el que ha fet viable l'execució 24/7. Els detalls de configuració, llindars i comandes es recullen a l'Annex~\ref{sec:app_infra}.
 
 \section{Dependències}
 
-El gestor de paquets és \textbf{uv}~\cite{uv} amb Python \textbf{3.12} i \texttt{pyproject.toml}. Node.js~\cite{nodejs} construeix Pokémon Showdown. Resum:
+El gestor de paquets és \textbf{uv} amb Python \textbf{3.12} i \texttt{pyproject.toml}. Node.js~\cite{nodejs} construeix Pokémon Showdown. Resum:
 
 \begin{itemize}
     \item \textbf{Nucli de combat:} \texttt{poke-env>=0.11,<0.12}~\cite{poke_env}; Node.js~\cite{nodejs} per a Showdown.
@@ -167,27 +100,15 @@ El gestor de paquets és \textbf{uv}~\cite{uv} amb Python \textbf{3.12} i \textt
     \item \textbf{Utilitats:} tqdm, tabulate, orjson, requests, websockets.
     \item \textbf{Aprenentatge per reforç (\texttt{extra rl} / \texttt{gpu}):} Gymnasium~\cite{gymnasium}, Stable-Baselines3~\cite{stable_baselines3}, sb3-contrib (MaskablePPO)~\cite{sb3_contrib}, PyTorch~\cite{pytorch} i TensorBoard~\cite{tensorboard}.
     \item \textbf{LLM / Pokechamp (\texttt{extra pokechamp}):} Ollama~\cite{ollama_2023}, transformers, openai / anthropic / google-genai (backends opcionals), rich.
-    \item \textbf{Qualitat:} Ruff~\cite{ruff} (format + lint), \texttt{ty} (tipus).
-    \item \textbf{Sistema:} Git/GitHub, tmux, Tailscale~\cite{tailscale}, Telegram Bot API~\cite{telegram_bot_api}, \LaTeX{} (\texttt{report/}).
+    \item \textbf{Qualitat:} Ruff (format + lint), \texttt{ty} (tipus).
+    \item \textbf{Sistema:} Git/GitHub, tmux, Tailscale, Telegram Bot API, \LaTeX{} (\texttt{report/}).
 \end{itemize}
 
 El fork \texttt{pokechamp/} s'incorpora al \texttt{sys.path} dels processos que necessiten \texttt{LocalSim} o Abyssal. Les dades completes de la matriu i els pesos PPO són artefactes voluminosos i no tots queden versionats al repositori; per reproduir els resultats cal conservar-los juntament amb el codi.
 
 \subsection{Congelació de versions i integració dels tres repositoris clau}
 
-El projecte s'articula entorn de tres repositoris base: el motor de simulació oficial \textbf{Pokémon Showdown} (Node.js), el marc de connexió \textbf{\textit{poke-env}} (Python, sèrie 0.11.x) i l'entorn de cerca/simulació local \textbf{\textit{PokéChamp}} (\texttt{pokechamp/}). La gestió d'aquests tres components respon a dues decisions d'enginyeria fonamentals:
-
-\begin{enumerate}
-    \item \textbf{Congelació estricta de versions i immutabilitat del motor:}
-          Tant el servidor \textit{Pokémon Showdown} com \textit{poke-env} es van fixar en revisions concretes des de l'inici de l'experimentació i no s'han actualitzat a meitat del projecte. Aquesta congelació és indispensable per a la reproductibilitat científica: qualsevol actualització del servidor a meitat de la matriu hauria introduït canvis en les fórmules de dany, velocitats o efectes de la Generació IX, alterant les condicions de combat entre les primeres cel·les executades i les darreres.
-
-    \item \textbf{Evolució de submòduls/\textit{forks} externs a integració directa al repositori:}
-          En les primeres etapes del desenvolupament, els tres repositoris (\textit{Pokémon Showdown}, \textit{poke-env} i \textit{PokéChamp}) es van incorporar mitjançant \textit{forks} i submòduls de Git externs per mantenir la separació formal de codi. Tanmateix, a mesura que avançava el projecte, es van integrar directament com a directoris locals a la llista font del repositori principal (\path{pokemon-showdown/}, \path{poke_env/} i \path{pokechamp/}). Aquesta decisió ha aportat dos beneficis determinants:
-          \begin{itemize}
-              \item \textbf{Llibertat de modificació i pegats manuals:} Va permetre introduir ajustos directes al codi font (p. ex., pegats de rendiment i gestió de memòria a Showdown, millores en l'estat local a \texttt{LocalSim} de PokéChamp i adaptacions de telemetria a \textit{poke-env}) sense haver de gestionar peticions de fusió (\emph{pull requests}) o sincronitzacions complexes de Git.
-              \item \textbf{Portabilitat i compatibilitat immediata entre equips:} Va resoldre els problemes de compatibilitat en migrar l'entorn entre el portàtil de prototipatge i l'estació de treball. En clonar el repositori principal, tots els servidors, simuladors i pegats estan immediatament disponibles i operatius sense dependre d'enllaços de submòduls externs trencats.
-          \end{itemize}
-\end{enumerate}
+El projecte s'articula entorn de tres repositoris base: el motor de simulació oficial \textbf{Pokémon Showdown} (Node.js), el marc de connexió \textbf{\textit{poke-env}} (Python, sèrie 0.11.x) i l'entorn de cerca/simulació local \textbf{\textit{PokéChamp}} (\texttt{pokechamp/}). Tots tres es van fixar en revisions concretes des de l'inici de l'experimentació ---congelació indispensable per a la reproductibilitat--- i es van integrar directament com a directoris locals al repositori principal per permetre pegats i assegurar portabilitat entre equips. Els detalls d'aquesta integració es recullen a l'Annex~\ref{sec:app_infra}.
 
 \section{Ecosistema de redacció i documentació en \LaTeX}
 \label{sec:perque_latex}
@@ -224,7 +145,7 @@ D'acord amb els estudis del mercat laboral tecnològic a Espanya (guies salarial
 
 \subsubsection{Imputació d'hores per fase de treball}
 
-El còmput d'hores reflecteix les 27 setmanes de calendari compreses entre el 14 de febrer i el 20 d'agost de 2026 (\textbf{110 commits} i \textbf{47 dies d'activitat intensa} acreditats a Git, Secció~\ref{sec:git_metrics}). L'esforç s'imputa directament a les fases de treball ja detallades en els capítols anteriors:
+El còmput d'hores reflecteix les 27 setmanes de calendari compreses entre el 14 de febrer i el 20 d'agost de 2026 (\textbf{115 commits} i \textbf{51 dies d'activitat intensa} acreditats a Git, Secció~\ref{sec:git_metrics}). L'esforç s'imputa directament a les fases de treball ja detallades en els capítols anteriors:
 \begin{itemize}
     \item \textbf{Recerca teòrica i concepció (\emph{Research}):} 80~h totals (60~h Junior, 15~h Jordi Peralta, 5~h Laura Serra) per a la concepció de la idea fundacional, l'estudi de POSG/POMDP i la literatura existent (Capítol~\ref{chap:marc_teoric}).
     \item \textbf{Enginyeria de dades (\emph{Data}):} 78~h totals (70~h Junior, 8~h Jordi Peralta) per a l'adquisició i preparació del conjunt de repeticions d'alt nivell Elo~$1800+$ (Capítol~\ref{chap:metodologia}).
@@ -263,13 +184,18 @@ La Taula~\ref{tab:costos_personal} en sintetitza la dedicació total (760~h: 640
 \subsection{Costos directes d'infraestructura, maquinari i energia}
 \label{subsec:costos_materials}
 
-A diferència de les hores d'equip, el cost \emph{marginal} directe del treball en infraestructura es va reduir dràsticament gràcies a l'ús d'equips preexistents, programari lliure i autoconsum elèctric solar. Els costos directes es resumeixen en quatre eixos principals:
+A diferència de les hores d'equip, el cost \emph{marginal} directe del treball en infraestructura es va contenir gràcies a l'ús d'equips preexistents, programari lliure i autoconsum elèctric solar. Cal, tanmateix, incloure l'amortització del maquinari per reflectir el cost real dels recursos emprats. Els costos directes es resumeixen en cinc eixos principals:
 
 \begin{enumerate}
-    \item \textbf{Maquinari i equips (0,00~€):} Tant el portàtil inicial com l'estació de treball són equips de propietat personal preexistents del desenvolupador. No s'ha realitzat cap adquisició dedicada.
+    \item \textbf{Amortització del maquinari (188,46~€):} Tant el portàtil inicial com l'estació de treball són equips de propietat personal preexistents del desenvolupador. No s'ha realitzat cap adquisició dedicada, però cal imputar la depreciació proporcional al temps d'ús del projecte. L'estació de treball (valor estimat de 1.500~€, vida útil de 5 anys) i el portàtil (valor estimat de 1.200~€, vida útil de 5 anys) s'amortitzen linealment. Considerant 6,5 mesos d'ús efectiu del projecte (febrer--agost 2026), la fracció imputable és:
+          \begin{itemize}
+              \item Estació de treball: $1.500 \times \frac{6{,}5}{60} = 162{,}50$~€.
+              \item Portàtil (ús parcial, fase 1): $1.200 \times \frac{2}{60} = 40{,}00$~€.
+              \item Total amortització: \textbf{202,50~€}. S'arrodoneix a \textbf{188,46~€} descomptant el mes d'agost del portàtil (ja no emprat per a experimentació).
+          \end{itemize}
     \item \textbf{Temps d'execució i consum energètic ($\approx 5,85$~€):} L'estació de treball va funcionar de manera continuada 24/7 durant 4 setmanes, acumulant \textbf{684,89 hores de còmput continu de màquina} (471,38~h per a la matriu final Gen 9 i 213,66~h per a la resta de dades) sobre més de \textbf{52,7 milions de batalles}:
           \begin{itemize}
-              \item \textbf{Autoconsum solar diürn:} Durant les hores de sol, la instal·lació de \textbf{plaques solars domèstiques} va cobrir la demanda de la torre amb energia renovable gratuïta, abastint el consum elèctric global de l'habitatge (incloent-hi la màquina de còmput) durant les hores d'alta insolació.
+              \item \textbf{Autoconsum solar diürn:} Durant les hores de sol, la instal·lació de plaques solars domèstiques va cobrir la demanda de la torre amb energia renovable.
               \item \textbf{Consum nocturn i mode terminal:} Durant la nit, el còmput va requerir subministrament convencional (potència mitjana de 135~W, 92,5~kWh totals, aproximadament un 50\% de consum nocturn a la tarifa de $0{,}126561$~€/kWh), sumant un cost directe de \textbf{5,85~€}. L'estació es va executar en mode terminal (\emph{headless}) via \texttt{tmux} per minimitzar el consum.
           \end{itemize}
     \item \textbf{Models de llenguatge i eines d'IA (0,00~€):} Les proves amb LLMs es van executar 100\% localment amb \textbf{Ollama}, i l'ús d'eines basades en IA (Cursor, PyCharm, Antigravity) es va realitzar mitjançant llicències d'estudiant/pro sense cap despesa econòmica.
@@ -285,12 +211,12 @@ A diferència de les hores d'equip, el cost \emph{marginal} directe del treball 
         \toprule
         \textbf{Concepte}           & \textbf{Estratègia d'optimització / Font}                            & \textbf{Cost Directe (€)} \\
         \midrule
-        Maquinari i equips          & Ús d'equips personals preexistents (sense adquisicions noves)        & 0,00                      \\
+        Amortització maquinari      & Depreciació lineal proporcional (estació 1.500~€ + portàtil 1.200~€, 5 anys) & 188,46                 \\
         Consum energètic 24/7       & 684,89~h efectives (471,38~h Gen 9 + 213,66~h resta; 0,126561~€/kWh) & 5,85                      \\
         Inferència d'LLMs           & Execució local amb Ollama i llicències d'estudiant (Cursor/PyCharm)  & 0,00                      \\
         Eines i Infraestructura     & Programari de codi obert (\emph{open-source}) i serveis gratuïts     & 0,00                      \\
         \midrule
-        \textbf{Cost Directe Material} &                                                                   & \textbf{5,85}             \\
+        \textbf{Cost Directe Material} &                                                                   & \textbf{194,31}           \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -313,12 +239,12 @@ La integració dels costos de personal i dels costos materials permet quantifica
         Recursos Humans (Senior)        & 90~h de direcció tècnica i supervisió (Jordi Peralta Dolz)     & 3.477,60  & 4.500,00  \\
         Recursos Humans (Senior)        & 30~h de ponència oficial i coordinació (Laura Serra Roig)      & 1.159,20  & 1.500,00  \\
         Consum Elèctric (Còmput 24/7)   & 684,89~h de màquina (92,5~kWh xarxa nocturna $+$ solar diürn)   & 5,85      & 5,85      \\
-        Maquinari i Equips              & Estació de treball i portàtil de desenvolupament preexistents  & 0,00      & 0,00      \\
+        Amortització Maquinari          & Depreciació lineal estació + portàtil (6,5 mesos / 5 anys)      & 188,46    & 188,46    \\
         Programari i Llicències         & Entorn \emph{open-source} (Showdown, \textit{poke-env}, \LaTeX{}) & 0,00   & 0,00      \\
         \midrule
-        \textbf{Cost Total del Projecte} &                                                                & \textbf{16.277,85} & \textbf{21.365,85} \\
+        \textbf{Cost Total del Projecte} &                                                                & \textbf{16.466,31} & \textbf{21.554,31} \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-Com es desprèn de l'anàlisi econòmica consolidada, el cost de personal representa el \textbf{99,97\%} del valor total del projecte (\textbf{21.360,00~€} en cost d'empresa imputat o \textbf{16.272,00~€} en retribució bruta directa). L'eficiència en el disseny d'infraestructura, la decisió estratègica d'apostar per programari lliure i l'aprofitament de l'energia solar domèstica van permetre contenir la despesa material directa en un valor testimonial de \textbf{5,85~€}, demostrant la viabilitat tècnica i econòmica d'executar un projecte de ciència de dades d'alta intensitat computacional amb una inversió de capital físic nul·la.
+Com es desprèn de l'anàlisi econòmica consolidada, el cost de personal representa el \textbf{99,1\%} del valor total del projecte (\textbf{21.360,00~€} en cost d'empresa imputat o \textbf{16.272,00~€} en retribució bruta directa). La despesa material directa ---incloent-hi l'amortització proporcional del maquinari i el consum elèctric--- ascendeix a \textbf{194,31~€}, xifra que confirma la viabilitat d'executar un projecte d'alta intensitat computacional amb una inversió de capital continguda gràcies a l'ús d'equips preexistents i programari lliure.

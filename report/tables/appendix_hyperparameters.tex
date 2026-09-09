@@ -1,0 +1,64 @@
+\begin{table}[htbp]
+\centering
+\caption{Consolidació d'hiperparàmetres per als models d'aprenentatge supervisat per imitació (XGBoost).}
+\label{tab:app_hyperparameters_il}
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}p{3.5cm}X}
+\toprule
+\textbf{Model / Mòdul} & \textbf{Hiperparàmetre} & \textbf{Valor / Configuració adoptada} \\
+\midrule
+\multicolumn{3}{l}{\textbf{XGBoost: Classificador Macro d'Alt Nivell (\texttt{v21} i \texttt{v22})}} \\
+\midrule
+\texttt{XGBClassifier} & Arbres (\texttt{n\_estimators}) & 300 estimadors \\
+& Profunditat màx. (\texttt{max\_depth}) & 6 nivells \\
+& Taxa d'aprenentatge (\texttt{learning\_rate}) & 0,08 \\
+& Balanç de classes (\texttt{scale\_pos\_weight}) & 2,88 (ràtio $\text{Atac} / \text{Canvi}$ en entrenament) \\
+& Mostreig (\texttt{subsample}, \texttt{colsample}) & 0,85 en files i 0,85 en columnes \\
+& Funció de pèrdua (\texttt{eval\_metric}) & Pèrdua logística binària (\texttt{"logloss"}) \\
+& Llindar de decisió calibrat ($\tau$) & 0,3500 (calibrat per concordança de freqüència humana i F1) \\
+& Partició de dades & \textit{GroupShuffleSplit} per \texttt{battle\_id} (80\% train, 20\% test) \\
+& Mida del conjunt & $1{,}12$ milions de torns d'experts (Elo $\ge 1800$, $\approx 1.150$ columnes) \\
+\midrule
+\multicolumn{3}{l}{\textbf{XGBoost: Avaluador Micro de Candidats de Moviment (\texttt{v22})}} \\
+\midrule
+\texttt{XGBClassifier} & Arbres / Profunditat màx. & 250 estimadors / 5 nivells \\
+& Taxa d'aprenentatge / Mostreig & 0,08 / \texttt{subsample}=0,85, \texttt{colsample}=0,85 \\
+& Espai de característiques & 11 atributs sintètics (potència, STAB, efectivitat, prioritat, HP) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Consolidació d'hiperparàmetres per al model d'aprenentatge per reforç profund (MaskablePPO) i clonatge conductual.}
+\label{tab:app_hyperparameters_ppo}
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}p{3.5cm}X}
+\toprule
+\textbf{Component / Mòdul} & \textbf{Hiperparàmetre} & \textbf{Valor / Configuració adoptada} \\
+\midrule
+\multicolumn{3}{l}{\textbf{MaskablePPO: Model A (Fase 3 del Currículum)}} \\
+\midrule
+\texttt{MaskablePPO} & Arquitectura de xarxa (\texttt{net\_arch}) & MLP dues capes de 256 unitats compartides (\texttt{[256, 256]}) \\
+& Dimensió d'observació & Vector continu dens de 328 valors normalitzats \\
+& Espai d'accions (\texttt{action\_space}) & Discret de 14 branques amb emmascarament d'accions invàlides \\
+& Horitzó d'actualització (\texttt{n\_steps}) & 2.048 passos per entorn Showdown \\
+& Mida del minilot (\texttt{batch\_size}) & 512 mostres \\
+& Èpoques per actualització (\texttt{n\_epochs}) & 4 passades de gradient estocàstic \\
+& Factor de descompte ($\gamma$) & 0,99 \\
+& Paràmetre GAE ($\lambda_{\mathrm{GAE}}$) & 0,95 \\
+& Coeficient de retallada (\texttt{clip\_range}) & 0,20 \\
+& Coeficient d'entropia (\texttt{ent\_coef}) & 0,01 \\
+& Coeficient de la funció de valor (\texttt{vf\_coef}) & 0,50 \\
+& Taxa d'aprenentatge (\texttt{learning\_rate}) & $5 \times 10^{-5}$ (constant) \\
+& Entorns paral·lels & 8 ports Showdown concurrents ($N_{\mathrm{envs}} = 8$) \\
+\midrule
+\multicolumn{3}{l}{\textbf{Clonatge Conductual (BC) d'Inicialització per a PPO (Fase 2)}} \\
+\midrule
+Supervisat & Partides de demostració expertes & 400 partides contra \texttt{HeuristicV8} \\
+& Optimitzador i taxa & Adam, $\eta = 10^{-3}$, 15 èpoques supervisades sobre l'actor \\
+\bottomrule
+\end{tabularx}
+\end{table}
