@@ -76,7 +76,7 @@ La Taula~\ref{tab:version_timeline} resumeix la seqüència abans d'analitzar-la
 
 La primera meitat de la seqüència acumula coneixement explícit fins a \texttt{v12}. La segona canvia de paradigma, però la majoria de decisions encara passen per dreceres o priors derivats de \texttt{v14}. El patró general no és «algorisme més sofisticat, agent més fort», sinó «representació i coneixement adequats, seguits d'un mòdul que no els destrueixi».
 
-PPO no rep un número \texttt{v23} ni forma part de la taula global. La seva pregunta és paral·lela: si una política neuronal inicialitzada amb \texttt{v8} pot arribar a \texttt{v12}. El resultat de 34,1\% contra aquest comparador es tracta a la secció~\ref{sec:res_ppo}.
+PPO no rep un número \texttt{v23} ni forma part de la taula global. La seva pregunta és paral·lela: si una política neuronal inicialitzada amb \texttt{v8} pot arribar a \texttt{v12}. El resultat de 34,1\% contra aquest comparador es tracta a la Secció~\ref{sec:res_ppo}.
 
 % ============================================================
 \section{L'escala heurística: tres canvis de règim}
@@ -119,17 +119,17 @@ Amb \texttt{v9}, els perills d'entrada i els moviments de preparació només s'u
 
 \subsection{Tercer salt: \texttt{v12}}
 
-\texttt{v12} combina la Teracristal·lització i la selecció informada del substitut després d'un debilitament. La taxa global assoleix el \textbf{69,01\%}, suposant el major increment de tota la seqüència ($+9{,}8$~pp respecte al $59{,}2\%$ de \texttt{v11}). És, a més, el primer agent intern que supera amb claredat Abyssal i Simple Heuristic: \textbf{59,91\%} i \textbf{59,75\%}, respectivament ($n=10.000$, tal com s'il·lustra a la Figura~\ref{fig:heur_vs_baselines} enfront dels comparadors discriminants).
+\texttt{v12} combina la Teracristal·lització i la selecció informada del substitut després d'un debilitament. La taxa global assoleix el \textbf{69,01\%}, suposant el major increment de tota la seqüència ($+9{,}75$~pp respecte al $59{,}26\%$ de \texttt{v11}). És, a més, el primer agent intern que supera amb claredat Abyssal i Simple Heuristic: \textbf{59,91\%} i \textbf{59,75\%}, respectivament ($n=10.000$, tal com s'il·lustra a la Figura~\ref{fig:heur_vs_baselines} enfront dels comparadors discriminants).
 
 En la telemetria de matriu (recollida en l'empremta tàctica de la Figura~\ref{fig:heur_fingerprint}), utilitza la Teracristal·lització \textbf{0,96 vegades per partida}, registra només \textbf{0,01} accions de reserva i conserva \textbf{1,84} Pokémon, davant d'1,44 a \texttt{v11}. El canvi de comportament és substancial.
 
 Tot i que totes dues millores s'introdueixen conjuntament en aquesta versió, la telemetria granular de la matriu permet desacoblar observacionalment la contribució relativa de cada mecanisme:
 \begin{enumerate}
     \item \textbf{Impacte de la selecció del substitut (eliminació de \emph{fallbacks}):} A les versions prèvies (\texttt{v1}--\texttt{v11}), la manca d'un gestor per als torns forçats per debilitament feia que l'agent invoqués el mecanisme per defecte (\texttt{fallback\_moves\_us}), seleccionant el substitut d'entrada uniformement a l'atzar. A \texttt{v12}, la resolució per aparellament (\texttt{\_get\_best\_switch}) redueix les accions de reserva de $\sim 3{,}5$ a pràcticament zero ($0{,}01$ per partida), evitant que l'agent regali la iniciativa entrant en desavantatge elemental greu.
-    \item \textbf{Impacte de la Teracristal·lització (el contrast natural amb \texttt{v13}):} A la versió immediatament posterior (\texttt{v13}), la selecció informada del substitut es manté intacta, però l'ús de la Teracristal·lització es restringeix dràsticament, caient un \textbf{79\%} (de $0{,}96$ usos per partida a \texttt{v12} a només $0{,}20$ a \texttt{v13}). Malgrat aquesta reducció massiva de la Tera, el rendiment global només retrocedeix $\approx 2{,}0$~pp (de $69{,}01\%$ a $67{,}01\%$), el duel directe entre totes dues queda en empat virtual ($50{,}65\%$ vs $48{,}85\%$, separat per només $1{,}8$~pp, Taula~\ref{tab:heur_h2h}; el test de proporció respecte al 50\% d'equilibri llança $z = 1{,}30$, $p = 0{,}19$ per a \texttt{v12}, confirmant que la desviació respecte a la paritat és estadísticament no significativa) i \texttt{v13} fins i tot supera \texttt{v12} enfront de la cerca i la imitació (Taula~\ref{tab:v13_vs_search}).
+    \item \textbf{Impacte de la Teracristal·lització (el contrast natural amb \texttt{v13}):} A la versió immediatament posterior (\texttt{v13}), la selecció informada del substitut es manté intacta, però l'ús de la Teracristal·lització es restringeix dràsticament, caient un \textbf{79\%} (de $0{,}96$ usos per partida a \texttt{v12} a només $0{,}20$ a \texttt{v13}). Malgrat aquesta reducció massiva de la Tera, el rendiment global només retrocedeix $\approx 1{,}4$~pp (de $69{,}01\%$ a $67{,}63\%$), el duel directe entre totes dues queda en empat virtual ($50{,}65\%$ vs $48{,}85\%$, separat per només $1{,}8$~pp, Taula~\ref{tab:heur_h2h}; el test de proporció respecte al 50\% d'equilibri llança $z = 1{,}30$, $p = 0{,}19$ per a \texttt{v12}, confirmant que la desviació respecte a la paritat és estadísticament no significativa) i \texttt{v13} fins i tot supera \texttt{v12} enfront de la cerca i la imitació (Taula~\ref{tab:v13_vs_search}).
 \end{enumerate}
 
-Aquest contrast observacional demostra que el gruix principal del salt ($\approx 7$--$8$~pp) s'atribueix a l'eliminació dels canvis forçats atzarosos i a l'estabilització del posicionament tàctic, mentre que la Teracristal·lització afegeix un marge incremental d'aproximadament $\approx 2$~pp gràcies a la bonificació de dany elemental i la flexibilitat defensiva.
+Aquest contrast observacional suggereix com a hipòtesi que el gruix principal del salt ($\approx 7$--$8$~pp) s'atribueix a l'eliminació dels canvis forçats atzarosos i a l'estabilització del posicionament tàctic, mentre que la Teracristal·lització afegeix un marge incremental d'aproximadament $\approx 1{,}4$~pp gràcies a la bonificació de dany elemental i la flexibilitat defensiva.
 
 \begin{figure}[htbp]
     \centering
@@ -203,7 +203,7 @@ En la telemetria de matriu, \texttt{v13} utilitza la Teracristal·lització 0,20
 
 En aquest banc de proves, afegir modelatge d'oponents humans redueix el rendiment agent-contra-agent (Figura~\ref{fig:heur_paradigm}). Això indica una possible especialització de domini i justifica mantenir separades la matriu local i l'avaluació pública.
 
-La mostra pública de \texttt{v14} (secció~\ref{sec:res_ladder}) no permet reordenar \texttt{v12} i \texttt{v14}; de la mateixa manera, la matriu local no permet afirmar quin dels dos obtindria més victòries contra persones.
+La mostra pública de \texttt{v14} (Secció~\ref{sec:res_ladder}) no permet reordenar \texttt{v12} i \texttt{v14}; de la mateixa manera, la matriu local no permet afirmar quin dels dos obtindria més victòries contra persones.
 
 % ============================================================
 \FloatBarrier
@@ -227,7 +227,7 @@ Aquest patró és comparable al de \texttt{v21}, que consulta XGBoost en aproxim
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.92\linewidth]{images/minimax/minimax_override.png}
-    \caption{Taxa de discrepància respecte de \texttt{v14} en els torns en què s'executa el maximin. \texttt{v15}/\texttt{v16} discrepen aproximadament en el 67\% dels casos; \texttt{v17}, amb prior $+0{,}15$, en el 37\%.}
+    \caption{Taxa de discrepància respecte de \texttt{v14} en els torns en què s'executa el maximin. Les barres arrodoneixen a l'enter (67\% / 67\% / 37\%); els valors de la Taula~\ref{tab:minimax_head} són $66{,}5$, $67{,}3$ i $36{,}6$.}
     \label{fig:minimax_override}
 \end{figure}
 
@@ -241,7 +241,7 @@ Aquest resultat és coherent amb una limitació d'horitzó: afegir una bonificac
 
 \subsection{\texttt{v17}: prior heurístic}
 
-\texttt{v17} afegeix 0,15 al valor de l'acció proposada per \texttt{v14}. La discrepància baixa del 67\% al 37\% i la taxa global augmenta 4,1~pp respecte de \texttt{v15} (diferència altament significativa sobre les 253.000 partides agregades, $z \approx 29{,}3$, $p < 10^{-50}$). En els enfrontaments directes obté 54,7\% i 54,3\% contra \texttt{v15} i \texttt{v16} ($n=10.000$; tests de proporció contra paritat $z = 9{,}40$ i $z = 8{,}60$, respectivament, $p < 10^{-17}$ en ambdós casos). El resultat mostra que conservar un prior heurístic és més efectiu, en aquesta implementació, que substituir-lo per la matriu d'un torn.
+\texttt{v17} afegeix 0,15 al valor de l'acció proposada per \texttt{v14}. La discrepància baixa del $67{,}3\%$ al $36{,}6\%$ i la taxa global augmenta 4,09~pp respecte de \texttt{v15} (diferència altament significativa sobre les 253.000 partides agregades, $z \approx 29{,}3$, $p < 10^{-50}$). En els enfrontaments directes obté $54{,}71\%$ i $54{,}30\%$ contra \texttt{v15} i \texttt{v16} ($n=10.000$; tests de proporció contra paritat $z = 9{,}42$ i $z = 8{,}60$, respectivament, $p < 10^{-17}$ en ambdós casos). El resultat mostra que conservar un prior heurístic és més efectiu, en aquesta implementació, que substituir-lo per la matriu d'un torn.
 
 Contra els comparadors principals, amb $n=10.000$ tret de les cel·les MCTS:
 
@@ -265,7 +265,7 @@ Abyssal & 41,72 & 41,86 & \textbf{46,79} \\
 \end{tabular}
 \end{table}
 
-\texttt{v17} obté \textbf{43,6\%} contra \texttt{v14}, \textbf{40,9\%} contra \texttt{v12} i 46,8\% contra Abyssal (Taula~\ref{tab:minimax_comparators}). Contra \texttt{v20} obté 50,4\% amb $n=1.000$, un resultat compatible amb rendiments similars en aquell enfrontament.
+\texttt{v17} obté \textbf{43,61\%} contra \texttt{v14}, \textbf{40,94\%} contra \texttt{v12} i 46,79\% contra Abyssal (Taula~\ref{tab:minimax_comparators}). Contra \texttt{v20} obté 50,4\% amb $n=1.000$, un resultat compatible amb rendiments similars en aquell enfrontament.
 
 Cap variant de minimax supera \texttt{v14} o \texttt{v12}. La variant amb millor resultat és precisament la que limita la desviació respecte de l'heurística de partida.
 
@@ -302,7 +302,7 @@ D'altra banda, en la distribució de canvis, \texttt{v17} presenta una mediana s
 
 \subsection{Freqüència d'intervenció}
 
-Es registren aproximadament 14 comprovacions de debilitament i 3--4 decisions MCTS per partida. La cerca intervé en el \textbf{16--18\%} dels torns:
+Es registren aproximadament 14 comprovacions de debilitament i 3--4 decisions MCTS per partida. La cerca intervé en el \textbf{15--18\%} dels torns:
 
 \begin{quote}
 Un agent basat en \texttt{v14} que prioritza els debilitaments garantits i aplica 100 simulacions de cinc torns a les decisions restants.
@@ -313,7 +313,7 @@ Quan s'activa una drecera prèvia, les 100 simulacions no s'executen. Per tant, 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.92\linewidth]{images/mcts/mcts_override.png}
-    \caption{Taxa de discrepància respecte de \texttt{v14} entre les decisions de cerca. UCB1 (\texttt{v18}/\texttt{v19}) discrepa aproximadament en el 71\% dels casos i PUCT (\texttt{v20}), en el 19\%.}
+    \caption{Taxa de discrepància respecte de \texttt{v14} entre les decisions de cerca. Les barres arrodoneixen a l'enter (71\% / 71\% / 19\%); els valors de la Taula~\ref{tab:mcts_head} són $71{,}3$, $71{,}1$ i $18{,}7$.}
     \label{fig:mcts_override}
 \end{figure}
 
@@ -322,7 +322,7 @@ Quan s'activa una drecera prèvia, les 100 simulacions no s'executen. Per tant, 
 \texttt{search\_diff} indica que la simulació ha canviat l'acció proposada per \texttt{v14}. Entre els torns en què s'executa:
 
 \begin{itemize}
-    \item \texttt{v18}/\texttt{v19} discrepen de \texttt{v14} en el \textbf{71\%} de les decisions de cerca, mentre que el prior PUCT de \texttt{v20} redueix aquesta taxa al 18,7\% (Figura~\ref{fig:mcts_override}).
+    \item \texttt{v18}/\texttt{v19} discrepen de \texttt{v14} en el \textbf{71,3\%} i el \textbf{71,1\%} de les decisions de cerca, respectivament, mentre que el prior PUCT de \texttt{v20} redueix aquesta taxa al 18,7\% (Figura~\ref{fig:mcts_override}).
     \item Les partides perdudes presenten una discrepància superior. Aquest patró pot reflectir decisions pitjors, estats més difícils o ambdues coses.
     \item Les simulacions de cinc torns i la funció de fulla basada en HP poden afavorir el dany immediat davant d'efectes diferits.
 \end{itemize}
@@ -331,7 +331,7 @@ Quan s'activa una drecera prèvia, les 100 simulacions no s'executen. Per tant, 
 
 \subsection{PUCT i el prior heurístic}
 
-Amb un prior de 0,70 sobre \texttt{v14}, la discrepància baixa al \textbf{18,7\%}. \texttt{v20} obté una taxa global descriptiva de \textbf{59,7\%} i conserva 1,40 Pokémon de mitjana al final.
+Amb un prior de 0,70 sobre \texttt{v14}, la discrepància baixa al \textbf{18,7\%}. \texttt{v20} obté una taxa global descriptiva de \textbf{59,66\%} i conserva 1,40 Pokémon de mitjana al final.
 
 Les diferències de \texttt{v20} respecte de \texttt{v18} són especialment grans contra \texttt{v17} (+11,1~pp), \texttt{v13} (+10,5), \texttt{v15} (+9,8) i \texttt{v12} (+8,7). Contra \texttt{random}, la diferència és de 0,3~pp i queda molt per sota de la precisió de la cel·la.
 
@@ -400,7 +400,7 @@ Pel que fa a la dinàmica de canvis, l'algorisme PUCT augmenta de manera substan
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.92\linewidth]{images/mcts/mcts_fingerprint_bars.png}
-    \caption{Empremta MCTS. Cerca 16--18\% dels torns; KO $\sim$14/partida. \texttt{v20} busca menys i acaba amb més HP. $n=1.000$ per oponent.}
+    \caption{Empremta MCTS. Cerca 15--18\% dels torns (\texttt{v20}: $15{,}5\%$); KO $\sim$14/partida. \texttt{v20} busca menys i acaba amb més HP. $n=1.000$ per oponent.}
     \label{fig:mcts_fp}
 \end{figure}
 
@@ -480,10 +480,10 @@ La comparació mostra que la decisió d'alt nivell es pot integrar de manera út
 \begin{enumerate}
     \item \textbf{Semàntica de l'acció.} El primer model només prediu $\{\mathrm{atacar},\mathrm{canviar}\}$ i el segon puntua atributs de candidats sintetitzats. Es perd informació sobre la identitat i el context del moviment.
     \item \textbf{Biaix d'exposició.} Una decisió deficient pot portar la política a estats poc representats a les repeticions. La protecció de bucle s'activa en el \textbf{97\%} de les partides de \texttt{v22}, que també són més llargues i acaben amb menys Pokémon disponibles.
-    \item \textbf{Absència de restriccions tàctiques.} \texttt{v21} preserva els debilitaments garantits abans de consultar el model; \texttt{v22} no. La freqüència de Teracristal·lització de \texttt{v22} és alta (gairebé una vegada per partida, enfront de 0 a \texttt{v21}), però la freqüència per si sola no informa de la qualitat del moment triat.
+    \item \textbf{Absència de restriccions tàctiques.} \texttt{v21} preserva els debilitaments garantits abans de consultar el model; \texttt{v22} no. La freqüència de Teracristal·lització de \texttt{v22} és alta (gairebé una vegada per partida, enfront d'un ús selectiu i conservador a \texttt{v21} heretat de \texttt{v14}, $\sim 0{,}34$ per partida), però la freqüència per si sola no informa de la qualitat del moment triat.
 \end{enumerate}
 
-En aquesta implementació, el resultat depèn tant de \emph{què} s'imita ---la decisió atacar/canviar--- com de \emph{qui} executa l'acció concreta. Disposar d'1,1 milions de torns no compensa una representació que no modela directament la selecció completa de moviments i canvis.
+En aquesta implementació, el resultat depèn tant de \emph{què} s'imita ---la decisió atacar/canviar--- com de \emph{qui} executa l'acció concreta. Disposar d'1,12 milions de torns no compensa una representació que no modela directament la selecció completa de moviments i canvis.
 
 El contrast entre \texttt{v21} i \texttt{v22} no compara únicament dos models d'imitació: també compara una arquitectura jeràrquica amb una execució basada en atributs. Aquesta confusió de factors impedeix atribuir els 25,2~pp exclusivament a una sola decisió de disseny, però demostra la importància de l'executor.
 
@@ -543,7 +543,7 @@ Pel que fa a la resta de paradigmes, les seves variants més competitives s'esta
 Convé subratllar amb rigor que la Figura~\ref{fig:elo_bars} reflecteix una estimació global de força latent sobre la matriu observada i \textbf{no s'ha d'interpretar com una classificació lineal o un rànquing ordinal absolut}. Aquesta distinció és crítica per tres raons metodològiques:
 \begin{enumerate}
     \item \textbf{Asimetria mostral i de pressupost en MCTS:} Mentre que els agents heurístics, minimax, imitació i referència aporten $n=10.000$ partides per cel·la (506.000 partides dirigides per agent al model), les variants d'MCTS (\texttt{v18}--\texttt{v20}) es van avaluar a $n=1.000$ per cel·la (56.000 partides) i sota un pressupost d'inferència estrictament acotat a 5 torns de desplegament. Aquesta diferència de volum mostral implica una variància d'estimació superior que desaconsella intercalar ordinalment MCTS amb la resta d'agents.
-    \item \textbf{Precisió asimptòtica i interpretació per estrats:} Gràcies a l'elevat volum de dades (més de $500.000$ partides per a cada agent no MCTS), l'error estàndard asimptòtic de les estimacions de màxima versemblança és extremadament reduït ($\pm 2$--$3$ punts Elo), fent que la separació entre grans macroestrats (com els 1812 de \texttt{v12} enfront dels 1755 de \texttt{v14}) sigui estadísticament inequívoca. No obstant això, aquesta precisió global no autoritza a proclamar superioritat ordinal \emph{dins} d'un mateix altiplà (com les diferències decimals entre \texttt{v14}, Abyssal i \texttt{simple\_heuristic} a 1755 punts). Per a aquestes comparacions de detall, el treball recorre als intervals de confiança de Wilson al $95\%$ ($\pm 0{,}96$~pp) sobre les taxes directes de victòria per parelles.
+    \item \textbf{Precisió asimptòtica i interpretació per estrats:} Gràcies a l'elevat volum de dades (253.000 partides com a fila i el mateix volum com a oponent, 506.000 aparicions per a cada agent no MCTS), l'error estàndard asimptòtic de les estimacions de màxima versemblança és extremadament reduït ($\pm 2$--$3$ punts Elo), fent que la separació entre grans macroestrats (com els 1812 de \texttt{v12} enfront dels 1755 de \texttt{v14}) sigui estadísticament inequívoca. No obstant això, aquesta precisió global no autoritza a proclamar superioritat ordinal \emph{dins} d'un mateix altiplà (com les diferències decimals entre \texttt{v14}, Abyssal i \texttt{simple\_heuristic} a 1755 punts). Per a aquestes comparacions de detall, el treball recorre als intervals de confiança de Wilson al $95\%$ ($\pm 0{,}96$~pp) sobre les taxes directes de victòria per parelles.
     \item \textbf{Intransitivitat i dinàmiques de tipus (pedra-paper-tisores):} Tal com evidencia el mapa de calor dirigit (Figura~\ref{fig:heatmap}) i la inversió d'estils de la Secció~\ref{sec:res_inversion}, l'espai de joc de Pokémon Random Battles presenta cicles intransitius d'especialització que cap projecció unidimensional pot capturar íntegrament sense pèrdua d'informació estructural.
 \end{enumerate}
 Per aquest motiu, l'anàlisi comparativa interparadigma s'articula fonamentalment a través de l'oponent comú \texttt{v12} (Taula~\ref{tab:paradigm_summary}) i de les taxes agrupades per família (Taula~\ref{tab:overall_wr}), evitant tractar la matriu heterogènia com una lliga única.
@@ -644,9 +644,9 @@ Amb aquesta observació, recompensa, inicialització i pressupost, cap de les ci
         \toprule
         \textbf{Variant} & \textbf{Mòdul} & \textbf{Torns} & \textbf{Discrepància} & \textbf{vs \texttt{v12}} \\
         \midrule
-        \texttt{v17} & maximin d'un torn & 16--18\% & 37\% & 40,94\% \\
+        \texttt{v17} & maximin d'un torn & 16,3\% & 36,6\% & 40,94\% \\
         \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        \texttt{v20} & PUCT, prior $0{,}70$ & 16--18\% & 18,7\% & 42,7\% \\
+        \texttt{v20} & PUCT, prior $0{,}70$ & 15,5\% & 18,7\% & 42,7\% \\
         \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         \texttt{v21} & XGBoost atacar/canviar & 15\% & --- & 41,28\% \\
         \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
@@ -660,7 +660,7 @@ El patró no demostra que qualsevol arquitectura híbrida sigui superior. Les va
 \subsection{Resposta conjunta a la pregunta de recerca}
 
 \begin{enumerate}
-    \item La seqüència heurística mostra increments associats a posició, control del ritme i mecàniques de Generació~IX. \texttt{v12} obté el millor resultat observat ($69{,}01\%$); la telemetria i el contrast amb \texttt{v13} (on la Teracristal·lització es redueix un 79\% sense caiguda rellevant de victòries) permeten atribuir el gruix del salt a la selecció informada del substitut en debilitament, amb un marge d'aproximadament 2~pp imputable a la Tera.
+    \item La seqüència heurística mostra increments associats a posició, control del ritme i mecàniques de Generació~IX. \texttt{v12} obté el millor resultat observat ($69{,}01\%$). El contrast amb \texttt{v13} ---mateixa selecció de substitut, Teracristal·lització reduïda un 79\%--- només retrocedeix $\approx 1{,}4$~pp ($67{,}63\%$) i el duel directe no separa les dues polítiques; això suggereix, com a hipòtesi observacional, que el gruix del salt \texttt{v11}$\to$\texttt{v12} s'associa al substitut informat, no a un efecte causal aïllat de la Tera.
     \item El minimax d'un torn i l'MCTS ras no superen \texttt{v12}. Les millors variants són les que es mantenen més a prop de \texttt{v14}.
     \item El model d'imitació aporta una decisió d'alt nivell aprofitable quan \texttt{v14} executa l'acció. L'execució basada en atributs de \texttt{v22} queda clarament per sota.
     \item MaskablePPO obté 34,1\% contra \texttt{v12}, un resultat proper al de \texttt{v8} contra el mateix oponent i insuficient per afirmar una millora sobre el professor de clonatge.

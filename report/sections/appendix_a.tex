@@ -113,7 +113,7 @@ Atesa la confluència entre la teoria de jocs, l'aprenentatge automàtic i el do
     \item \textbf{\texttt{max\_power} (\texttt{MaxBasePowerPlayer}):} Agent heurístic ingenu que executa sempre l'atac amb la potència base nominal més gran, ignorant tipus i debilitats.
     \item \textbf{\texttt{simple\_heuristic} (\texttt{SimpleHeuristicsPlayer}):} Heurística de referència de la llibreria \textit{poke-env}, adaptada amb suport bàsic per a Teracristal·lització.
     \item \textbf{\texttt{abyssal} (\texttt{AbyssalPlayer}):} Controlador basat en regles expertes de la literatura científica procedent del projecte \textit{PokéChamp}.
-    \item \textbf{\texttt{safe\_one\_step} / \texttt{one\_step}:} Algorisme de cerca prospectiva determinista d'un pas basat en el mòdul de cerca de \textit{PokéChamp}.
+    \item \textbf{\texttt{safe\_one\_step} / \texttt{one\_step}:} Dues etiquetes històriques de la mateixa classe \texttt{SafeOneStepPlayer}: lookahead determinista d'un pas (dany esperat $\times$ precisió $\times$ STAB) sense cridar \texttt{LocalSim}. El rànquing Bradley--Terry les compta com a dos oponents.
 \end{itemize}
 
 \subsection{Acrònims metodològics i algorítmics}
@@ -229,7 +229,7 @@ Aquesta secció recull de manera unificada tots els paràmetres d'entrenament, a
 
 El model macro d'aprenentatge per imitació s'entrena a partir d'aproximadament $1{,}12$ milions de torns extrets de les repeticions d'usuaris d'elit a Pokémon Showdown ($\text{Elo} \ge 1800$). Per evitar fuites de dades entre torns d'un mateix enfrontament, la partició s'agrupa estrictament per identificador de combat (\textit{GroupShuffleSplit} amb un 20\% de test independent).
 
-Atès que l'acció d'atacar és aproximadament 2,88 vegades més habitual que la de canviar en la distribució empírica humana, s'aplica el paràmetre \texttt{scale\_pos\_weight=2.88}. El llindar de decisió final per a la classe canvi ($y=1$) es fixa en $\tau = 0{,}3500$, valor calibrat en validació creuada que equilibra la puntuació $F_1$ amb la concordança exacta de freqüència d'execució respecte als experts humans.
+Atès que l'acció d'atacar és aproximadament 2,88 vegades més habitual que la de canviar en la distribució empírica humana, s'aplica el paràmetre \texttt{scale\_pos\_weight=2.88}. El fitxer \path{xgboost_advanced_threshold.json} desa diversos punts de la corba precisió--record (F1 i igualació de freqüència); l'agent carrega en inferència el llindar recomanat $\tau = 0{,}5525$ (el mateix valor de la Taula~\ref{tab:app_hyperparameters_il} i del Capítol~\ref{chap:implementacio}).
 
 Per a l'agent d'imitació pura (\texttt{v22}), l'avaluador micro de moviments s'entrena sobre 11 atributs sintetitzats de candidats ofensius (potència base, STAB, efectivitat elemental de tipus, prioritat, condició d'estat i percentatge de salut restant), desvinculant-se de les identitats nominals de les repeticions per no patir inestabilitat semàntica.
 
@@ -241,7 +241,7 @@ L'agent MaskablePPO s'implementa sobre la llibreria \texttt{sb3-contrib} amb PyT
 
 Durant les fases d'entrenament del currículum, la funció de recompensa total per torn $r_t$ combina un component base de victòria i desgast amb un modelatge de recompensa basat en potencial (\textit{Potential-Based Reward Shaping}, PBRS) i una penalització de pas:
 \begin{equation}
-    r_t = R_{\mathrm{base}}(s_t, a_t, s_{t+1}) + \Delta \Phi(s_t, s_{t+1}) - 0{,}02
+    r_t = R_{\mathrm{base}}(s_t, a_t, s_{t+1}) + F(s_t, s_{t+1}) - 0{,}02
     \label{eq:ppo_reward_formula}
 \end{equation}
 
@@ -261,7 +261,7 @@ El potencial tàctic $\Phi(s)$ s'avalua sobre l'estat del combat $s$:
 \end{align}
 on $\mathbf{1}_{\mathrm{opp\_status}}$ indica si el Pokémon actiu rival pateix un estat alterat greu (\emph{sleep}, \emph{burn}, \emph{toxic}, \emph{paralysis}, \emph{freeze}); $N_{\mathrm{opp\_hazards}}$ és el nombre de perills d'entrada col·locats al camp rival; i $W_{\mathrm{own\_hazards}}$ és el pes ponderat dels perills que afecten el camp propi. 
 
-La recompensa derivada del potencial es computa exclusivament com la diferència temporal $\Delta \Phi = \Phi(s_{t+1}) - \Phi(s_t)$, garantint que no s'alteri la política òptima del POSG subjacent d'acord amb el teorema de conservació de potencial de Ng et al.~\cite{ng_reward_shaping}. El cost de pas $-0{,}02$ penalitza la inacció i incentiva l'agent a cloure la partida de manera resolutiva.
+La funció de conformatge basada en potencial es computa com la diferència temporal $F(s_t, s_{t+1}) = \gamma \Phi(s_{t+1}) - \Phi(s_t)$ (amb el factor de descompte $\gamma = 0{,}99$, Taula~\ref{tab:app_hyperparameters_ppo}), garantint que no s'alteri la política òptima del procés de decisió subjacent d'acord amb el teorema d'invariància de Ng et al.~\cite{ng_reward_shaping}. El cost de pas $-0{,}02$ penalitza la inacció i incentiva l'agent a cloure la partida de manera resolutiva.
 
 \subsubsection{Inicialització per Clonatge Conductual (BC)}
 

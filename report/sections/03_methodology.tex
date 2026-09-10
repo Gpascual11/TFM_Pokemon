@@ -51,7 +51,7 @@ Comparar cinc paradigmes i sis controls exigeix el producte cartesià de parelle
 
             % Column 4: Telemetria i anàlisi
             \node[box=purple, right=1.5cm of showdown] (data) {\textbf{Telemetria i logs}\\Torns, victòries, HP};
-            \node[box=teal, below=0.7cm of data] (stats) {\textbf{Anàlisi estadística}\\Bootstrap BCa i H2H};
+            \node[box=teal, below=0.7cm of data] (stats) {\textbf{Anàlisi estadística}\\Wilson, BT-MLE i H2H};
 
             % Fluxos de dades
             \draw[arr] (agents) -- node[midway, above=2pt, font=\scriptsize] {Polítiques} (manager);
@@ -62,7 +62,7 @@ Comparar cinc paradigmes i sis controls exigeix el producte cartesià de parelle
 
         \end{tikzpicture}
     \end{adjustbox}
-    \caption{Disseny metodològic i flux experimental de l'estudi: orquestració d'agents sobre el simulador comú, extracció de telemetria i validació estadística mitjançant Bootstrap BCa.}
+    \caption{Disseny metodològic i flux experimental de l'estudi: orquestració d'agents sobre el simulador comú, extracció de telemetria i validació estadística mitjançant intervals de Wilson i Bradley--Terry MLE.}
     \label{fig:disseny_general}
 \end{figure}
 
@@ -173,7 +173,7 @@ El cicle de la Figura~\ref{fig:cicle_batalla} és el bucle que el gestor ha de p
     \item \textbf{Repte \texttt{gen9randombattle}.} El simulador genera els dos equips i obre la sala. En aquest moment $S$ ja és complet, però cap agent el veu: només rebrà $o_i$. És el punt on s'aïlla la tàctica del \emph{teambuilding} (Secció~\ref{sec:format}).
     \item \textbf{Petició amb observació i legalitat.} Showdown envia \texttt{|request|} a cada bàndol. Aquest missatge fixa alhora $\Omega$ (què es veu) i $A$ (què es pot triar). Un canvi forçat, per exemple, buida la llista de moviments: l'agent no ha de «inventar» accions, ha de triar dins d'aquest conjunt.
     \item \textbf{Actualització de l'objecte \texttt{Battle}.} \textit{poke-env} incorpora el JSON i el log previ a l'objecte estructurat. Sense aquest pas, cada política hauria de reimplementar el parser i el risc d'observacions inconsistents seria alt.
-    \item \textbf{Decisió de la política.} L'agent executa la seva regla, matriu, arbre, classificador o xarxa sobre \texttt{Battle}. És l'únic pas que difereix entre famílies. El temps d'aquest pas condiciona l'arquitectura paral·lela: una heurística acaba en mil·lisegons; un MCTS ras, en segons.
+    \item \textbf{Decisió de la política.} L'agent executa la seva regla, matriu, arbre, classificador o xarxa sobre \texttt{Battle}. És l'únic pas que difereix entre famílies. El temps d'aquest pas condiciona l'arquitectura paral·lela: una heurística acaba en fraccions de mil·lisegon; un MCTS ras, en desenes de mil·lisegons per decisió (Annex~\ref{sec:app_agents_catalog}: $\approx 48$--$62$~ms), ordres de magnitud més lent.
     \item \textbf{Enviament de l'ordre.} \textit{poke-env} tradueix el \texttt{BattleOrder} a \texttt{/choose}. Showdown no avança fins que l'oponent ha fet el mateix: l'agent no observa l'acció rival \emph{abans} de decidir, tal com exigeix el joc de matriu simultània.
     \item \textbf{Resolució estocàstica del torn.} El motor aplica $T$ ---prioritat, velocitat, dany, crítics i efectes, Secció~\ref{sec:pokemon_joc}--- i emet el registre. Aquest log actualitza les creences (moviments revelats, HP, camp) de cara al torn següent.
     \item \textbf{Tancament.} El cicle es repeteix fins a \texttt{|win|}. La batalla acabada és la unitat d'anàlisi de la Secció~\ref{sec:disseny_general}.
@@ -930,7 +930,7 @@ Els agents basats en models de llenguatge de gran escala (LLM), com \textbf{Pok�
 
 Des del punt de vista del disseny experimental, la integració dels LLM s'estableix com un \textbf{estudi exploratori de viabilitat} i no com una fila de la matriu principal d'avaluació creuada per dues raons de disseny:
 \begin{enumerate}
-    \item \textbf{Asimetria de la latència de decisió:} La generació autoregressiva d'un LLM requereix diversos segons o minuts per torn, a diferència de les respostes en mil·lilisegons de les heurístiques o la cerca rasa. Això introdueix un desfasament en entorns de temps real a Showdown.
+    \item \textbf{Asimetria de la latència de decisió:} La generació autoregressiva d'un LLM requereix diversos segons o minuts per torn, a diferència de les respostes en mil·lisegons de les heurístiques o la cerca rasa. Això introdueix un desfasament en entorns de temps real a Showdown.
     \item \textbf{Incompatibilitat de pressupost de volum:} Executar la matriu massiva ($n=10.000$ partides per cel·la) amb agents generatius és inabastable sota un pressupost de temps i còmput homogeni.
 \end{enumerate}
 
@@ -965,6 +965,8 @@ El disseny anterior introdueix compromisos que cal declarar, no amagar:
     \item \textbf{Multiplicitat:} davant de 784 cel·les, l'anàlisi es basa en la consistència dels intervals de Wilson i la magnitud de l'efecte, no en p-valors aïllats.
     \item \textbf{Desajust de simuladors (MCTS):} el rollout local no és el motor autoritatiu. El disseny el tracta com a font d'error coneguda, conseqüència de respectar el POSG.
     \item \textbf{Reproductibilitat:} es fixen la versió de Showdown, els repositoris de Random Battle i els artefactes de pesos, perquè el contracte de la Secció~\ref{sec:pila_tecnologica} no depengui d'un servidor públic canviant.
+    \item \textbf{Etiquetes duplicades a la matriu:} \texttt{one\_step} i \texttt{safe\_one\_step} instancien la mateixa classe (\texttt{SafeOneStepPlayer}). El rànquing Bradley--Terry les tracta com a dos oponents, de manera que aquella política queda lleugerament sobrerepresentada. Es conserven les dues etiquetes per traçabilitat històrica de l'execució.
+    \item \textbf{Taxes globals agregades:} els intervals Wilson sobre 253.000 partides d'una fila mesuren la precisió d'una mitjana ponderada contra oponents heterogenis, no la d'un duel binomial homogeni. Les inferències de parella es basen en les cel·les $n=10.000$ (o $n=1.000$ per a MCTS).
 \end{itemize}
 
 % ============================================================

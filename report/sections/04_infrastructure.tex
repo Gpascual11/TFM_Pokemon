@@ -63,11 +63,11 @@ Tota l'evolució del projecte s'ha gestionat de manera rigorosa mitjançant el s
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\linewidth]{diagrams/github_activity_calendar.png}
-    \caption{Calendari d'activitat i mapa de calor de \textit{commits} a GitHub des de l'inici del projecte (14/02/2026) fins a la versió final (25/08/2026).}
+    \caption{Calendari d'activitat i mapa de calor de \textit{commits} a GitHub des de l'inici del projecte (14/02/2026) fins a la versió final (25/08/2026): \textbf{113 commits} en \textbf{49 dies actius}.}
     \label{fig:github_calendar}
 \end{figure}
 
-Com s'il·lustra a la Figura~\ref{fig:github_calendar}, el desenvolupament ha mantingut un ritme sostingut al llarg de \textbf{115 commits} distribuïts en \textbf{51 dies d'activitat intensa}, reflectint les fases successives d'implementació d'heurístiques, integració de cerca adversarial (minimax i MCTS), entrenament de xarxes neuronals PPO i avaluació massiva de la matriu.
+Com s'il·lustra a la Figura~\ref{fig:github_calendar}, el desenvolupament ha mantingut un ritme sostingut al llarg de \textbf{113 commits} distribuïts en \textbf{49 dies actius}, reflectint les fases successives d'implementació d'heurístiques, integració de cerca adversarial (minimax i MCTS), entrenament de xarxes neuronals PPO i avaluació massiva de la matriu.
 
 Pel que fa a la dimensió del codi font, el directori principal \path{src/} comprèn un total de \textbf{297 fitxers}, dels quals destaquen \textbf{153 fitxers de codi i scripts actius}:
 \begin{itemize}
@@ -76,7 +76,7 @@ Pel que fa a la dimensió del codi font, el directori principal \path{src/} comp
     \item \textbf{Scripts d'automatització (\texttt{.sh}):} 18 scripts Bash amb \textbf{2.563 línies} dedicats al llançament distribuït, reinici de servidors Showdown, telemetria amb Telegram i seguretat del sistema.
     \item \textbf{Documentació tècnica i configuració (\texttt{.md}, \texttt{.json}):} 55 fitxers amb 4.986 línies de guies tècniques, protocols d'execució i esquemes d'estat.
 \end{itemize}
-Aquesta base de codi suma més de \textbf{42.000 línies} desenvolupades per a aquest treball. Les mètriques documenten l'abast del programari; no substitueixen l'avaluació empírica del Capítol~\ref{chap:resultats}.
+Aquesta base de codi suma \textbf{47.080 línies} (24.635 de Python, 14.896 de quaderns, 2.563 d'scripts i 4.986 de documentació). Les mètriques documenten l'abast del programari; no substitueixen l'avaluació empírica del Capítol~\ref{chap:resultats}.
 
 \section{Accés remot i continuïtat}
 \label{sec:tailscale}
@@ -130,7 +130,7 @@ L'avaluació econòmica d'un projecte d'investigació aplicada i enginyeria de d
 
 L'equip humà responsable de l'execució del projecte es compon de tres perfils diferenciats:
 \begin{itemize}
-    \item \textbf{Investigador Principal / Desenvolupador (Gerard Pascual Fontanilles --- Perfil Junior Data Scientist):} Responsable directe de la implementació de la base de codi (\path{src/}, més de 42.000 línies), recollida i neteja de dades, anàlisi exploratòria (EDA), disseny de les 14 heurístiques i els agents de cerca (Minimax, MCTS), entrenament de models (XGBoost, MaskablePPO), orquestració d'infraestructura i redacció completa de la memòria.
+    \item \textbf{Investigador Principal / Desenvolupador (Gerard Pascual Fontanilles --- Perfil Junior Data Scientist):} Responsable directe de la implementació de la base de codi (\path{src/}, 47.080 línies entre Python, quaderns, scripts i documentació), recollida i neteja de dades, anàlisi exploratòria (EDA), disseny de les 14 heurístiques i els agents de cerca (Minimax, MCTS), entrenament de models (XGBoost, MaskablePPO), orquestració d'infraestructura i redacció completa de la memòria.
     \item \textbf{Coordinadora del TFM / Ponent Oficial (Laura Serra Roig --- Perfil Senior Data Scientist / Coordinadora Acadèmica):} Responsable de la ponència oficial del Treball de Final de Màster i coordinació institucional de l'assignatura; va contribuir en la concepció de la idea fundacional del treball, l'orientació sobre l'enfocament i directrius del TFM, i la revisió final global de la memòria prèvia a la presentació davant del tribunal.
     \item \textbf{Director Tècnic del Treball / Tutor Metodològic (Jordi Peralta Dolz --- Perfil Senior Data Scientist):} Responsable de la direcció tècnica i supervisió pràctica continuada del projecte, orientació en la formulació teòrica (POSG i POMDP), assessorament en el disseny experimental i inferència estadística (Bradley--Terry, Wilson), revisió crítica continuada i validació de les implementacions.
 \end{itemize}
@@ -145,7 +145,7 @@ D'acord amb els estudis del mercat laboral tecnològic a Espanya (guies salarial
 
 \subsubsection{Imputació d'hores per fase de treball}
 
-El còmput d'hores reflecteix les 27 setmanes de calendari compreses entre el 14 de febrer i el 20 d'agost de 2026 (\textbf{115 commits} i \textbf{51 dies d'activitat intensa} acreditats a Git, Secció~\ref{sec:git_metrics}). L'esforç s'imputa directament a les fases de treball ja detallades en els capítols anteriors:
+El còmput d'hores reflecteix les 27 setmanes de calendari compreses entre el 14 de febrer i el 25 d'agost de 2026 (\textbf{113 commits} i \textbf{49 dies actius} acreditats a Git, Secció~\ref{sec:git_metrics}). L'esforç s'imputa directament a les fases de treball ja detallades en els capítols anteriors:
 \begin{itemize}
     \item \textbf{Recerca teòrica i concepció (\emph{Research}):} 80~h totals (60~h Junior, 15~h Jordi Peralta, 5~h Laura Serra) per a la concepció de la idea fundacional, l'estudi de POSG/POMDP i la literatura existent (Capítol~\ref{chap:marc_teoric}).
     \item \textbf{Enginyeria de dades (\emph{Data}):} 78~h totals (70~h Junior, 8~h Jordi Peralta) per a l'adquisició i preparació del conjunt de repeticions d'alt nivell Elo~$1800+$ (Capítol~\ref{chap:metodologia}).
@@ -187,13 +187,13 @@ La Taula~\ref{tab:costos_personal} en sintetitza la dedicació total (760~h: 640
 A diferència de les hores d'equip, el cost \emph{marginal} directe del treball en infraestructura es va contenir gràcies a l'ús d'equips preexistents, programari lliure i autoconsum elèctric solar. Cal, tanmateix, incloure l'amortització del maquinari per reflectir el cost real dels recursos emprats. Els costos directes es resumeixen en cinc eixos principals:
 
 \begin{enumerate}
-    \item \textbf{Amortització del maquinari (188,46~€):} Tant el portàtil inicial com l'estació de treball són equips de propietat personal preexistents del desenvolupador. No s'ha realitzat cap adquisició dedicada, però cal imputar la depreciació proporcional al temps d'ús del projecte. L'estació de treball (valor estimat de 1.500~€, vida útil de 5 anys) i el portàtil (valor estimat de 1.200~€, vida útil de 5 anys) s'amortitzen linealment. Considerant 6,5 mesos d'ús efectiu del projecte (febrer--agost 2026), la fracció imputable és:
+    \item \textbf{Amortització del maquinari (188,50~€):} Tant el portàtil inicial com l'estació de treball són equips de propietat personal preexistents del desenvolupador. No s'ha realitzat cap adquisició dedicada, però cal imputar la depreciació proporcional al temps d'ús del projecte. L'estació de treball (valor estimat de 1.500~€, vida útil de 5 anys) i el portàtil (valor estimat de 1.200~€, vida útil de 5 anys) s'amortitzen linealment. Considerant el calendari d'ús efectiu del projecte (febrer--agost 2026), la fracció imputable és:
           \begin{itemize}
-              \item Estació de treball: $1.500 \times \frac{6{,}5}{60} = 162{,}50$~€.
-              \item Portàtil (ús parcial, fase 1): $1.200 \times \frac{2}{60} = 40{,}00$~€.
-              \item Total amortització: \textbf{202,50~€}. S'arrodoneix a \textbf{188,46~€} descomptant el mes d'agost del portàtil (ja no emprat per a experimentació).
+              \item Estació de treball (6,5 mesos d'experimentació continuada): $1.500 \times \frac{6{,}5}{60} = 162{,}50$~€.
+              \item Portàtil (ús parcial inicial de posada en marxa, $1{,}3$ mesos): $1.200 \times \frac{1{,}3}{60} = 26{,}00$~€.
+              \item Total amortització imputada: $162{,}50 + 26{,}00 = \mathbf{188{,}50}$~€.
           \end{itemize}
-    \item \textbf{Temps d'execució i consum energètic ($\approx 5,85$~€):} L'estació de treball va funcionar de manera continuada 24/7 durant 4 setmanes, acumulant \textbf{684,89 hores de còmput continu de màquina} (471,38~h per a la matriu final Gen 9 i 213,66~h per a la resta de dades) sobre més de \textbf{52,7 milions de batalles}:
+    \item \textbf{Temps d'execució i consum energètic ($\approx 5,85$~€):} L'estació de treball va funcionar de manera continuada 24/7 durant 28,5 dies, acumulant \textbf{685,04 hores de còmput continu de màquina} (471,38~h per a la matriu final Gen 9 i 213,66~h per a la resta de dades) sobre més de \textbf{52,7 milions de batalles}:
           \begin{itemize}
               \item \textbf{Autoconsum solar diürn:} Durant les hores de sol, la instal·lació de plaques solars domèstiques va cobrir la demanda de la torre amb energia renovable.
               \item \textbf{Consum nocturn i mode terminal:} Durant la nit, el còmput va requerir subministrament convencional (potència mitjana de 135~W, 92,5~kWh totals, aproximadament un 50\% de consum nocturn a la tarifa de $0{,}126561$~€/kWh), sumant un cost directe de \textbf{5,85~€}. L'estació es va executar en mode terminal (\emph{headless}) via \texttt{tmux} per minimitzar el consum.
@@ -211,12 +211,12 @@ A diferència de les hores d'equip, el cost \emph{marginal} directe del treball 
         \toprule
         \textbf{Concepte}           & \textbf{Estratègia d'optimització / Font}                            & \textbf{Cost Directe (€)} \\
         \midrule
-        Amortització maquinari      & Depreciació lineal proporcional (estació 1.500~€ + portàtil 1.200~€, 5 anys) & 188,46                 \\
-        Consum energètic 24/7       & 684,89~h efectives (471,38~h Gen 9 + 213,66~h resta; 0,126561~€/kWh) & 5,85                      \\
+        Amortització maquinari      & Depreciació lineal proporcional (estació 1.500~€ + portàtil 1.200~€, 5 anys) & 188,50                 \\
+        Consum energètic 24/7       & 685,04~h efectives (471,38~h Gen 9 + 213,66~h resta; 0,126561~€/kWh) & 5,85                      \\
         Inferència d'LLMs           & Execució local amb Ollama i llicències d'estudiant (Cursor/PyCharm)  & 0,00                      \\
         Eines i Infraestructura     & Programari de codi obert (\emph{open-source}) i serveis gratuïts     & 0,00                      \\
         \midrule
-        \textbf{Cost Directe Material} &                                                                   & \textbf{194,31}           \\
+        \textbf{Cost Directe Material} &                                                                   & \textbf{194,35}           \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -238,13 +238,13 @@ La integració dels costos de personal i dels costos materials permet quantifica
         Recursos Humans (Junior)        & 640~h d'investigació i enginyeria (Gerard Pascual Fontanilles) & 11.635,20 & 15.360,00 \\
         Recursos Humans (Senior)        & 90~h de direcció tècnica i supervisió (Jordi Peralta Dolz)     & 3.477,60  & 4.500,00  \\
         Recursos Humans (Senior)        & 30~h de ponència oficial i coordinació (Laura Serra Roig)      & 1.159,20  & 1.500,00  \\
-        Consum Elèctric (Còmput 24/7)   & 684,89~h de màquina (92,5~kWh xarxa nocturna $+$ solar diürn)   & 5,85      & 5,85      \\
-        Amortització Maquinari          & Depreciació lineal estació + portàtil (6,5 mesos / 5 anys)      & 188,46    & 188,46    \\
+        Consum Elèctric (Còmput 24/7)   & 685,04~h de màquina (92,5~kWh xarxa nocturna $+$ solar diürn)   & 5,85      & 5,85      \\
+        Amortització Maquinari          & Depreciació lineal estació + portàtil (6,5 mesos / 5 anys)      & 188,50    & 188,50    \\
         Programari i Llicències         & Entorn \emph{open-source} (Showdown, \textit{poke-env}, \LaTeX{}) & 0,00   & 0,00      \\
         \midrule
-        \textbf{Cost Total del Projecte} &                                                                & \textbf{16.466,31} & \textbf{21.554,31} \\
+        \textbf{Cost Total del Projecte} &                                                                & \textbf{16.466,35} & \textbf{21.554,35} \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-Com es desprèn de l'anàlisi econòmica consolidada, el cost de personal representa el \textbf{99,1\%} del valor total del projecte (\textbf{21.360,00~€} en cost d'empresa imputat o \textbf{16.272,00~€} en retribució bruta directa). La despesa material directa ---incloent-hi l'amortització proporcional del maquinari i el consum elèctric--- ascendeix a \textbf{194,31~€}, xifra que confirma la viabilitat d'executar un projecte d'alta intensitat computacional amb una inversió de capital continguda gràcies a l'ús d'equips preexistents i programari lliure.
+Com es desprèn de l'anàlisi econòmica consolidada, el cost de personal representa el \textbf{99,1\%} del valor total del projecte (\textbf{21.360,00~€} en cost d'empresa imputat o \textbf{16.272,00~€} en retribució bruta directa). La despesa material directa ---incloent-hi l'amortització proporcional del maquinari i el consum elèctric--- ascendeix a \textbf{194,35~€}, xifra que confirma la viabilitat d'executar un projecte d'alta intensitat computacional amb una inversió de capital continguda gràcies a l'ús d'equips preexistents i programari lliure.

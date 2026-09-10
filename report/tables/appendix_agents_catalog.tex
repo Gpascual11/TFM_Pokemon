@@ -8,7 +8,7 @@
 \toprule
 \textbf{Agent} & \textbf{Classe Python} & \textbf{Mecànica diferencial / Coneixement de domini} & \textbf{Latència} \\
 \midrule
-\texttt{random} & \texttt{RandomPlayer} & Trie uniforme entre totes les accions legals. Control inferior agnòstic. & $<0{,}1$~ms \\
+\texttt{random} & \texttt{RandomPlayer} & Tria uniforme entre totes les accions legals. Control inferior agnòstic. & $<0{,}1$~ms \\
 \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 \texttt{max\_power} & \texttt{MaxBasePowerPlayer} & Selecció de l'atac amb major potència base nominal. Mai realitza canvis. & $<0{,}1$~ms \\
 \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
@@ -79,7 +79,9 @@
 \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
 \texttt{MaskablePPO} & \texttt{MaskablePPO} & DRL Actor-Critic MLP $2\times 256$, obs 328-d, inicialització BC i currículum de 4 fases. & 10.000 & $\approx 0{,}8$~ms \\
 \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-\texttt{PokéChamp} & \texttt{LLMPlayer} & Inferència LLM Ollama (Qwen 3 8B / Qwen 2.5 7B) amb serialització d'estat i CoT. & Explor. & $\sim 3$--$8$~s \\
+\texttt{PokéChamp} & \texttt{LLMPlayer} & Inferència LLM Ollama (Qwen 3 8B / Qwen 2.5 7B) amb serialització d'estat i CoT. & Explor. & $\sim 3$--$8$~s/torn \\
+\arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
+\texttt{PokéLLMon} & \texttt{LLMPlayer} & Variant exploratòria del mateix adaptador, amb prompt inspirat en PokéLLMon (KAG/ICRL). En paral·lel amb Ollama, una partida pot allargar-se $\sim 40$~min. & Explor. & $\sim 3$--$8$~s/torn \\
 \bottomrule
 \end{tabularx}
 \end{table}

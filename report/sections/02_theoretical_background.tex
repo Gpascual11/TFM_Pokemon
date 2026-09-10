@@ -89,8 +89,8 @@ Com s'observa a la Taula~\ref{tab:pikachu_stat_example}, les xifres finals calcu
 
 Un dels pilars estratègics del combat Pokémon és la relació elemental entre els 18 tipus existents (Foc, Aigua, Planta, etc.). Cal distingir clarament entre el \textbf{tipus del Pokémon} i el \textbf{tipus del moviment}:
 \begin{itemize}
-    \item \textbf{Tipus del Pokémon (funció defensiva):} Cada criatura disposa d'un o dos tipus elementals pròpis (tipus únic o \textbf{doble tipus}) que determinen les febleses, resistències i immunitats quan \emph{rep} un atac rival.
-    \item \textbf{Tipus del moviment (funció ofensiva):} Atribut propi de l'acció executada. Un Pokémon no està restringit a utilitzar atacs del seu mateix tipus elemental (p. ex., un Pokémon de Foc pot llançar un atac de Terra). Tanmateix, quan el tipus del moviment coincideix amb un dels seus tipus pròpis, el joc atorga una bonificació extra del $+50\%$ al dany denominada \textbf{STAB} (\emph{Same Type Attack Bonus}, multiplicador $\times 1{,}5$).
+    \item \textbf{Tipus del Pokémon (funció defensiva):} Cada criatura disposa d'un o dos tipus elementals propis (tipus únic o \textbf{doble tipus}) que determinen les febleses, resistències i immunitats quan \emph{rep} un atac rival.
+    \item \textbf{Tipus del moviment (funció ofensiva):} Atribut propi de l'acció executada. Un Pokémon no està restringit a utilitzar atacs del seu mateix tipus elemental (p. ex., un Pokémon de Foc pot llançar un atac de Terra). Tanmateix, quan el tipus del moviment coincideix amb un dels seus tipus propis, el joc atorga una bonificació extra del $+50\%$ al dany denominada \textbf{STAB} (\emph{Same Type Attack Bonus}, multiplicador $\times 1{,}5$).
 \end{itemize}
 
 Quan un Pokémon té \textbf{doble tipus}, els multiplicadors de la matriu d'efectivitat (Taula~\ref{tab:type_chart}) es combinen multiplicativament ($M = M_1 \times M_2$), generant efectes de \textbf{debilitat doble} ($\times 4$, p. ex., Roca contra Foc/Volador: $2 \times 2 = 4$), \textbf{resistència doble} ($\times 0{,}25$, p. ex., Planta contra Acer/Volador), \textbf{neutralització} ($\times 1$, p. ex., Lluita contra Insecte/Roca: $2 \times 0{,}5 = 1$) o \textbf{immunitat absoluta} ($\times 0$, p. ex., Elèctric contra Aigua/Terra: $2 \times 0 = 0$).
@@ -232,12 +232,12 @@ on $N_{\text{esp\`ecies}} \approx \mathbf{10^3}$ (corresponent a les $1.025$ esp
     \label{eq:team_complexity}
 \end{equation}
 
-Estudis recents sobre entorns de decisió complexos en Pokémon com Angliss et al.~\cite{angliss_vgcbench} xifren l'espai combinatori d'equips competitius en l'ordre de $\mathbf{10^{139}}$ configuracions. Aquesta magnitud se situa entre l'espai d'estats dels escacs ($\approx 10^{47}$) i el del Go ($\approx 10^{170}$), tal com s'il·lustra a la Figura~\ref{fig:state_space_complexity}. El valor exacte del producte depèn del repositori d'espècies i de $N_{\mathrm{stats}}$; el que importa metodològicament no és la xifra, sinó que la construcció d'equips confon la mesura de la política.
+Estudis recents sobre entorns de decisió complexos en Pokémon com Angliss et al.~\cite{angliss_vgcbench} xifren l'espai combinatori d'equips competitius en formats de construcció lliure (com VGC) en l'ordre de $\mathbf{10^{139}}$ configuracions. Aquesta magnitud pertany a l'espai de configuracions d'equip ---no a l'espai d'estats d'un combat--- i, en ordre de magnitud, se situa entre els espais d'estats dels escacs ($\approx 10^{47}$) i el del Go ($\approx 10^{170}$), tal com s'il·lustra a la Figura~\ref{fig:state_space_complexity}. El valor exacte del producte depèn del repositori d'espècies i de $N_{\mathrm{stats}}$; el que importa metodològicament no és la xifra, sinó que la construcció d'equips confon la mesura de la política.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.95\linewidth]{images/diagrams/state_space_complexity.png}
-    \caption{Comparativa en escala logarítmica ($\log_{10}$) de l'espai combinatori d'equips Pokémon ($\approx 10^{139}$) amb l'espai d'estats dels escacs ($\approx 10^{47}$) i el Go ($\approx 10^{170}$).}
+    \caption{Comparativa en escala logarítmica ($\log_{10}$) de l'espai combinatori d'equips Pokémon ($\approx 10^{139}$ configuracions) amb l'espai d'estats dels escacs ($\approx 10^{47}$) i el del Go ($\approx 10^{170}$). Les magnituds no són del mateix tipus: la primera és de construcció d'equips; les altres, d'estats de joc.}
     \label{fig:state_space_complexity}
 \end{figure}
 
@@ -288,7 +288,7 @@ En resum, el combat Pokémon en \texttt{gen9randombattle} encreua quatre reptes 
 
 \begin{enumerate}
     \item \textbf{Planificació a llarg termini (\emph{Long-Term Planning}):} Propi de jocs d'estratègia posicional pura com els \textbf{escacs} o el \textbf{Go}. A Pokémon, les decisions no es poden valorar aïlladament per al torn actual: cal gestionar un equip de sis criatures al llarg de desenes de torns, sacrificant Pokémon per conservar la iniciativa (\emph{tempo}), col·locant perills d'entrada (\emph{hazards}) o preparant condicionants de victòria (\emph{win conditions}) per al final del combat.
-    \item \textbf{Accions simultànies (\emph{Simultaneous Actions}):} Present en jocs com el \textbf{Pedra-Paper-Tisores} o variants d'\textbf{escacs a cegues} (\emph{Kriegspiel}). A cada torn, tots dos jugadors escullen la seva acció de manera secreta i simultània (Secció~\ref{sec:pokemon_joc}). L'agent no pot simplement reaccionar a un moviment vist, sinó que ha de raonar estratègicament sobre la matriu de respostes rivals des de la teoria de jocs.
+    \item \textbf{Accions simultànies (\emph{Simultaneous Actions}):} Present en jocs com el \textbf{Pedra-Paper-Tisores} o la fase d'ordres de \textbf{Diplomacy}. A cada torn, tots dos jugadors escullen la seva acció de manera secreta i simultània (Secció~\ref{sec:pokemon_joc}). L'agent no pot simplement reaccionar a un moviment vist, sinó que ha de raonar estratègicament sobre la matriu de respostes rivals des de la teoria de jocs.
     \item \textbf{Gestió de la probabilitat i l'estocasticitat (\emph{Probability Management}):} Típic de jocs de \textbf{daus} o \textbf{Backgammon}. Les tirades de dany, la precisió dels moviments, els cops crítics (Secció~\ref{subsec:estocasticitat}) i la generació procedural d'equips (Secció~\ref{sec:format}) impedeixen l'existència de trajectòries deterministes, obligant l'agent a ponderar riscos i esperances matemàtiques a cada decisió.
     \item \textbf{Informació imperfecta i oculta (\emph{Imperfect Information}):} Propi de jocs de cartes com el \textbf{Pòquer} o \textbf{\textit{Magic: The Gathering}}. L'estat inicial del rival (moviments no revelats, objectes, habilitats, IVs/EVs i Tipus Tera) roman ocult fins que s'exposa en combat, exigint a l'agent mantenir i actualitzar una distribució de creença sobre les variables no observades.
 \end{enumerate}
@@ -699,7 +699,7 @@ Davant les dificultats de l'exploració activa a l'entorn de simulació, una lí
 
 \subsection{Models de llenguatge de gran escala i cerca adversària híbrida}
 
-L'emergència dels models de llenguatge de gran escala (LLM) ha generat una nova línia d'agents capaços de raonar sobre l'estat del combat mitjançant llenguatge natural. L'agent \textit{PokéLLMon}~\cite{pokellmon} utilitza LLMs (GPT-4) amb recuperació de coneixement extern (KAG) i aprenentatge en context per inferir la informació oculta del rival en el format \texttt{gen8randombattle}, sense requerir entrenament neuronal específic. Paral·lelament, l'agent \textit{PokéChamp}~\cite{pokechamp, pokechamp_icml} combina models de llenguatge per a la construcció de l'estat de creença amb cerca Minimax d'un pas en el format d'equips construïts \texttt{gen9ou} (recolzat en un corpus de 3 milions de partides competitives), assolint posicions destacades al \emph{ladder} de Showdown. Aquests treballs demostren que integrar coneixement de domini o motors de cerca amb models apresos supera el rendiment de qualsevol de les tècniques aplicades de manera aïllada.
+L'emergència dels models de llenguatge de gran escala (LLM) ha generat una nova línia d'agents capaços de raonar sobre l'estat del combat mitjançant llenguatge natural. L'agent \textit{PokéLLMon}~\cite{pokellmon} utilitza LLMs (GPT-4) amb recuperació de coneixement extern (\emph{knowledge-augmented generation}, KAG) i aprenentatge per reforç en context (ICRL) per inferir la informació oculta del rival en el format \texttt{gen8randombattle}, sense requerir entrenament neuronal específic. Paral·lelament, l'agent \textit{PokéChamp}~\cite{pokechamp, pokechamp_icml} combina models de llenguatge per a la construcció de l'estat de creença amb cerca Minimax d'un pas en el format d'equips construïts \texttt{gen9ou} (recolzat en un corpus de 3 milions de partides competitives), assolint posicions destacades al \emph{ladder} de Showdown. Aquests treballs demostren que integrar coneixement de domini o motors de cerca amb models apresos supera el rendiment de qualsevol de les tècniques aplicades de manera aïllada.
 
 \subsection{Mancances de la literatura i justificació d'aquest treball}
 
@@ -742,7 +742,7 @@ A fi de sintetitzar les diferències metodològiques i posicionar amb precisió 
         \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         PokéLLMon~\cite{pokellmon} & 2024 & Gen 8 Random & LLM (GPT-4 + KAG/ICRL, \emph{prompting} sense entrenar) & $N \sim 10^2$ & Parcial & Sí ($N \approx 50$) \\
         \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
-        PokéChamp~\cite{pokechamp, pokechamp_icml} & 2024 & Gen 9 OU & Híbrid: LLM + Minimax (dataset de 3M partides OU) & $N \sim 10^3$ & No & Sí (Gen 9 OU) \\
+        PokéChamp~\cite{pokechamp, pokechamp_icml} & 2025 & Gen 9 OU & Híbrid: LLM + Minimax (dataset de 3M partides OU) & $N \sim 10^3$ & No & Sí (Gen 9 OU) \\
         \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
         Metamon~\cite{grigsby_metamon} & 2025 & Gen 1--4 / 9 OU & \emph{Offline RL} (Decision Transformer sobre replays Smogon) & $N \sim 10^4$ (offline) & No & No \\
         \arrayrulecolor{gray!30}\hline\arrayrulecolor{black}
@@ -999,7 +999,7 @@ on $V_\phi$ és la funció de valor aproximada, $c_1, c_2 > 0$ són coeficients 
     \label{fig:ppo_clip}
 \end{figure}
 
-A més de l'emmascarament d'accions binari $M(a)$, l'entrenament DRL d'aquest treball incorpora dos mecanismes per estabilitzar la convergència: recompenses denses (\emph{reward shaping}) basades en diferències de salut i debilitaments ($\Delta r_t = R_{\text{terminal}} + \gamma \Phi(s_t) - \Phi(s_{t-1})$), i inicialització guiada (\emph{warm-start}) per clonatge conductual sobre l'heurística intermèdia \texttt{v8} (no \texttt{v12}).
+A més de l'emmascarament d'accions binari $M(a)$, l'entrenament DRL d'aquest treball incorpora dos mecanismes per estabilitzar la convergència: recompenses denses (\emph{potential-based reward shaping}) $F(s_t,s_{t+1})=\gamma\Phi(s_{t+1})-\Phi(s_t)$ sobre diferències de salut i debilitaments (Ng et al.~\cite{ng_reward_shaping}; $\gamma=0{,}99$), i inicialització guiada (\emph{warm-start}) per clonatge conductual sobre l'heurística intermèdia \texttt{v8} (no \texttt{v12}).
 
 % ============================================================
 \section{Síntesi del marc teòric}

@@ -446,7 +446,7 @@ Una repetició no conté l'objecte \texttt{Battle} que l'agent veu en línia (Fi
 
 \subsection{Dades i entrenament}
 
-El conjunt avançat té de l'ordre d'\textbf{1,1 milions} de torns. \path{extract_ml_features.py} (\texttt{--mode advanced}) reconstrueix l'estat tabular amb Polars i desa un Parquet; el mode \texttt{baseline} (cinc columnes) només s'usa per a un agent exploratori fora de la matriu. L'entrenament macro ---script \path{train_ml_advanced.py}--- fa un \texttt{GroupShuffleSplit} per \texttt{battle\_id} per no filtrar informació intra-partida, aplica \texttt{scale\_pos\_weight} al desequilibri atacar/canviar i calibra el llindar de decisió sobre la corba precisió-record del conjunt de test. El model resultant té aproximadament \textbf{1.150} columnes després del one-hot d'espècies. El fitxer \path{xgboost_advanced_threshold.json} desa $\tau_{\mathrm{recomanat}}=0{,}5525$ (juntament amb els punts F1 i d'igualació de freqüència); l'agent el carrega en temps d'inferència.
+El conjunt avançat té de l'ordre d'\textbf{1,12 milions} de torns. \path{extract_ml_features.py} (\texttt{--mode advanced}) reconstrueix l'estat tabular amb Polars i desa un Parquet; el mode \texttt{baseline} (cinc columnes) només s'usa per a un agent exploratori fora de la matriu. L'entrenament macro ---script \path{train_ml_advanced.py}--- fa un \texttt{GroupShuffleSplit} per \texttt{battle\_id} per no filtrar informació intra-partida, aplica \texttt{scale\_pos\_weight} al desequilibri atacar/canviar i calibra el llindar de decisió sobre la corba precisió-record del conjunt de test. El model resultant té aproximadament \textbf{1.150} columnes després del one-hot d'espècies. El fitxer \path{xgboost_advanced_threshold.json} desa $\tau_{\mathrm{recomanat}}=0{,}5525$ (juntament amb els punts F1 i d'igualació de freqüència); l'agent el carrega en temps d'inferència.
 
 \begin{figure}[htbp]
     \centering
@@ -475,7 +475,7 @@ La classe «canviar» representa aproximadament el 25,8\% dels torns. La taxa é
 
 Els sis controls de la Secció~\ref{sec:disseny_agents} s'instancien per la fàbrica d'agents. \texttt{random} i \texttt{max\_power} provenen de \textit{poke-env}; \texttt{simple\_heuristic} s'adapta a la Teracristal·lització, i \texttt{abyssal} es recupera del projecte PokéChamp. Per a \texttt{one\_step} i \texttt{safe\_one\_step}, l'adaptador \texttt{SafeOneStepPlayer} avalua \texttt{base\_power $\times$ STAB $\times$ efectivitat $\times$ precisió} d'un pas sense cridar \texttt{LocalSim}.
 
-La integració dels agents basats en LLM (\textbf{PokéChamp} i \textbf{PokéLLMon}) es localitza a \texttt{src/p01\_heuristics/agents/llm/}. L'arquitectura d'inferència s'articula mitjançant un servidor local \textbf{Ollama}~\cite{ollama_2023} accelerat per GPU amb \textbf{NVIDIA CUDA}~\cite{nvidia_cuda}, executant models oberts com ara \textit{Qwen 2.5 7B}~\cite{qwen_2024} o \textit{Llama 3}. L'adaptador serialitza l'estat observable de Showdown en un prompt textual estructurat (HP, modificadors, moviments vistos i taula d'efectivitats) i demana una decisió amb raonament CoT. En execució paral·lela amb múltiples treballadors, la consulta simultània al servidor Ollama genera colls d'ampolla a la memòria VRAM i commutacions de context a CUDA. La latència observada ($\sim 40$ minuts per partida completa) confirma empíricament la decisió de disseny de la Secció~\ref{sec:disseny_experiments} d'excloure els LLMs de la matriu massiva de $28 \times 28$.
+La integració dels agents basats en LLM (\textbf{PokéChamp} i \textbf{PokéLLMon}) es localitza a \texttt{src/p01\_heuristics/agents/llm/}. L'arquitectura d'inferència s'articula mitjançant un servidor local \textbf{Ollama}~\cite{ollama_2023} accelerat per GPU amb \textbf{NVIDIA CUDA}~\cite{nvidia_cuda}, executant models oberts de la família Qwen (referència \textit{Qwen 3 8B}, alternativa \textit{Qwen 2.5 7B}~\cite{qwen_2024}) o \textit{Llama 3}. L'adaptador serialitza l'estat observable de Showdown en un prompt textual estructurat (HP, modificadors, moviments vistos i taula d'efectivitats) i demana una decisió amb raonament CoT. En una GPU dedicada, un torn aïllat requereix $3$--$8$~s (Annex~\ref{sec:app_llm_prompts}). En execució paral·lela amb múltiples treballadors, la consulta simultània a Ollama satura la VRAM i allarga una partida completa fins a $\sim 40$ minuts. Aquesta asimetria confirma la decisió de disseny de la Secció~\ref{sec:disseny_experiments} d'excloure els LLMs de la matriu massiva de $28 \times 28$.
 
 % ============================================================
 \section{PPO: MaskablePPO sobre Showdown}
@@ -497,7 +497,7 @@ Els pesos viuen a \texttt{data/models/ppo/}, un directori per fase (\texttt{p1\_
 
 \subsection{Entorn}
 
-\texttt{PokemonMaskedEnv} encapsula \texttt{SinglesEnv} de \textit{poke-env} sota el mateix contracte de la Secció~\ref{sec:pila_tecnologica}. L'observació és el vector de \textbf{328} dimensions de la Taula~\ref{tab:ppo_obs_layout}, la representació congelada del disseny. Les fases 1 i 1.5 n'utilitzaven 318; una extensió posterior n'afegeix 18 (fase 4), però correspon a un experiment interromput i no al resultat principal.
+\texttt{PokemonMaskedEnv} encapsula \texttt{SinglesEnv} de \textit{poke-env} sota el mateix contracte de la Secció~\ref{sec:pila_tecnologica}. L'observació és el vector de \textbf{328} dimensions de la Taula~\ref{tab:ppo_obs_layout}, la representació congelada del disseny. Les fases 1 i 1.5 n'utilitzaven 318; la fase~2 afegeix 10 dimensions (dany estimat i enfrontaments de canvi) fins a 328. Una extensió posterior de la fase~4 afegeix 18 dimensions més ($328+18=346$), però correspon a un experiment interromput i no al resultat principal.
 
 \input{tables/ppo_obs_layout}
 
@@ -607,7 +607,7 @@ La fase~3 prova dues configuracions. El checkpoint de tesi és el model A, \text
         \includegraphics[width=\linewidth]{images/results/ppo_p3_v12_winrate.png}
         \caption{Passada secundària de fase 3 contra \texttt{v12}.}
     \end{subfigure}
-    \caption{Corbes de les quatre etapes del currículum: taxes durant l'entrenament sobre una política canviant. Les validacions independents són la Taula~\ref{tab:ppo_curriculum_eval}. El panell de fase 3 correspon a la passada secundària, no al model A publicat.}
+    \caption{Corbes de les quatre etapes del currículum: taxes \emph{durant l'entrenament} (caselles internes dels gràfics: 93,1\%, 66,9\%, 37,7\% i 32,7\%), no les validacions congelades de la Taula~\ref{tab:ppo_curriculum_eval} (91,8\%, 70,5\%, 40,6\% i 34,1\%). Les línies d'objectiu dibuixades als panells 1 i 1.5 (70\% i 50\%) són referències visuals de les corbes; les portes de disseny són $\ge 90\%$, $>70\%$ i $>55\%$. El panell de fase~3 és la passada secundària, no el model~A publicat.}
     \label{fig:ppo_curriculum_curves}
 \end{figure}
 

@@ -16,7 +16,7 @@
 & Balanç de classes (\texttt{scale\_pos\_weight}) & 2,88 (ràtio $\text{Atac} / \text{Canvi}$ en entrenament) \\
 & Mostreig (\texttt{subsample}, \texttt{colsample}) & 0,85 en files i 0,85 en columnes \\
 & Funció de pèrdua (\texttt{eval\_metric}) & Pèrdua logística binària (\texttt{"logloss"}) \\
-& Llindar de decisió calibrat ($\tau$) & 0,3500 (calibrat per concordança de freqüència humana i F1) \\
+& Llindar de decisió calibrat ($\tau$) & 0,5525 (calibrat a \texttt{xgboost\_advanced\_threshold.json}) \\
 & Partició de dades & \textit{GroupShuffleSplit} per \texttt{battle\_id} (80\% train, 20\% test) \\
 & Mida del conjunt & $1{,}12$ milions de torns d'experts (Elo $\ge 1800$, $\approx 1.150$ columnes) \\
 \midrule
